@@ -4,15 +4,15 @@ import logging
 from pathlib import Path
 from typing import Optional
 from gtts import gTTS
-from config import PIPER_BIN, PIPER_MODEL, PIPER_MODEL_EN
+from config import PIPER_BIN, PIPER_MODEL_ES, PIPER_MODEL_EN
 
 logger = logging.getLogger("TTS")
 
 class TTSManager:
-    def __init__(self, piper_bin: str = PIPER_BIN, piper_model_es: str = PIPER_MODEL, piper_model_en: Optional[str] = None):
+    def __init__(self, piper_bin: str = PIPER_BIN, piper_model_es: str = PIPER_MODEL_ES, piper_model_en: str = PIPER_MODEL_EN):
         self.piper_bin = piper_bin
         self.piper_model_es = piper_model_es
-        self.piper_model_en = piper_model_en or PIPER_MODEL_EN
+        self.piper_model_en = piper_model_en
         self.has_piper_bin = bool(shutil.which(piper_bin))
         if self.has_piper_bin:
             logger.info(f"TTSManager ready with Piper binary '{piper_bin}'")

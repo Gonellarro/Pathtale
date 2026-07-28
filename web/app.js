@@ -61,10 +61,14 @@ function initEventListeners() {
 
   // Audio Controls
   document.getElementById("btn-audio-play").addEventListener("click", toggleAudioPlay);
+  const btnOpt = document.getElementById("btn-audio-options");
+  if (btnOpt) btnOpt.addEventListener("click", playOptionsAudio);
   document.getElementById("audio-slider").addEventListener("input", onAudioSeek);
   document.getElementById("btn-audio-speed").addEventListener("click", toggleAudioSpeed);
 
   audioPlayer.addEventListener("timeupdate", updateAudioProgress);
+  audioPlayer.addEventListener("play", onAudioPlay);
+  audioPlayer.addEventListener("pause", onAudioPause);
   audioPlayer.addEventListener("ended", onAudioEnded);
 
   // Voice Controls
@@ -236,8 +240,11 @@ async function submitChoice(choiceId, targetNode) {
   }
 }
 
+let currentAudioType = "narrative";
+
 function renderGameState(state) {
   currentGameState = state;
+  currentAudioType = "narrative";
 
   document.getElementById("game-book-title").textContent = state.book_title || "Librojuego";
   document.getElementById("game-progress-bar").style.width = `${state.progress_percent}%`;
@@ -259,6 +266,13 @@ function renderGameState(state) {
   document.getElementById("node-text").textContent = state.text || "";
 
   // Audio setup
+  const btnOptions = document.getElementById("btn-audio-options");
+  if (state.audio_options_url) {
+    if (btnOptions) btnOptions.classList.remove("hidden");
+  } else {
+    if (btnOptions) btnOptions.classList.add("hidden");
+  }
+
   if (state.audio_url) {
     audioPlayer.src = `${state.audio_url}?v=${Date.now()}`;
     audioPlayer.playbackRate = appSettings.audioSpeed || 1.0;
@@ -289,15 +303,51 @@ function renderGameState(state) {
 
 // --- AUDIO PLAYER CONTROLS ---
 function toggleAudioPlay() {
-  if (audioPlayer.paused) {
-    audioPlayer.play();
-    document.getElementById("audio-icon").textContent = "⏸";
-    document.getElementById("audio-label").textContent = "Pausar Audio";
-  } else {
+  if (!currentGameState) return;
+
+  if (!audioPlayer.paused) {
     audioPlayer.pause();
-    document.getElementById("audio-icon").textContent = "▶";
-    document.getElementById("audio-label").textContent = "Escuchar Narración";
+  } else {
+    // If currently paused, or if audio was set to options, reset src to main story narration
+    if (currentAudioType !== "narrative" || !audioPlayer.src.includes(currentGameState.audio_url)) {
+      currentAudioType = "narrative";
+      if (currentGameState.audio_url) {
+        audioPlayer.src = `${currentGameState.audio_url}?v=${Date.now()}`;
+        audioPlayer.playbackRate = appSettings.audioSpeed || 1.0;
+      }
+    }
+    if (audioPlayer.src) {
+      audioPlayer.play().catch(e => console.log("Playback error:", e));
+    }
   }
+}
+
+function playOptionsAudio() {
+  if (!currentGameState || !currentGameState.audio_options_url) return;
+
+  if (!audioPlayer.paused && currentAudioType === "options") {
+    audioPlayer.pause();
+    return;
+  }
+
+  currentAudioType = "options";
+  audioPlayer.src = `${currentGameState.audio_options_url}?v=${Date.now()}`;
+  audioPlayer.playbackRate = appSettings.audioSpeed || 1.0;
+  audioPlayer.play().catch(e => console.log("Error playing options audio:", e));
+}
+
+function onAudioPlay() {
+  document.getElementById("audio-icon").textContent = "⏸";
+  if (currentAudioType === "options") {
+    document.getElementById("audio-label").textContent = "Pausar Opciones";
+  } else {
+    document.getElementById("audio-label").textContent = "Pausar Narración";
+  }
+}
+
+function onAudioPause() {
+  document.getElementById("audio-icon").textContent = "▶";
+  document.getElementById("audio-label").textContent = "Escuchar Narración";
 }
 
 function updateAudioProgress() {
@@ -326,8 +376,21 @@ function toggleAudioSpeed() {
 }
 
 function onAudioEnded() {
-  document.getElementById("audio-icon").textContent = "▶";
-  document.getElementById("audio-label").textContent = "Escuchar Narración";
+  if (currentAudioType === "narrative" && currentGameState && currentGameState.audio_options_url) {
+    // Chain narrative playback to options playback automatically
+    currentAudioType = "options";
+    audioPlayer.src = `${currentGameState.audio_options_url}?v=${Date.now()}`;
+    audioPlayer.playbackRate = appSettings.audioSpeed || 1.0;
+    audioPlayer.play().catch(e => console.log("Auto play options prevented:", e));
+  } else {
+    // Options finished or narrative finished with no options: reset player to narrative
+    currentAudioType = "narrative";
+    if (currentGameState && currentGameState.audio_url) {
+      audioPlayer.src = `${currentGameState.audio_url}?v=${Date.now()}`;
+    }
+    document.getElementById("audio-icon").textContent = "▶";
+    document.getElementById("audio-label").textContent = "Escuchar Narración";
+  }
 }
 
 function formatTime(secs) {

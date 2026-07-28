@@ -20,8 +20,9 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 
 # Piper TTS settings
 PIPER_BIN = os.getenv("PIPER_BIN", str(BASE_DIR / "venv" / "bin" / "piper"))
-PIPER_MODEL = os.getenv("PIPER_MODEL", "/app/models/piper/es_ES-davefx-medium.onnx")
+PIPER_MODEL_ES = os.getenv("PIPER_MODEL_ES", os.getenv("PIPER_MODEL", "/app/models/piper/es_ES-davefx-medium.onnx"))
 PIPER_MODEL_EN = os.getenv("PIPER_MODEL_EN", "/app/models/piper/en_US-lessac-medium.onnx")
+PIPER_MODEL = PIPER_MODEL_ES
 
 # LLM Intent Classifier settings (optional)
 LLM_API_URL = os.getenv("LLM_API_URL", "http://localhost:11434/api/generate") # Default Ollama

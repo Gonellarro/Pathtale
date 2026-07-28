@@ -228,6 +228,8 @@ class EPUBImporter:
                         choice_idx += 1
 
                 audio_rel_path = f"audios/{node_id}.mp3"
+                audio_options_rel_path = f"audios/{node_id}_options.mp3" if choices else None
+
                 node_data = {
                     "id": node_id,
                     "display_number": display_num,
@@ -235,6 +237,7 @@ class EPUBImporter:
                     "text": full_text,
                     "images": node_images,
                     "audio": audio_rel_path,
+                    "audio_options": audio_options_rel_path,
                     "choices": choices
                 }
                 nodes[node_id] = node_data
@@ -255,6 +258,7 @@ class EPUBImporter:
                             "target_node": next_id,
                             "target_display_number": nodes[next_id].get("display_number")
                         })
+                        nodes[cur_id]["audio_options"] = f"audios/{cur_id}_options.mp3"
 
             # Always start at the very first content section (page 1 / introduction)
             if valid_xhtml_files:
@@ -333,21 +337,32 @@ class EPUBImporter:
             logger.info(f"Imported {total_sections} nodes with extended metadata to {book_json_path}")
 
             if generate_audios:
-                logger.info(f"Generating TTS audio for {total_sections} nodes...")
+                logger.info(f"Generating TTS audio for {total_sections} nodes (narrative & options)...")
                 for n_id, n_data in nodes.items():
+                    # 1. Main story narrative audio
                     audio_path = output_dir / n_data["audio"]
                     if not audio_path.exists():
-                        tts_parts = [n_data['title']]
+                        tts_parts = []
+                        if n_data.get('title'):
+                            tts_parts.append(n_data['title'])
                         if n_data.get('text'):
                             tts_parts.append(n_data['text'])
-                        
-                        choices = n_data.get('choices', [])
-                        if choices:
-                            tts_parts.append("¿Qué deseas hacer?")
-                            for c in choices:
-                                tts_parts.append(f"Opción {c['choice_id']}: {c['text']}.")
-                        
-                        tts_text = "\n\n".join(tts_parts)
-                        self.tts_manager.generate_audio(tts_text, audio_path, language=language)
+                        if tts_parts:
+                            tts_text = "\n\n".join(tts_parts)
+                            self.tts_manager.generate_audio(tts_text, audio_path, language=language)
+
+                    # 2. Options audio (_options.mp3)
+                    if n_data.get("audio_options"):
+                        audio_opt_path = output_dir / n_data["audio_options"]
+                        if not audio_opt_path.exists():
+                            choices = n_data.get('choices', [])
+                            if choices:
+                                opt_parts = ["¿Qué deseas hacer?"]
+                                for c in choices:
+                                    opt_parts.append(f"Opción {c['choice_id']}: {c['text']}.")
+                                opt_text = "\n\n".join(opt_parts)
+                                self.tts_manager.generate_audio(opt_text, audio_opt_path, language=language)
+
+            return book_json_path
 
             return book_json_path

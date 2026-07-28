@@ -11,8 +11,9 @@ services:
       - "8000:8000"
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - PIPER_BIN=piper
-      - PIPER_MODEL=/app/models/piper/es_ES-davefx-medium.onnx
+      - PIPER_BIN=${PIPER_BIN:-piper}
+      - PIPER_MODEL_ES=${PIPER_MODEL_ES:-/app/models/piper/es_ES-davefx-medium.onnx}
+      - PIPER_MODEL_EN=${PIPER_MODEL_EN:-/app/models/piper/en_US-lessac-medium.onnx}
       - USE_LLM_FALLBACK=false
     volumes:
       - ./Libros:/app/Libros

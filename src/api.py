@@ -254,6 +254,7 @@ def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict
 
     images_urls = [f"{book_dir_url}/{img}" for img in node.get("images", [])]
     audio_url = f"{book_dir_url}/{node.get('audio')}" if node.get("audio") else None
+    audio_options_url = f"{book_dir_url}/{node.get('audio_options')}" if node.get("audio_options") else None
 
     history = engine.db.get_history(user_id, book_id, limit=100)
     visited_count = len(set(h["to_node_id"] for h in history))
@@ -270,6 +271,7 @@ def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict
         "text": node.get("text"),
         "images": images_urls,
         "audio_url": audio_url,
+        "audio_options_url": audio_options_url,
         "choices": node.get("choices", []),
         "inventory": state.get("inventory", {}),
         "variables": state.get("variables", {}),
