@@ -16,5 +16,4 @@ services:
       - PIPER_MODEL_EN=${PIPER_MODEL_EN:-/app/models/piper/en_US-lessac-medium.onnx}
       - USE_LLM_FALLBACK=false
     volumes:
-      - ./Libros:/app/Libros
-      - ./data:/app/data
+      - ./:/app

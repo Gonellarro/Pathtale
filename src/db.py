@@ -1,5 +1,8 @@
 import sqlite3
 import json
+import hashlib
+import os
+import secrets
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from config import DB_PATH
@@ -21,29 +24,66 @@ class Database:
             # Users table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS users (
-                    user_id INTEGER PRIMARY KEY,
-                    username TEXT,
+                    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE,
                     first_name TEXT,
+                    password_hash TEXT,
+                    salt TEXT,
                     settings TEXT DEFAULT '{}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
-            # Add settings column if table existed previously without it
-            try:
-                cursor.execute("ALTER TABLE users ADD COLUMN settings TEXT DEFAULT '{}'")
-            except Exception:
-                pass
+            # Add columns if table existed without them
+            for col, col_type in [("password_hash", "TEXT"), ("salt", "TEXT"), ("settings", "TEXT DEFAULT '{}'")]:
+                try:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type}")
+                except Exception:
+                    pass
 
-            # Savegames table
+            # Sessions table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS sessions (
+                    token TEXT PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
+                )
+            """)
+
+            # Migration check: if savegames table exists with old schema, migrate to composite PRIMARY KEY (user_id, book_id)
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='savegames'")
+            row = cursor.fetchone()
+            if row and "PRIMARY KEY (user_id, book_id)" not in row["sql"]:
+                cursor.execute("""
+                    CREATE TABLE savegames_new (
+                        user_id INTEGER NOT NULL,
+                        book_id TEXT NOT NULL,
+                        current_node_id TEXT NOT NULL,
+                        inventory TEXT DEFAULT '{}',
+                        variables TEXT DEFAULT '{}',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (user_id, book_id),
+                        FOREIGN KEY (user_id) REFERENCES users(user_id)
+                    )
+                """)
+                cursor.execute("""
+                    INSERT OR REPLACE INTO savegames_new (user_id, book_id, current_node_id, inventory, variables, updated_at)
+                    SELECT user_id, book_id, current_node_id, inventory, variables, updated_at FROM savegames
+                """)
+                cursor.execute("DROP TABLE savegames")
+                cursor.execute("ALTER TABLE savegames_new RENAME TO savegames")
+
+            # Savegames table (user_id, book_id composite key)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS savegames (
-                    user_id INTEGER PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
                     book_id TEXT NOT NULL,
                     current_node_id TEXT NOT NULL,
                     inventory TEXT DEFAULT '{}',
                     variables TEXT DEFAULT '{}',
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, book_id),
                     FOREIGN KEY (user_id) REFERENCES users(user_id)
                 )
             """)
@@ -62,6 +102,102 @@ class Database:
                 )
             """)
 
+            # Create default guest user (user_id=1) if not present
+            cursor.execute("SELECT * FROM users WHERE user_id = 1")
+            if not cursor.fetchone():
+                cursor.execute(
+                    "INSERT INTO users (user_id, username, first_name) VALUES (1, 'invitado', 'Invitado')"
+                )
+
+            conn.commit()
+
+    # --- Authentication Methods ---
+
+    def _hash_password(self, password: str, salt_hex: str) -> str:
+        salt_bytes = bytes.fromhex(salt_hex)
+        return hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt_bytes, 100000).hex()
+
+    def register_user(self, username: str, password: str, first_name: Optional[str] = None) -> Dict[str, Any]:
+        username_clean = username.strip().lower()
+        if not username_clean or len(password) < 4:
+            raise ValueError("Nombre de usuario y contraseña (mín. 4 caracteres) requeridos.")
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id FROM users WHERE LOWER(username) = ?", (username_clean,))
+            if cursor.fetchone():
+                raise ValueError("El nombre de usuario ya está registrado.")
+
+            salt_hex = os.urandom(16).hex()
+            pwd_hash = self._hash_password(password, salt_hex)
+            display_name = first_name or username.strip()
+
+            cursor.execute(
+                "INSERT INTO users (username, first_name, password_hash, salt) VALUES (?, ?, ?, ?)",
+                (username_clean, display_name, pwd_hash, salt_hex)
+            )
+            user_id = cursor.lastrowid
+            token = secrets.token_hex(32)
+            cursor.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user_id))
+            conn.commit()
+
+            return {
+                "user_id": user_id,
+                "username": username_clean,
+                "first_name": display_name,
+                "token": token
+            }
+
+    def login_user(self, username: str, password: str) -> Dict[str, Any]:
+        username_clean = username.strip().lower()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE LOWER(username) = ?", (username_clean,))
+            user = cursor.fetchone()
+            if not user or not user["password_hash"] or not user["salt"]:
+                raise ValueError("Usuario o contraseña incorrectos.")
+
+            computed_hash = self._hash_password(password, user["salt"])
+            if computed_hash != user["password_hash"]:
+                raise ValueError("Usuario o contraseña incorrectos.")
+
+            token = secrets.token_hex(32)
+            cursor.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user["user_id"]))
+            conn.commit()
+
+            return {
+                "user_id": user["user_id"],
+                "username": user["username"],
+                "first_name": user["first_name"] or user["username"],
+                "token": token
+            }
+
+    def get_user_by_token(self, token: str) -> Optional[Dict[str, Any]]:
+        if not token:
+            return None
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT u.user_id, u.username, u.first_name, u.settings, u.created_at
+                FROM sessions s
+                JOIN users u ON s.user_id = u.user_id
+                WHERE s.token = ?
+            """, (token,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "user_id": row["user_id"],
+                "username": row["username"],
+                "first_name": row["first_name"] or row["username"],
+                "settings": json.loads(row["settings"] or "{}"),
+                "created_at": row["created_at"]
+            }
+
+    def logout_user(self, token: str):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
             conn.commit()
 
     def get_or_create_user(self, user_id: int, username: Optional[str] = None, first_name: Optional[str] = None):
@@ -75,6 +211,8 @@ class Database:
                     (user_id, username, first_name)
                 )
                 conn.commit()
+
+    # --- Savegame & Gameplay Methods ---
 
     def get_savegame(self, user_id: int, book_id: str) -> Optional[Dict[str, Any]]:
         with self.get_connection() as conn:
@@ -104,8 +242,7 @@ class Database:
             cursor.execute("""
                 INSERT INTO savegames (user_id, book_id, current_node_id, inventory, variables, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(user_id) DO UPDATE SET
-                    book_id = excluded.book_id,
+                ON CONFLICT(user_id, book_id) DO UPDATE SET
                     current_node_id = excluded.current_node_id,
                     inventory = excluded.inventory,
                     variables = excluded.variables,
@@ -122,7 +259,7 @@ class Database:
             """, (user_id, book_id, from_node_id, to_node_id, choice_text))
             conn.commit()
 
-    def get_history(self, user_id: int, book_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+    def get_history(self, user_id: int, book_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -149,3 +286,17 @@ class Database:
                 except Exception:
                     pass
             return {}
+
+    def get_user_stats(self, user_id: int) -> Dict[str, Any]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(DISTINCT book_id) as books_started FROM savegames WHERE user_id = ?", (user_id,))
+            books_count = cursor.fetchone()["books_started"]
+            
+            cursor.execute("SELECT COUNT(*) as decisions_made FROM history WHERE user_id = ?", (user_id,))
+            decisions_count = cursor.fetchone()["decisions_made"]
+            
+            return {
+                "books_started": books_count,
+                "decisions_made": decisions_count
+            }

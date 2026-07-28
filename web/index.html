@@ -1,51 +1,67 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es" data-theme="pathtale">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ALJ - Motor de Librojuegos Interactivos</title>
+  <title>PathTale - Elige tu camino. Escucha tu aventura.</title>
   <meta name="description" content="Plataforma interactiva de librojuegos con narración de voz, reconocimiento de voz y guardado automático.">
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#181412">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet">
   
+  <link rel="icon" type="image/png" href="/assets/pathtale_logo_clear.png">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div id="app" class="app-container">
-    <!-- Navbar -->
-    <header class="navbar">
-      <div class="nav-brand" id="nav-brand">
-        <div class="logo-icon">📜</div>
-        <span class="logo-text">ALJ <small>Narrator</small></span>
-      </div>
-      <div class="nav-actions">
-        <button id="btn-nav-library" class="nav-btn active" title="Biblioteca">
-          <span class="icon">📚</span> <span class="lbl">Biblioteca</span>
-        </button>
-        <button id="btn-nav-history" class="nav-btn hidden" title="Historial">
-          <span class="icon">📜</span> <span class="lbl">Historial</span>
-        </button>
-        <button id="btn-nav-settings" class="nav-btn" title="Configuración">
-          <span class="icon">⚙️</span>
-        </button>
-      </div>
-    </header>
+  <!-- Navbar (Full screen width) -->
+  <header class="navbar">
+    <div class="nav-brand" id="nav-brand">
+      <img src="/assets/pathtale_logo_clear.png" alt="PathTale" class="logo-img">
+    </div>
+    <div class="nav-actions">
+      <button id="btn-nav-library" class="nav-btn active" title="Biblioteca">
+        <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        <span class="lbl">Biblioteca</span>
+      </button>
+      <button id="btn-nav-profile" class="nav-btn" title="Perfil / Configuración">
+        <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span class="lbl">Perfil</span>
+      </button>
+      <button id="btn-nav-login" class="nav-btn-login">Iniciar Sesión</button>
+      <button id="btn-nav-history" class="nav-btn-icon hidden" title="Historial">
+        <span class="icon">📜</span>
+      </button>
+    </div>
+  </header>
 
+  <div id="app" class="app-container">
     <!-- Main Content Area -->
     <main class="main-content">
-      <!-- VIEW: BIBLIOTECA -->
+      <!-- VIEW: BIBLIOTECA / LANDING -->
       <section id="view-library" class="view active">
         <div class="library-header">
-          <div class="hero-banner">
-            <h1>Tu Biblioteca de Aventuras</h1>
-            <p>Escucha, responde con tu voz y vive historias donde tú tomas las decisiones.</p>
+          <div class="hero-cover-wrap">
+            <img src="/assets/pathtale_cover.png" alt="PathTale - Elige tu camino. Escucha tu aventura." class="hero-cover-img">
           </div>
-          <div class="library-toolbar">
+
+          <!-- Inspiring Tagline for Unauthenticated Visitors -->
+          <div id="landing-tagline" class="landing-tagline">
+            <h2>Elige tu camino. Escucha tu aventura.</h2>
+            <p>Ficción interactiva y librojuegos narrados con decisiones de voz.</p>
+          </div>
+
+          <!-- Authenticated Library Toolbar (Hidden when logged out) -->
+          <div id="library-toolbar" class="library-toolbar hidden">
             <span class="library-count" id="library-count">Cargando libros...</span>
             <div class="view-toggle-wrap">
               <button id="btn-view-grid" class="btn-toggle active" title="Vista Tarjetas (Grande)">
@@ -58,12 +74,8 @@
           </div>
         </div>
 
-        <div class="library-grid" id="library-grid">
+        <div class="library-grid hidden" id="library-grid">
           <!-- Book cards rendered via JS -->
-          <div class="loading-spinner">
-            <div class="spinner"></div>
-            <p>Cargando biblioteca...</p>
-          </div>
         </div>
       </section>
 
@@ -167,20 +179,71 @@
       </div>
     </aside>
 
-    <!-- Modal: Configuración -->
+    <!-- Modal: Autenticación / Login / Registro -->
+    <div id="modal-auth" class="modal">
+      <div class="modal-content auth-modal-content">
+        <div class="modal-header">
+          <h2 id="auth-modal-title">Iniciar Sesión</h2>
+          <button id="btn-close-auth" class="btn-icon">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="auth-tabs">
+            <button id="tab-auth-login" class="auth-tab active">Iniciar Sesión</button>
+            <button id="tab-auth-register" class="auth-tab">Crear Cuenta</button>
+          </div>
+          <form id="auth-form" onsubmit="return false;">
+            <div class="form-group">
+              <label for="auth-username">Nombre de Usuario</label>
+              <input type="text" id="auth-username" class="text-input" placeholder="Tu usuario" required autocomplete="username">
+            </div>
+            <div class="form-group">
+              <label for="auth-password">Contraseña</label>
+              <input type="password" id="auth-password" class="text-input" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <div id="auth-error-msg" class="auth-error hidden"></div>
+            <button type="submit" id="btn-auth-submit" class="btn-primary-block">Iniciar Sesión</button>
+            <div class="auth-footer-link">
+              <a href="#" id="link-modal-forgot">¿Has olvidado tu contraseña?</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Configuración y Perfil -->
     <div id="modal-settings" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Configuración de Lectura</h2>
+          <h2>Perfil y Configuración</h2>
           <button id="btn-close-settings" class="btn-icon">✕</button>
         </div>
         <div class="modal-body">
+          <!-- Profile Card Header -->
+          <div class="user-profile-card">
+            <div class="profile-avatar">👤</div>
+            <div class="profile-info">
+              <h3 id="profile-user-name">Invitado</h3>
+              <p id="profile-user-sub">Modo local / No registrado</p>
+            </div>
+          </div>
+          <div class="profile-stats">
+            <div class="stat-badge">
+              <span class="stat-val" id="stat-books">0</span>
+              <span class="stat-lbl">Libros Jugados</span>
+            </div>
+            <div class="stat-badge">
+              <span class="stat-val" id="stat-decisions">0</span>
+              <span class="stat-lbl">Decisiones</span>
+            </div>
+          </div>
+          <hr class="divider">
+
           <div class="setting-item">
             <label for="setting-theme">Tema Visual</label>
             <select id="setting-theme" class="select-input">
+              <option value="pathtale">PathTale Madera (Por Defecto)</option>
               <option value="dark">Oscuro Místico</option>
-              <option value="sepia">Sepia Editorial</option>
-              <option value="night">Noche Nocturna</option>
+              <option value="light">Claro Editorial</option>
             </select>
           </div>
 
@@ -208,6 +271,10 @@
               <input type="checkbox" id="setting-voice-enabled" checked>
               <span class="switch-slider"></span>
             </label>
+          </div>
+
+          <div class="profile-logout-wrap">
+            <button id="btn-logout" class="btn-danger-outline hidden">Cerrar Sesión</button>
           </div>
         </div>
       </div>

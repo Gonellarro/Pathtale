@@ -3,7 +3,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Body
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Body, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,9 +17,9 @@ from src.voice_parser import VoiceParser
 logger = logging.getLogger("API")
 
 app = FastAPI(
-    title="Motor Narrativo de Librojuegos API",
+    title="PathTale Engine API",
     description="REST API para alimentar PWA, Móvil, Telegram y otras interfaces de ficción interactiva.",
-    version="0.9.0"
+    version="1.0.0"
 )
 
 # Enable CORS for PWA and Web clients
@@ -41,7 +41,7 @@ temp_dir.mkdir(parents=True, exist_ok=True)
 
 # Pydantic Request Models
 class StartGameRequest(BaseModel):
-    user_id: int = 1
+    user_id: Optional[int] = 1
     book_id: str
 
 class ChoiceRequest(BaseModel):
@@ -49,11 +49,77 @@ class ChoiceRequest(BaseModel):
     target_node: Optional[str] = None
     text: Optional[str] = None
 
-# --- REST API Endpoints ---
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    first_name: Optional[str] = None
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+# Helper to resolve user_id from Authorization Bearer header or fallback
+def resolve_user_id(authorization: Optional[str] = Header(None), query_user_id: Optional[int] = None) -> int:
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        user = engine.db.get_user_by_token(token)
+        if user:
+            return user["user_id"]
+    return query_user_id or 1
+
+# --- Authentication Endpoints ---
+
+@app.post("/api/auth/register")
+def register(req: RegisterRequest):
+    """Registers a new user account."""
+    try:
+        user_info = engine.db.register_user(req.username, req.password, req.first_name)
+        return {"status": "success", "user": user_info}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    """Authenticates user and returns session token."""
+    try:
+        user_info = engine.db.login_user(req.username, req.password)
+        return {"status": "success", "user": user_info}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/auth/logout")
+def logout(authorization: Optional[str] = Header(None)):
+    """Logs out user by destroying active session token."""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        engine.db.logout_user(token)
+    return {"status": "success"}
+
+@app.get("/api/auth/me")
+def get_me(authorization: Optional[str] = Header(None)):
+    """Returns profile and statistics for currently authenticated user."""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        user = engine.db.get_user_by_token(token)
+        if user:
+            stats = engine.db.get_user_stats(user["user_id"])
+            return {
+                "authenticated": True,
+                "user": user,
+                "stats": stats
+            }
+    return {
+        "authenticated": False,
+        "user": {"user_id": 1, "username": "invitado", "first_name": "Invitado", "settings": {}},
+        "stats": {"books_started": 0, "decisions_made": 0}
+    }
+
+# --- REST API Game Endpoints ---
 
 @app.get("/api/books")
-def list_books(user_id: Optional[int] = Query(None)):
-    """Returns a list of all imported books with rich metadata and game progress."""
+def list_books(authorization: Optional[str] = Header(None), user_id: Optional[int] = Query(None)):
+    """Returns a list of all imported books with rich metadata and user progress."""
+    current_uid = resolve_user_id(authorization, user_id)
     books = engine.list_books()
     result = []
     for b_summary in books:
@@ -61,14 +127,12 @@ def list_books(user_id: Optional[int] = Query(None)):
         full_data = engine.books.get(b_id, {})
         
         progress_pct = 0
-        savegame = None
-        if user_id:
-            savegame = engine.db.get_savegame(user_id, b_id)
-            if savegame:
-                history = engine.db.get_history(user_id, b_id, limit=500)
-                visited_count = len(set(h["to_node_id"] for h in history))
-                total_sections = full_data.get("total_sections", 1)
-                progress_pct = min(100, int((visited_count / max(1, total_sections)) * 100))
+        savegame = engine.db.get_savegame(current_uid, b_id)
+        if savegame:
+            history = engine.db.get_history(current_uid, b_id, limit=500)
+            visited_count = len(set(h["to_node_id"] for h in history))
+            total_sections = full_data.get("total_sections", 1)
+            progress_pct = min(100, int((visited_count / max(1, total_sections)) * 100))
 
         result.append({
             "book_id": b_id,
@@ -126,7 +190,6 @@ def regenerate_book_audios(book_id: str):
             except Exception as e:
                 logger.warning(f"Could not remove audio file {f}: {e}")
 
-    # Find matching EPUB file in Libros/
     from main import get_epub_book_id
     from config import INPUT_BOOKS_DIR
     from src.importer import EPUBImporter
@@ -149,25 +212,42 @@ def get_book_asset(book_id: str, subpath: str):
     return FileResponse(asset_path)
 
 @app.post("/api/games")
-def start_game(req: StartGameRequest):
+def start_game(req: StartGameRequest, authorization: Optional[str] = Header(None)):
     """Starts or resets a game session for a user and book."""
-    state = engine.start_game(req.user_id, req.book_id)
+    uid = resolve_user_id(authorization, req.user_id)
+    state = engine.start_game(uid, req.book_id)
     if not state:
         raise HTTPException(status_code=400, detail="Could not start game session")
-    return _format_game_state_response(req.user_id, req.book_id, state)
+    return _format_game_state_response(uid, req.book_id, state)
+
+@app.get("/favicon.ico")
+def get_favicon():
+    fav = WEB_DIR / "assets" / "pathtale_logo_clear.png"
+    if fav.exists():
+        return FileResponse(fav)
+    return Response(status_code=204)
 
 @app.get("/api/games/{user_id}/{book_id}")
-def get_game_state(user_id: int, book_id: str):
+def get_game_state(user_id: int, book_id: str, authorization: Optional[str] = Header(None)):
     """Retrieves current game state for active user session."""
-    state = engine.get_current_state(user_id, book_id)
+    uid = resolve_user_id(authorization, user_id)
+    state = engine.get_current_state(uid, book_id)
     if not state:
-        state = engine.start_game(user_id, book_id)
-    return _format_game_state_response(user_id, book_id, state)
+        state = engine.start_game(uid, book_id)
+    return _format_game_state_response(uid, book_id, state)
+
+@app.get("/api/games/{user_id}/{book_id}/history")
+def get_game_history(user_id: int, book_id: str, authorization: Optional[str] = Header(None)):
+    """Retrieves decision history for a user and book."""
+    uid = resolve_user_id(authorization, user_id)
+    history = engine.db.get_history(uid, book_id)
+    return history
 
 @app.post("/api/games/{user_id}/{book_id}/choice")
-def make_choice(user_id: int, book_id: str, req: ChoiceRequest):
+def make_choice(user_id: int, book_id: str, req: ChoiceRequest, authorization: Optional[str] = Header(None)):
     """Submits a choice to advance game state."""
-    state = engine.get_current_state(user_id, book_id)
+    uid = resolve_user_id(authorization, user_id)
+    state = engine.get_current_state(uid, book_id)
     if not state:
         raise HTTPException(status_code=404, detail="Game session not found")
 
@@ -185,68 +265,40 @@ def make_choice(user_id: int, book_id: str, req: ChoiceRequest):
         raise HTTPException(status_code=400, detail="Invalid choice option selected")
 
     chosen["book_id"] = book_id
-    new_state = engine.make_choice(user_id, chosen)
-    return _format_game_state_response(user_id, book_id, new_state)
+    new_state = engine.make_choice(uid, chosen)
+    return _format_game_state_response(uid, book_id, new_state)
 
-@app.post("/api/games/{user_id}/{book_id}/voice")
-async def process_voice_input(user_id: int, book_id: str, audio: UploadFile = File(...)):
-    """Uploads voice recording (.webm, .ogg, .wav), transcribes via Whisper, matches choice and advances state."""
-    state = engine.get_current_state(user_id, book_id)
-    if not state:
-        raise HTTPException(status_code=404, detail="Game session not found")
+@app.post("/api/voice/transcribe")
+async def transcribe_voice(file: UploadFile = File(...)):
+    """Transcribes an uploaded audio file using Whisper STT."""
+    try:
+        content = await file.read()
+        file_ext = Path(file.filename).suffix or ".wav"
+        temp_file = temp_dir / f"voice_{os.getpid()}{file_ext}"
+        with open(temp_file, "wb") as f:
+            f.write(content)
 
-    choices = state["current_node"]["choices"]
-    
-    file_ext = Path(audio.filename or "recording.webm").suffix or ".webm"
-    temp_file = temp_dir / f"voice_{user_id}_{book_id}{file_ext}"
-    with open(temp_file, "wb") as dst:
-        content = await audio.read()
-        dst.write(content)
+        text = stt_manager.transcribe(temp_file)
+        if temp_file.exists():
+            temp_file.unlink()
 
-    transcription = stt_manager.transcribe(temp_file)
-    if temp_file.exists():
-        temp_file.unlink()
-
-    if not transcription:
-        return JSONResponse(status_code=422, content={
-            "matched": False,
-            "transcription": "",
-            "message": "No se pudo interpretar el audio."
-        })
-
-    chosen = voice_parser.parse_intent(transcription, choices)
-    if not chosen:
-        return JSONResponse(status_code=200, content={
-            "matched": False,
-            "transcription": transcription,
-            "message": f"Escuché: '{transcription}', pero no coincide con ninguna opción."
-        })
-
-    chosen["book_id"] = book_id
-    new_state = engine.make_choice(user_id, chosen)
-    res = _format_game_state_response(user_id, book_id, new_state)
-    res["matched"] = True
-    res["transcription"] = transcription
-    return res
-
-@app.get("/api/games/{user_id}/{book_id}/history")
-def get_game_history(user_id: int, book_id: str):
-    """Returns decision history timeline for the player session."""
-    history = engine.db.get_history(user_id, book_id, limit=100)
-    return {"history": history}
+        return {"status": "success", "text": text}
+    except Exception as e:
+        logger.error(f"STT Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Voice transcription failed: {str(e)}")
 
 @app.get("/api/users/{user_id}/settings")
-def get_user_settings(user_id: int):
-    """Returns stored user preferences."""
-    settings = engine.db.get_user_settings(user_id)
-    return {"user_id": user_id, "settings": settings}
+def get_settings(user_id: int, authorization: Optional[str] = Header(None)):
+    uid = resolve_user_id(authorization, user_id)
+    settings = engine.db.get_user_settings(uid)
+    return {"user_id": uid, "settings": settings}
 
 @app.put("/api/users/{user_id}/settings")
-def update_user_settings(user_id: int, req: Dict[str, Any] = Body(...)):
-    """Updates stored user preferences."""
-    settings = req.get("settings", req)
-    engine.db.update_user_settings(user_id, settings)
-    return {"status": "success", "settings": settings}
+def update_settings(user_id: int, settings: dict = Body(...), authorization: Optional[str] = Header(None)):
+    uid = resolve_user_id(authorization, user_id)
+    new_settings = settings.get("settings", settings)
+    engine.db.update_user_settings(uid, new_settings)
+    return {"user_id": uid, "status": "updated", "settings": new_settings}
 
 def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict:
     node = state["current_node"]
@@ -285,4 +337,4 @@ if WEB_DIR.exists():
     def serve_index():
         return FileResponse(WEB_DIR / "index.html")
 
-    app.mount("/", StaticFiles(directory=str(WEB_DIR)), name="web")
+    app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")

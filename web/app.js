@@ -1,17 +1,31 @@
 /**
- * ALJ Narrative Game Engine - PWA Frontend Client
+ * PathTale Narrative Game Engine - PWA Frontend Client
  */
 
 const API_BASE = "";
-const USER_ID = 1; // Default single-user session ID for PWA client
 
-// State
+// Auth & Session State
+let authToken = localStorage.getItem("alj_token") || null;
+let currentUser = JSON.parse(localStorage.getItem("alj_user") || "null");
+let authMode = "login"; // 'login' or 'register'
+let landingAuthMode = "login";
+
+// Game State
 let currentBookId = null;
 let currentGameState = null;
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
 let libraryViewMode = localStorage.getItem("alj_library_view") || "grid";
+
+// Helper for authenticated API calls
+function authFetch(url, options = {}) {
+  const headers = options.headers || {};
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+  return fetch(url, { ...options, headers });
+}
 
 // DOM Elements
 const views = {
@@ -33,17 +47,19 @@ const drawerHistory = document.getElementById("drawer-history");
 // Init App
 document.addEventListener("DOMContentLoaded", () => {
   initEventListeners();
+  initAuthControls();
   loadSettings();
-  loadLibrary();
+  showLibraryView();
 });
 
 function initEventListeners() {
   initVoiceControls();
   // Navigation
   document.getElementById("nav-brand").addEventListener("click", showLibraryView);
-  navBtns.library.addEventListener("click", showLibraryView);
-  navBtns.history.addEventListener("click", toggleHistoryDrawer);
-  navBtns.settings.addEventListener("click", toggleSettingsModal);
+  if (navBtns.library) navBtns.library.addEventListener("click", showLibraryView);
+  const btnProfile = document.getElementById("btn-nav-profile");
+  if (btnProfile) btnProfile.addEventListener("click", toggleSettingsModal);
+  if (navBtns.history) navBtns.history.addEventListener("click", toggleHistoryDrawer);
 
   document.getElementById("btn-game-back").addEventListener("click", showLibraryView);
   document.getElementById("btn-game-restart").addEventListener("click", () => {
@@ -79,6 +95,282 @@ function initEventListeners() {
   document.getElementById("setting-font-size").addEventListener("change", (e) => updateSetting("fontSize", e.target.value));
   document.getElementById("setting-autoplay").addEventListener("change", (e) => updateSetting("autoplay", e.target.checked));
   document.getElementById("setting-voice-enabled").addEventListener("change", (e) => updateSetting("voiceEnabled", e.target.checked));
+
+  // Forgot password handler
+  const linkForgot = document.getElementById("link-forgot-password");
+  if (linkForgot) {
+    linkForgot.addEventListener("click", (e) => {
+      e.preventDefault();
+      alert("Para restablecer tu contraseña, contacta con el administrador del sistema.");
+    });
+  }
+}
+
+// --- AUTHENTICATION & USER PROFILE ---
+
+function initAuthControls() {
+  const btnLogin = document.getElementById("btn-nav-login");
+  const btnCloseAuth = document.getElementById("btn-close-auth");
+  const tabLogin = document.getElementById("tab-auth-login");
+  const tabRegister = document.getElementById("tab-auth-register");
+  const authForm = document.getElementById("auth-form");
+  const btnLogout = document.getElementById("btn-logout");
+
+  // Landing Auth Elements
+  const tabLandingLogin = document.getElementById("tab-landing-login");
+  const tabLandingRegister = document.getElementById("tab-landing-register");
+  const landingForm = document.getElementById("landing-auth-form");
+
+  if (btnLogin) btnLogin.addEventListener("click", openAuthModal);
+  if (btnCloseAuth) btnCloseAuth.addEventListener("click", closeAuthModal);
+  
+  if (tabLogin) tabLogin.addEventListener("click", () => setAuthMode("login"));
+  if (tabRegister) tabRegister.addEventListener("click", () => setAuthMode("register"));
+  if (authForm) authForm.addEventListener("submit", handleAuthSubmit);
+
+  if (tabLandingLogin) tabLandingLogin.addEventListener("click", () => setLandingAuthMode("login"));
+  if (tabLandingRegister) tabLandingRegister.addEventListener("click", () => setLandingAuthMode("register"));
+  if (landingForm) landingForm.addEventListener("submit", handleLandingAuthSubmit);
+
+  if (btnLogout) btnLogout.addEventListener("click", handleLogout);
+
+  updateAuthUI();
+  checkAuthStatus();
+}
+
+function updateAuthUI() {
+  const btnLogin = document.getElementById("btn-nav-login");
+  const btnNavLib = document.getElementById("btn-nav-library");
+  const btnNavProf = document.getElementById("btn-nav-profile");
+  const profileName = document.getElementById("profile-user-name");
+  const profileSub = document.getElementById("profile-user-sub");
+  const btnLogout = document.getElementById("btn-logout");
+
+  const landingTagline = document.getElementById("landing-tagline");
+  const libraryToolbar = document.getElementById("library-toolbar");
+  const libraryGrid = document.getElementById("library-grid");
+
+  if (currentUser && authToken) {
+    if (btnNavLib) btnNavLib.classList.remove("hidden");
+    if (btnNavProf) btnNavProf.classList.remove("hidden");
+    if (btnLogin) btnLogin.classList.add("hidden");
+
+    if (landingTagline) landingTagline.classList.add("hidden");
+    if (libraryToolbar) libraryToolbar.classList.remove("hidden");
+    if (libraryGrid) libraryGrid.classList.remove("hidden");
+
+    if (profileName) profileName.textContent = currentUser.first_name || currentUser.username;
+    if (profileSub) profileSub.textContent = `Cuenta: @${currentUser.username}`;
+    if (btnLogout) btnLogout.classList.remove("hidden");
+  } else {
+    if (btnNavLib) btnNavLib.classList.add("hidden");
+    if (btnNavProf) btnNavProf.classList.add("hidden");
+    if (btnLogin) btnLogin.classList.remove("hidden");
+
+    if (landingTagline) landingTagline.classList.remove("hidden");
+    if (libraryToolbar) libraryToolbar.classList.add("hidden");
+    if (libraryGrid) libraryGrid.classList.add("hidden");
+
+    if (profileName) profileName.textContent = "Invitado";
+    if (profileSub) profileSub.textContent = "Modo local / No registrado";
+    if (btnLogout) btnLogout.classList.add("hidden");
+  }
+}
+
+async function checkAuthStatus() {
+  if (!authToken) return;
+  try {
+    const res = await authFetch(`${API_BASE}/api/auth/me`);
+    const data = await res.json();
+    if (data.authenticated && data.user) {
+      currentUser = data.user;
+      localStorage.setItem("alj_user", JSON.stringify(currentUser));
+      updateAuthUI();
+      if (data.stats) {
+        const booksEl = document.getElementById("stat-books");
+        const decEl = document.getElementById("stat-decisions");
+        if (booksEl) booksEl.textContent = data.stats.books_started || 0;
+        if (decEl) decEl.textContent = data.stats.decisions_made || 0;
+      }
+    } else {
+      handleLogout();
+    }
+  } catch (err) {
+    console.log("Could not refresh auth status:", err);
+  }
+}
+
+function openAuthModal() {
+  if (currentUser && authToken) {
+    toggleSettingsModal();
+    return;
+  }
+  setAuthMode("login");
+  const modalAuth = document.getElementById("modal-auth");
+  if (modalAuth) modalAuth.classList.add("open");
+}
+
+function closeAuthModal() {
+  const modalAuth = document.getElementById("modal-auth");
+  if (modalAuth) modalAuth.classList.remove("open");
+  const errEl = document.getElementById("auth-error-msg");
+  if (errEl) errEl.classList.add("hidden");
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const tabLogin = document.getElementById("tab-auth-login");
+  const tabRegister = document.getElementById("tab-auth-register");
+  const modalTitle = document.getElementById("auth-modal-title");
+  const submitBtn = document.getElementById("btn-auth-submit");
+  const errEl = document.getElementById("auth-error-msg");
+
+  if (errEl) errEl.classList.add("hidden");
+
+  if (mode === "register") {
+    if (tabLogin) tabLogin.classList.remove("active");
+    if (tabRegister) tabRegister.classList.add("active");
+    if (modalTitle) modalTitle.textContent = "Crear nueva cuenta";
+    if (submitBtn) submitBtn.textContent = "Registrarse y Entrar";
+  } else {
+    if (tabLogin) tabLogin.classList.add("active");
+    if (tabRegister) tabRegister.classList.remove("active");
+    if (modalTitle) modalTitle.textContent = "Iniciar Sesión";
+    if (submitBtn) submitBtn.textContent = "Iniciar Sesión";
+  }
+}
+
+function setLandingAuthMode(mode) {
+  landingAuthMode = mode;
+  const tabLogin = document.getElementById("tab-landing-login");
+  const tabRegister = document.getElementById("tab-landing-register");
+  const submitBtn = document.getElementById("btn-landing-submit");
+  const errEl = document.getElementById("landing-auth-error");
+
+  if (errEl) errEl.classList.add("hidden");
+
+  if (mode === "register") {
+    if (tabLogin) tabLogin.classList.remove("active");
+    if (tabRegister) tabRegister.classList.add("active");
+    if (submitBtn) submitBtn.textContent = "Crear Mi Cuenta y Entrar";
+  } else {
+    if (tabLogin) tabLogin.classList.add("active");
+    if (tabRegister) tabRegister.classList.remove("active");
+    if (submitBtn) submitBtn.textContent = "Entrar a la Aventura";
+  }
+}
+
+async function handleLandingAuthSubmit(e) {
+  if (e) e.preventDefault();
+  const usernameInput = document.getElementById("landing-username");
+  const passwordInput = document.getElementById("landing-password");
+  const errEl = document.getElementById("landing-auth-error");
+  const submitBtn = document.getElementById("btn-landing-submit");
+
+  const username = usernameInput ? usernameInput.value.trim() : "";
+  const password = passwordInput ? passwordInput.value : "";
+
+  if (!username || !password) return;
+
+  if (errEl) errEl.classList.add("hidden");
+  if (submitBtn) submitBtn.disabled = true;
+
+  const endpoint = landingAuthMode === "register" ? "/api/auth/register" : "/api/auth/login";
+
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (!res.ok || data.status !== "success") {
+      throw new Error(data.detail || "Error de autenticación");
+    }
+
+    authToken = data.user.token;
+    currentUser = { user_id: data.user.user_id, username: data.user.username, first_name: data.user.first_name };
+
+    localStorage.setItem("alj_token", authToken);
+    localStorage.setItem("alj_user", JSON.stringify(currentUser));
+
+    updateAuthUI();
+    showLibraryView();
+    checkAuthStatus();
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = err.message || "Error al autenticar";
+      errEl.classList.remove("hidden");
+    }
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+async function handleAuthSubmit(e) {
+  if (e) e.preventDefault();
+  const usernameInput = document.getElementById("auth-username");
+  const passwordInput = document.getElementById("auth-password");
+  const errEl = document.getElementById("auth-error-msg");
+  const submitBtn = document.getElementById("btn-auth-submit");
+
+  const username = usernameInput ? usernameInput.value.trim() : "";
+  const password = passwordInput ? passwordInput.value : "";
+
+  if (!username || !password) return;
+
+  if (errEl) errEl.classList.add("hidden");
+  if (submitBtn) submitBtn.disabled = true;
+
+  const endpoint = authMode === "register" ? "/api/auth/register" : "/api/auth/login";
+
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (!res.ok || data.status !== "success") {
+      throw new Error(data.detail || "Error de autenticación");
+    }
+
+    authToken = data.user.token;
+    currentUser = { user_id: data.user.user_id, username: data.user.username, first_name: data.user.first_name };
+
+    localStorage.setItem("alj_token", authToken);
+    localStorage.setItem("alj_user", JSON.stringify(currentUser));
+
+    updateAuthUI();
+    closeAuthModal();
+    showLibraryView();
+    checkAuthStatus();
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = err.message || "Error al iniciar sesión";
+      errEl.classList.remove("hidden");
+    }
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+async function handleLogout() {
+  if (authToken) {
+    try {
+      await authFetch(`${API_BASE}/api/auth/logout`, { method: "POST" });
+    } catch (e) {}
+  }
+  authToken = null;
+  currentUser = null;
+  localStorage.removeItem("alj_token");
+  localStorage.removeItem("alj_user");
+  updateAuthUI();
+  const modalSettings = document.getElementById("modal-settings");
+  if (modalSettings) modalSettings.classList.remove("open");
+  showLandingView();
 }
 
 function setLibraryViewMode(mode) {
@@ -99,25 +391,13 @@ function setLibraryViewMode(mode) {
   }
 }
 
-// --- VIEWS & NAVIGATION ---
-function showLibraryView() {
-  views.game.classList.remove("active");
-  views.library.classList.add("active");
-  navBtns.library.classList.add("active");
-  navBtns.history.classList.add("hidden");
-  if (audioPlayer) audioPlayer.pause();
-  loadLibrary();
-}
-
-function showGameView() {
-  views.library.classList.remove("active");
-  views.game.classList.add("active");
-  navBtns.library.classList.remove("active");
-  navBtns.history.classList.remove("hidden");
-}
-
 // --- API & DATA FETCHING ---
 async function loadLibrary() {
+  if (!authToken || !currentUser) {
+    showLandingView();
+    return;
+  }
+
   libraryGrid.innerHTML = `
     <div class="loading-spinner">
       <div class="spinner"></div>
@@ -125,7 +405,7 @@ async function loadLibrary() {
     </div>`;
 
   try {
-    const res = await fetch(`${API_BASE}/api/books?user_id=${USER_ID}`);
+    const res = await authFetch(`${API_BASE}/api/books`);
     const data = await res.json();
     renderLibrary(data.books || []);
   } catch (err) {
@@ -203,19 +483,23 @@ async function confirmRestartGame(bookId) {
 }
 
 async function startGame(bookId, forceNew = false) {
+  if (!authToken || !currentUser) {
+    openAuthModal();
+    return;
+  }
   currentBookId = bookId;
   showGameView();
 
   try {
     let res;
     if (forceNew) {
-      res = await fetch(`${API_BASE}/api/games`, {
+      res = await authFetch(`${API_BASE}/api/games`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: USER_ID, book_id: bookId })
+        body: JSON.stringify({ book_id: bookId })
       });
     } else {
-      res = await fetch(`${API_BASE}/api/games/${USER_ID}/${bookId}`);
+      res = await authFetch(`${API_BASE}/api/games/1/${bookId}`);
     }
     const state = await res.json();
     renderGameState(state);
@@ -228,7 +512,7 @@ async function submitChoice(choiceId, targetNode) {
   if (!currentBookId) return;
 
   try {
-    const res = await fetch(`${API_BASE}/api/games/${USER_ID}/${currentBookId}/choice`, {
+    const res = await authFetch(`${API_BASE}/api/games/1/${currentBookId}/choice`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ choice_id: choiceId, target_node: targetNode })
@@ -247,276 +531,331 @@ function renderGameState(state) {
   currentAudioType = "narrative";
 
   document.getElementById("game-book-title").textContent = state.book_title || "Librojuego";
-  document.getElementById("game-progress-bar").style.width = `${state.progress_percent}%`;
-  document.getElementById("game-progress-badge").textContent = `${state.progress_percent}%`;
+  document.getElementById("game-progress-bar").style.width = `${state.progress_percent || 0}%`;
+  document.getElementById("game-progress-badge").textContent = `${state.progress_percent || 0}%`;
 
-  // Image
-  const imgContainer = document.getElementById("node-image-container");
-  const imgElem = document.getElementById("node-image");
+  const nodeImgContainer = document.getElementById("node-image-container");
+  const nodeImg = document.getElementById("node-image");
   if (state.images && state.images.length > 0) {
-    imgElem.src = `${state.images[0]}?v=${Date.now()}`;
-    imgContainer.classList.remove("hidden");
+    nodeImg.src = `${state.images[0]}?v=${Date.now()}`;
+    nodeImgContainer.classList.remove("hidden");
   } else {
-    imgContainer.classList.add("hidden");
+    nodeImgContainer.classList.add("hidden");
   }
 
-  // Header & Text
-  document.getElementById("node-badge").textContent = state.display_number ? `Página ${state.display_number}` : (state.node_id || "");
-  document.getElementById("node-title").textContent = state.title || "";
-  document.getElementById("node-text").textContent = state.text || "";
+  const badgeText = state.display_number ? `Sección ${state.display_number}` : state.node_id;
+  document.getElementById("node-badge").textContent = badgeText;
+  document.getElementById("node-title").textContent = state.title || badgeText;
 
-  // Audio setup
-  const btnOptions = document.getElementById("btn-audio-options");
-  if (state.audio_options_url) {
-    if (btnOptions) btnOptions.classList.remove("hidden");
-  } else {
-    if (btnOptions) btnOptions.classList.add("hidden");
+  const nodeTextContainer = document.getElementById("node-text");
+  const paragraphs = (state.text || "").split("\n\n").filter(p => p.trim());
+  nodeTextContainer.innerHTML = paragraphs.map(p => `<p>${escapeHtml(p)}</p>`).join("");
+
+  const btnOpt = document.getElementById("btn-audio-options");
+  if (btnOpt) {
+    if (state.audio_options_url) {
+      btnOpt.classList.remove("hidden");
+    } else {
+      btnOpt.classList.add("hidden");
+    }
   }
 
   if (state.audio_url) {
     audioPlayer.src = `${state.audio_url}?v=${Date.now()}`;
-    audioPlayer.playbackRate = appSettings.audioSpeed || 1.0;
-    document.getElementById("btn-audio-play").classList.remove("hidden");
     if (appSettings.autoplay) {
-      audioPlayer.play().catch(e => console.log("Autoplay prevented:", e));
+      audioPlayer.play().catch(() => {});
     }
-  } else {
-    document.getElementById("btn-audio-play").classList.add("hidden");
   }
 
-  // Render Choices
+  renderChoices(state.choices || []);
+  renderHistoryDrawer();
+}
+
+function renderChoices(choices) {
   const choicesList = document.getElementById("choices-list");
-  if (state.choices && state.choices.length > 0) {
-    choicesList.innerHTML = state.choices.map(c => `
-      <div class="choice-card" onclick="submitChoice(${c.choice_id}, '${c.target_node}')">
-        <span class="choice-text">[${c.choice_id}] ${c.text}</span>
-        ${c.target_display_number ? `<span class="choice-page">Pág ${c.target_display_number}</span>` : ""}
-      </div>
-    `).join("");
-  } else {
-    choicesList.innerHTML = `<div class="choice-card"><span class="choice-text">🏁 FIN DE LA AVENTURA</span></div>`;
+  
+  if (choices.length === 0) {
+    choicesList.innerHTML = `
+      <div class="end-game-card">
+        <h4>Fin de esta aventura</h4>
+        <p>Has alcanzado el final de este camino. Puedes reiniciar o probar otro libro.</p>
+        <button class="btn-primary" onclick="showLibraryView()">Volver a la Biblioteca</button>
+      </div>`;
+    return;
   }
 
-  // Scroll to top of story card smoothly
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  choicesList.innerHTML = choices.map(c => `
+    <button class="btn-choice" onclick="submitChoice(${c.choice_id}, '${c.target_node}')">
+      <span class="choice-num">${c.choice_id}</span>
+      <span class="choice-text">${escapeHtml(c.text)}</span>
+      <span class="choice-arrow">→</span>
+    </button>
+  `).join("");
 }
 
 // --- AUDIO PLAYER CONTROLS ---
-function toggleAudioPlay() {
-  if (!currentGameState) return;
 
-  if (!audioPlayer.paused) {
-    audioPlayer.pause();
-  } else {
-    // If currently paused, or if audio was set to options, reset src to main story narration
-    if (currentAudioType !== "narrative" || !audioPlayer.src.includes(currentGameState.audio_url)) {
+function toggleAudioPlay() {
+  if (audioPlayer.paused) {
+    if (!audioPlayer.src && currentGameState) {
       currentAudioType = "narrative";
-      if (currentGameState.audio_url) {
-        audioPlayer.src = `${currentGameState.audio_url}?v=${Date.now()}`;
-        audioPlayer.playbackRate = appSettings.audioSpeed || 1.0;
-      }
+      audioPlayer.src = `${currentGameState.audio_url}?v=${Date.now()}`;
     }
-    if (audioPlayer.src) {
-      audioPlayer.play().catch(e => console.log("Playback error:", e));
-    }
+    audioPlayer.play().catch(err => console.log("Audio play error:", err));
+  } else {
+    audioPlayer.pause();
   }
 }
 
 function playOptionsAudio() {
   if (!currentGameState || !currentGameState.audio_options_url) return;
-
-  if (!audioPlayer.paused && currentAudioType === "options") {
-    audioPlayer.pause();
-    return;
-  }
-
   currentAudioType = "options";
   audioPlayer.src = `${currentGameState.audio_options_url}?v=${Date.now()}`;
-  audioPlayer.playbackRate = appSettings.audioSpeed || 1.0;
-  audioPlayer.play().catch(e => console.log("Error playing options audio:", e));
+  audioPlayer.play().catch(err => console.log("Options play error:", err));
 }
 
 function onAudioPlay() {
-  document.getElementById("audio-icon").textContent = "⏸";
-  if (currentAudioType === "options") {
-    document.getElementById("audio-label").textContent = "Pausar Opciones";
-  } else {
-    document.getElementById("audio-label").textContent = "Pausar Narración";
+  const label = document.getElementById("audio-label");
+  const icon = document.getElementById("audio-icon");
+  const btn = document.getElementById("btn-audio-play");
+  if (icon) icon.textContent = "⏸";
+  if (label) {
+    label.textContent = (currentAudioType === "options") ? "Pausar Opciones" : "Pausar Narración";
   }
+  if (btn) btn.classList.add("playing");
 }
 
 function onAudioPause() {
-  document.getElementById("audio-icon").textContent = "▶";
-  document.getElementById("audio-label").textContent = "Escuchar Narración";
+  const label = document.getElementById("audio-label");
+  const icon = document.getElementById("audio-icon");
+  const btn = document.getElementById("btn-audio-play");
+  if (icon) icon.textContent = "▶";
+  if (label) label.textContent = "Escuchar Narración";
+  if (btn) btn.classList.remove("playing");
+}
+
+function onAudioEnded() {
+  if (currentAudioType === "narrative" && currentGameState && currentGameState.audio_options_url) {
+    currentAudioType = "options";
+    audioPlayer.src = `${currentGameState.audio_options_url}?v=${Date.now()}`;
+    audioPlayer.play().catch(() => {
+      resetAudioToNarrative();
+    });
+  } else {
+    resetAudioToNarrative();
+  }
+}
+
+function resetAudioToNarrative() {
+  currentAudioType = "narrative";
+  if (currentGameState && currentGameState.audio_url) {
+    audioPlayer.src = `${currentGameState.audio_url}?v=${Date.now()}`;
+  }
+  onAudioPause();
 }
 
 function updateAudioProgress() {
   if (!audioPlayer.duration) return;
-  const pct = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+  const current = audioPlayer.currentTime;
+  const total = audioPlayer.duration;
+  const pct = (current / total) * 100;
+
   document.getElementById("audio-slider").value = pct;
-  document.getElementById("audio-time-current").textContent = formatTime(audioPlayer.currentTime);
-  document.getElementById("audio-time-total").textContent = formatTime(audioPlayer.duration);
+  document.getElementById("audio-time-current").textContent = formatTime(current);
+  document.getElementById("audio-time-total").textContent = formatTime(total);
 }
 
 function onAudioSeek(e) {
   if (!audioPlayer.duration) return;
-  const seekTime = (e.target.value / 100) * audioPlayer.duration;
-  audioPlayer.currentTime = seekTime;
+  const pct = e.target.value;
+  audioPlayer.currentTime = (pct / 100) * audioPlayer.duration;
 }
 
 function toggleAudioSpeed() {
   const btn = document.getElementById("btn-audio-speed");
   const speeds = [1.0, 1.25, 1.5, 2.0];
-  let cur = parseFloat(btn.textContent) || 1.0;
-  let nextIdx = (speeds.indexOf(cur) + 1) % speeds.length;
-  let nextSpeed = speeds[nextIdx];
-  btn.textContent = `${nextSpeed}x`;
-  audioPlayer.playbackRate = nextSpeed;
-  updateSetting("audioSpeed", nextSpeed);
+  let nextIdx = (speeds.indexOf(audioPlayer.playbackRate) + 1) % speeds.length;
+  let newSpeed = speeds[nextIdx];
+
+  audioPlayer.playbackRate = newSpeed;
+  btn.textContent = `${newSpeed.toFixed(1)}x`;
+  updateSetting("audioSpeed", newSpeed);
 }
 
-function onAudioEnded() {
-  if (currentAudioType === "narrative" && currentGameState && currentGameState.audio_options_url) {
-    // Chain narrative playback to options playback automatically
-    currentAudioType = "options";
-    audioPlayer.src = `${currentGameState.audio_options_url}?v=${Date.now()}`;
-    audioPlayer.playbackRate = appSettings.audioSpeed || 1.0;
-    audioPlayer.play().catch(e => console.log("Auto play options prevented:", e));
-  } else {
-    // Options finished or narrative finished with no options: reset player to narrative
-    currentAudioType = "narrative";
-    if (currentGameState && currentGameState.audio_url) {
-      audioPlayer.src = `${currentGameState.audio_url}?v=${Date.now()}`;
-    }
-    document.getElementById("audio-icon").textContent = "▶";
-    document.getElementById("audio-label").textContent = "Escuchar Narración";
-  }
-}
+// --- VOICE RECOGNITION (WHISPER) ---
 
-function formatTime(secs) {
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${m}:${s < 10 ? "0" : ""}${s}`;
-}
-
-// --- VOICE RECORDING & WHISPER ---
 function initVoiceControls() {
   const fileInput = document.getElementById("input-voice-file");
-  fileInput.addEventListener("change", async (e) => {
-    if (e.target.files && e.target.files.length > 0) {
+  if (fileInput) {
+    fileInput.addEventListener("change", async (e) => {
       const file = e.target.files[0];
-      document.getElementById("voice-label").textContent = "Procesando Audio...";
-      await sendVoiceToApi(file);
-    }
-  });
+      if (file) await uploadAndTranscribeAudio(file);
+    });
+  }
 }
 
 async function toggleVoiceRecording() {
-  const btn = document.getElementById("btn-voice-record");
-  const statusElem = document.getElementById("voice-status");
-  const toast = document.getElementById("transcription-toast");
-  const fileInput = document.getElementById("input-voice-file");
-
-  // Check if browser allows getUserMedia (requires HTTPS or localhost)
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    // Fallback for mobile HTTP insecure context: trigger native mobile audio recorder
-    fileInput.click();
-    return;
-  }
-
   if (isRecording) {
-    // Stop recording
-    mediaRecorder.stop();
-    isRecording = false;
-    btn.classList.remove("recording");
-    statusElem.classList.add("hidden");
-    document.getElementById("voice-label").textContent = "Procesando Audio...";
+    stopRecording();
   } else {
-    // Start recording
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioChunks = [];
-      mediaRecorder = new MediaRecorder(stream);
-      
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(audioChunks, { type: "audio/webm" });
-        await sendVoiceToApi(blob);
-      };
-
-      mediaRecorder.start();
-      isRecording = true;
-      btn.classList.add("recording");
-      statusElem.classList.remove("hidden");
-      toast.classList.add("hidden");
-      document.getElementById("voice-label").textContent = "Detener y Enviar";
-    } catch (err) {
-      console.warn("getUserMedia failed/blocked:", err);
-      // Fallback to native mobile audio recorder
-      fileInput.click();
-    }
+    await startRecording();
   }
 }
 
-async function sendVoiceToApi(audioBlob) {
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) audioChunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+      const file = new File([audioBlob], "voice_input.webm", { type: "audio/webm" });
+      await uploadAndTranscribeAudio(file);
+      stream.getTracks().forEach(t => t.stop());
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    updateVoiceUI(true);
+  } catch (err) {
+    console.warn("Microphone API unavailable, opening native audio picker:", err);
+    const fileInput = document.getElementById("input-voice-file");
+    if (fileInput) fileInput.click();
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && isRecording) {
+    mediaRecorder.stop();
+    isRecording = false;
+    updateVoiceUI(false);
+  }
+}
+
+function updateVoiceUI(recording) {
+  const btn = document.getElementById("btn-voice-record");
+  const status = document.getElementById("voice-status");
+  const label = document.getElementById("voice-label");
+
+  if (recording) {
+    btn.classList.add("recording");
+    status.classList.remove("hidden");
+    label.textContent = "Detener Grabación";
+  } else {
+    btn.classList.remove("recording");
+    status.classList.add("hidden");
+    label.textContent = "Responder por Voz";
+  }
+}
+
+async function uploadAndTranscribeAudio(file) {
   const toast = document.getElementById("transcription-toast");
-  const toastText = document.getElementById("transcription-text");
+  const textEl = document.getElementById("transcription-text");
+  
+  toast.classList.remove("hidden");
+  textEl.textContent = "Procesando voz con Whisper AI...";
 
   const formData = new FormData();
-  formData.append("audio", audioBlob, "recording.webm");
+  formData.append("file", file);
 
   try {
-    const res = await fetch(`${API_BASE}/api/games/${USER_ID}/${currentBookId}/voice`, {
+    const res = await authFetch(`${API_BASE}/api/voice/transcribe`, {
       method: "POST",
       body: formData
     });
-    const result = await res.json();
-    document.getElementById("voice-label").textContent = "Responder por Voz";
 
-    if (result.transcription) {
-      toastText.textContent = `Transcripción: "${result.transcription}"`;
-      toast.classList.remove("hidden");
-    }
-
-    if (result.matched) {
-      renderGameState(result);
+    const data = await res.json();
+    if (data.status === "success" && data.text) {
+      textEl.textContent = `Voz reconocida: "${data.text}"`;
+      setTimeout(() => toast.classList.add("hidden"), 3000);
+      await submitChoice(null, null, data.text);
     } else {
-      alert(result.message || "No se pudo hacer coincidir la voz con ninguna opción.");
+      textEl.textContent = "No se pudo interpretar el audio.";
+      setTimeout(() => toast.classList.add("hidden"), 3000);
     }
   } catch (err) {
-    console.error("Error sending voice input:", err);
-    document.getElementById("voice-label").textContent = "Responder por Voz";
+    console.error("Transcribe error:", err);
+    textEl.textContent = "Error de conexión al transcribir voz.";
+    setTimeout(() => toast.classList.add("hidden"), 3000);
   }
 }
 
-// --- SETTINGS & HISTORY DRAWER ---
+// --- HISTORY DRAWER & VIEWS ---
+
+function showLandingView() {
+  showLibraryView();
+}
+
+function showLibraryView() {
+  audioPlayer.pause();
+  views.game.classList.remove("active");
+  views.library.classList.add("active");
+  if (navBtns.library) navBtns.library.classList.add("active");
+  updateAuthUI();
+  if (authToken && currentUser) {
+    loadLibrary();
+  }
+}
+
+function showGameView() {
+  if (!authToken || !currentUser) {
+    openAuthModal();
+    return;
+  }
+  views.library.classList.remove("active");
+  views.game.classList.add("active");
+  if (navBtns.library) navBtns.library.classList.remove("active");
+  updateAuthUI();
+}
+
 function toggleSettingsModal() {
+  checkAuthStatus();
   modalSettings.classList.toggle("open");
 }
 
-async function toggleHistoryDrawer() {
+function toggleHistoryDrawer() {
   drawerHistory.classList.toggle("open");
-  if (drawerHistory.classList.contains("open") && currentBookId) {
-    try {
-      const res = await fetch(`${API_BASE}/api/games/${USER_ID}/${currentBookId}/history`);
-      const data = await res.json();
-      const list = document.getElementById("history-list");
-      list.innerHTML = (data.history || []).map(h => `
-        <li class="history-item">
-          <strong>${h.to_node_id}</strong>: ${h.choice_text || "Inicio"}
-        </li>
-      `).join("");
-    } catch (err) {
-      console.error("Error fetching history:", err);
-    }
+  if (drawerHistory.classList.contains("open")) {
+    renderHistoryDrawer();
   }
 }
 
+async function renderHistoryDrawer() {
+  if (!currentBookId) return;
+  const listEl = document.getElementById("history-list");
+  
+  try {
+    const res = await authFetch(`${API_BASE}/api/games/1/${encodeURIComponent(currentBookId)}/history`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const history = await res.json();
+    
+    if (!Array.isArray(history) || history.length === 0) {
+      listEl.innerHTML = `<li class="history-item"><p>Aún no has tomado ninguna decisión en este libro.</p></li>`;
+      return;
+    }
+
+    listEl.innerHTML = history.map((item, idx) => `
+      <li class="history-item">
+        <span class="history-step">Paso ${history.length - idx}</span>
+        <p class="history-choice">Elegiste: <strong>${escapeHtml(item.choice_text || item.to_node_id)}</strong></p>
+        <span class="history-time">${formatTimeAgo(item.created_at)}</span>
+      </li>
+    `).join("");
+  } catch (err) {
+    console.error("History fetch error:", err);
+    if (listEl) listEl.innerHTML = `<li class="history-item"><p>No se pudo obtener el historial.</p></li>`;
+  }
+}
+
+// --- SETTINGS & HELPERS ---
+
 let appSettings = {
-  theme: "dark",
+  theme: "pathtale",
   fontSize: "font-md",
   autoplay: false,
   voiceEnabled: true,
@@ -534,7 +873,7 @@ function setFontSize(fontClass) {
 }
 
 async function loadSettings() {
-  const localTheme = localStorage.getItem("alj_theme") || "dark";
+  const localTheme = localStorage.getItem("alj_theme") || "pathtale";
   const localFont = localStorage.getItem("alj_font_size") || "font-md";
   const localAutoplay = localStorage.getItem("alj_autoplay") === "true";
   const localVoice = localStorage.getItem("alj_voice") !== "false";
@@ -550,15 +889,17 @@ async function loadSettings() {
 
   applySettingsToUI();
 
-  try {
-    const res = await fetch(`${API_BASE}/api/users/${USER_ID}/settings`);
-    const data = await res.json();
-    if (data && data.settings && Object.keys(data.settings).length > 0) {
-      appSettings = { ...appSettings, ...data.settings };
-      applySettingsToUI();
+  if (authToken) {
+    try {
+      const res = await authFetch(`${API_BASE}/api/users/1/settings`);
+      const data = await res.json();
+      if (data && data.settings && Object.keys(data.settings).length > 0) {
+        appSettings = { ...appSettings, ...data.settings };
+        applySettingsToUI();
+      }
+    } catch (err) {
+      console.log("Using local settings (offline/server sync skipped)");
     }
-  } catch (err) {
-    console.log("Using local settings (offline/server sync skipped)");
   }
 }
 
@@ -592,9 +933,42 @@ function updateSetting(key, value) {
 
   applySettingsToUI();
 
-  fetch(`${API_BASE}/api/users/${USER_ID}/settings`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ settings: appSettings })
-  }).catch(() => {});
+  if (authToken) {
+    authFetch(`${API_BASE}/api/users/1/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings: appSettings })
+    }).catch(() => {});
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatTime(seconds) {
+  if (isNaN(seconds)) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+function formatTimeAgo(isoString) {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return "Hace un momento";
+  if (diffMins < 60) return `Hace ${diffMins} min`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `Hace ${diffHours} h`;
+  return date.toLocaleDateString();
 }
