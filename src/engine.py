@@ -21,8 +21,10 @@ class GameEngine:
     def _load_installed_books(self):
         """Discovers and loads all imported book.json files in data/books/."""
         if not BOOKS_DIR.exists():
+            logger.warning(f"BOOKS_DIR does not exist: {BOOKS_DIR}")
             return
-        for book_folder in BOOKS_DIR.iterdir():
+        self.books.clear()
+        for book_folder in sorted(BOOKS_DIR.iterdir()):
             if book_folder.is_dir():
                 book_json = book_folder / "book.json"
                 if book_json.exists():
@@ -31,17 +33,23 @@ class GameEngine:
                             data = json.load(f)
                             b_id = data["book_id"]
                             self.books[b_id] = data
-                            logger.info(f"Loaded book: '{data.get('title')}' ({b_id})")
+                            logger.info(f"📖 Loaded book '{data.get('title')}' ({b_id}) -> start_node = '{data.get('start_node')}' ({len(data.get('nodes', {}))} nodes)")
                     except Exception as e:
                         logger.error(f"Error loading book JSON {book_json}: {e}")
 
-    def list_books(self) -> List[Dict[str, str]]:
+    def list_books(self) -> List[Dict[str, Any]]:
         return [
             {
                 "book_id": b_id,
                 "title": data.get("title", b_id),
                 "author": data.get("author", "Unknown"),
-                "cover_image": data.get("cover_image")
+                "year": data.get("year"),
+                "series": data.get("series"),
+                "volume": data.get("volume"),
+                "language": data.get("language", "es"),
+                "description": data.get("description"),
+                "cover_image": data.get("cover_image"),
+                "total_sections": data.get("total_sections", 0)
             }
             for b_id, data in self.books.items()
         ]
@@ -53,6 +61,7 @@ class GameEngine:
 
         book_data = self.books[book_id]
         start_node_id = book_data["start_node"]
+        logger.info(f"🎮 Starting new game for user {user_id} on book '{book_id}' at start_node = '{start_node_id}'")
 
         self.db.get_or_create_user(user_id)
         self.db.save_game(user_id, book_id, start_node_id, inventory={}, variables={})
@@ -61,29 +70,31 @@ class GameEngine:
         return self.get_current_state(user_id, book_id)
 
     def get_current_state(self, user_id: int, book_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        # If book_id not given, get active savegame
         if not book_id:
-            # Pick first installed book if user has no savegame
             if not self.books:
                 return None
             book_id = list(self.books.keys())[0]
 
         savegame = self.db.get_savegame(user_id, book_id)
         if not savegame:
-            # Auto-start if no savegame exists
+            logger.info(f"No savegame found for user {user_id} on book '{book_id}'. Starting fresh game.")
             return self.start_game(user_id, book_id)
 
-        current_node_id = savegame["current_node_id"]
         book_data = self.books.get(book_id)
         if not book_data:
+            logger.error(f"Book '{book_id}' not found in engine memory.")
             return None
+
+        current_node_id = savegame["current_node_id"]
+        start_node_id = book_data.get("start_node", "sec_002")
+
+        logger.info(f"🕹️ User {user_id} state on '{book_id}': saved_node='{current_node_id}', book_start_node='{start_node_id}'")
 
         node_data = book_data["nodes"].get(current_node_id)
         if not node_data:
-            logger.error(f"Node '{current_node_id}' not found in book '{book_id}'")
-            return None
+            logger.info(f"Savegame node '{current_node_id}' not found in book '{book_id}'. Resetting to '{start_node_id}'.")
+            return self.start_game(user_id, book_id)
 
-        # Execute plugin hooks
         state = {
             "book_id": book_id,
             "book_title": book_data.get("title"),
@@ -110,11 +121,9 @@ class GameEngine:
 
         from_node_id = savegame["current_node_id"]
 
-        # Run plugin hooks on choice
         for plugin in self.plugins:
             savegame = plugin.on_choice_made(user_id, choice_dict, savegame)
 
-        # Update savegame and record history step
         self.db.save_game(
             user_id,
             book_id,
@@ -124,4 +133,5 @@ class GameEngine:
         )
         self.db.record_step(user_id, book_id, from_node_id, target_node_id, choice_dict.get("text"))
 
+        logger.info(f"🔀 User {user_id} moved from '{from_node_id}' to '{target_node_id}' in book '{book_id}'")
         return self.get_current_state(user_id, book_id)

@@ -1,0 +1,15 @@
+{
+  "name": "ALJ - Motor de Librojuegos Interactivos",
+  "short_name": "ALJ Narrator",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/api/books/las_cavernas_del_terror/asset/images/01.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

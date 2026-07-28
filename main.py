@@ -2,9 +2,11 @@ import sys
 import os
 import argparse
 import logging
+import threading
+import zipfile
 from pathlib import Path
+from bs4 import BeautifulSoup
 
-# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -12,10 +14,37 @@ logging.basicConfig(
 logger = logging.getLogger("Main")
 
 from config import INPUT_BOOKS_DIR, BOOKS_DIR, TELEGRAM_BOT_TOKEN
-from src.importer import EPUBImporter
+from src.importer import EPUBImporter, sanitize_book_id
 from src.engine import GameEngine
 from src.tts import TTSManager
 from src.voice_parser import VoiceParser
+
+def get_epub_book_id(epub_path: Path) -> str:
+    try:
+        with zipfile.ZipFile(epub_path, 'r') as z:
+            opf_file = next((name for name in z.namelist() if name.endswith('.opf')), None)
+            if opf_file:
+                soup_opf = BeautifulSoup(z.read(opf_file).decode('utf-8', errors='ignore'), 'html.parser')
+                t_elem = soup_opf.find(['dc:title', 'title'])
+                if t_elem and t_elem.text.strip():
+                    return sanitize_book_id(t_elem.text.strip())
+    except Exception:
+        pass
+    return sanitize_book_id(epub_path.stem)
+
+def auto_import_if_needed():
+    """Checks Libros/ folder and imports/refreshes EPUBs."""
+    logger.info("🔍 Checking Libros/ folder for auto-import...")
+    epub_files = list(INPUT_BOOKS_DIR.glob("*.epub"))
+    if not epub_files:
+        logger.info("ℹ️ No EPUB files found in Libros/ folder.")
+        return
+
+    for epub_path in epub_files:
+        book_id = get_epub_book_id(epub_path)
+        logger.info(f"✨ Processing '{epub_path.name}' (book_id='{book_id}')...")
+        importer = EPUBImporter(epub_path)
+        importer.process(generate_audios=True)
 
 def command_import(args):
     print("==================================================")
@@ -80,7 +109,7 @@ def command_cli(args):
             print("❌ No entendí esa opción. Por favor prueba otra vez.")
 
 def command_bot(args):
-    token = args.token or TELEGRAM_BOT_TOKEN
+    token = getattr(args, 'token', None) or TELEGRAM_BOT_TOKEN
     if not token:
         print("❌ Error: Se requiere un token de Telegram. Configúralo en TELEGRAM_BOT_TOKEN o pásalo con --token")
         sys.exit(1)
@@ -89,8 +118,31 @@ def command_bot(args):
     bot = TelegramGameBot(token=token)
     bot.run()
 
+def command_api(args):
+    auto_import_if_needed()
+    import uvicorn
+    host = getattr(args, 'host', '0.0.0.0')
+    port = getattr(args, 'port', 8000)
+    reload = getattr(args, 'reload', False)
+    print(f"🚀 Iniciando Servidor API REST + PWA Web en http://{host}:{port}")
+    uvicorn.run("src.api:app", host=host, port=port, reload=reload)
+
+def command_all(args):
+    """Runs both API server and Telegram Bot concurrently."""
+    auto_import_if_needed()
+    print("🚀 Iniciando API REST + PWA Web y Bot de Telegram simultáneamente...")
+    api_thread = threading.Thread(target=command_api, args=(args,), daemon=True)
+    api_thread.start()
+
+    token = getattr(args, 'token', None) or TELEGRAM_BOT_TOKEN
+    if token:
+        command_bot(args)
+    else:
+        print("ℹ️ TELEGRAM_BOT_TOKEN no configurado. Modo PWA Web solo activo.")
+        api_thread.join()
+
 def main():
-    parser = argparse.ArgumentParser(description="Motor Narrativo de Librojuegos para Telegram & CLI")
+    parser = argparse.ArgumentParser(description="Motor Narrativo de Librojuegos para REST API, PWA, Telegram & CLI")
     subparsers = parser.add_subparsers(dest="command", help="Comando a ejecutar")
 
     # Import command
@@ -105,6 +157,18 @@ def main():
     cmd_bot = subparsers.add_parser("bot", help="Iniciar el Bot de Telegram")
     cmd_bot.add_argument("--token", type=str, help="Token del bot de Telegram")
 
+    # API command
+    cmd_api = subparsers.add_parser("api", help="Iniciar el Servidor API REST + PWA (FastAPI)")
+    cmd_api.add_argument("--host", type=str, default="0.0.0.0", help="Host servidor (default: 0.0.0.0)")
+    cmd_api.add_argument("--port", type=int, default=8000, help="Puerto servidor (default: 8000)")
+    cmd_api.add_argument("--reload", action="store_true", help="Auto-reload para desarrollo")
+
+    # All command
+    cmd_all = subparsers.add_parser("all", help="Iniciar API REST/PWA y Bot de Telegram a la vez")
+    cmd_all.add_argument("--host", type=str, default="0.0.0.0")
+    cmd_all.add_argument("--port", type=int, default=8000)
+    cmd_all.add_argument("--token", type=str)
+
     args = parser.parse_args()
 
     if args.command == "import":
@@ -113,6 +177,10 @@ def main():
         command_cli(args)
     elif args.command == "bot":
         command_bot(args)
+    elif args.command == "api":
+        command_api(args)
+    elif args.command == "all":
+        command_all(args)
     else:
         parser.print_help()
 

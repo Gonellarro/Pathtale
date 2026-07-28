@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  alj-narrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: alj_narrator_engine
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - PIPER_BIN=piper
+      - PIPER_MODEL=/app/models/piper/es_ES-davefx-medium.onnx
+      - USE_LLM_FALLBACK=false
+    volumes:
+      - ./Libros:/app/Libros
+      - ./data:/app/data

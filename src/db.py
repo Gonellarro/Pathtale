@@ -24,9 +24,16 @@ class Database:
                     user_id INTEGER PRIMARY KEY,
                     username TEXT,
                     first_name TEXT,
+                    settings TEXT DEFAULT '{}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            # Add settings column if table existed previously without it
+            try:
+                cursor.execute("ALTER TABLE users ADD COLUMN settings TEXT DEFAULT '{}'")
+            except Exception:
+                pass
 
             # Savegames table
             cursor.execute("""
@@ -123,3 +130,22 @@ class Database:
             """, (user_id, book_id, limit))
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
+
+    def update_user_settings(self, user_id: int, settings: Dict[str, Any]):
+        self.get_or_create_user(user_id)
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET settings = ? WHERE user_id = ?", (json.dumps(settings), user_id))
+            conn.commit()
+
+    def get_user_settings(self, user_id: int) -> Dict[str, Any]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT settings FROM users WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+            if row and row["settings"]:
+                try:
+                    return json.loads(row["settings"])
+                except Exception:
+                    pass
+            return {}

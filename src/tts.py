@@ -4,22 +4,21 @@ import logging
 from pathlib import Path
 from typing import Optional
 from gtts import gTTS
-from config import PIPER_BIN, PIPER_MODEL
+from config import PIPER_BIN, PIPER_MODEL, PIPER_MODEL_EN
 
 logger = logging.getLogger("TTS")
 
 class TTSManager:
-    def __init__(self, piper_bin: str = PIPER_BIN, piper_model: str = PIPER_MODEL):
+    def __init__(self, piper_bin: str = PIPER_BIN, piper_model_es: str = PIPER_MODEL, piper_model_en: Optional[str] = None):
         self.piper_bin = piper_bin
-        self.piper_model = piper_model
-        self.has_piper = bool(shutil.which(piper_bin)) and bool(piper_model and Path(piper_model).exists())
-        if self.has_piper:
-            logger.info(f"Using Piper TTS with binary '{piper_bin}' and model '{piper_model}'")
-        else:
-            logger.info("Piper binary/model not found. Falling back to gTTS (Google Text-to-Speech).")
+        self.piper_model_es = piper_model_es
+        self.piper_model_en = piper_model_en or PIPER_MODEL_EN
+        self.has_piper_bin = bool(shutil.which(piper_bin))
+        if self.has_piper_bin:
+            logger.info(f"TTSManager ready with Piper binary '{piper_bin}'")
 
-    def generate_audio(self, text: str, output_file: Path) -> bool:
-        """Generates audio for text and saves it to output_file (.ogg or .mp3)."""
+    def generate_audio(self, text: str, output_file: Path, language: str = "es") -> bool:
+        """Generates audio for text and saves it to output_file (.mp3). Supports Spanish ('es') and English ('en')."""
         output_file = Path(output_file)
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -27,32 +26,36 @@ class TTSManager:
             logger.warning("Empty text provided for TTS generation.")
             return False
 
-        # Attempt 1: Piper TTS if configured
-        if self.has_piper:
+        lang_code = language.lower()[:2] if language else "es"
+        chosen_model = self.piper_model_en if lang_code == "en" else self.piper_model_es
+
+        # Attempt 1: Piper TTS if configured and model exists
+        if self.has_piper_bin and chosen_model and Path(chosen_model).exists():
             try:
                 cmd = [
                     self.piper_bin,
-                    "--model", self.piper_model,
+                    "--model", chosen_model,
                     "--output_file", str(output_file)
                 ]
-                proc = subprocess.run(
+                subprocess.run(
                     cmd,
                     input=text.encode("utf-8"),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     check=True
                 )
-                logger.info(f"Generated Piper audio: {output_file}")
+                logger.info(f"Generated Piper audio ({lang_code}): {output_file}")
                 return True
             except Exception as e:
-                logger.error(f"Piper execution failed: {e}. Trying fallback TTS.")
+                logger.error(f"Piper execution failed ({lang_code}): {e}. Trying fallback TTS.")
 
         # Attempt 2: gTTS Fallback
         try:
-            tts = gTTS(text=text, lang="es", slow=False)
+            tts_lang = "en" if lang_code == "en" else "es"
+            tts = gTTS(text=text, lang=tts_lang, slow=False)
             mp3_path = output_file.with_suffix(".mp3")
             tts.save(str(mp3_path))
-            logger.info(f"Generated gTTS audio: {mp3_path}")
+            logger.info(f"Generated gTTS audio ({tts_lang}): {mp3_path}")
             return True
         except Exception as e:
             logger.error(f"gTTS generation failed: {e}")

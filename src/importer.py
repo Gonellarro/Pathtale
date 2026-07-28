@@ -6,7 +6,11 @@ import shutil
 import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+import warnings
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
 from config import BOOKS_DIR
 from src.tts import TTSManager
 
@@ -40,21 +44,71 @@ class EPUBImporter:
         with zipfile.ZipFile(self.epub_path, 'r') as z:
             namelist = z.namelist()
             
-            # Detect title & author from content.opf if available
+            # Metadata initialization
             title = self.epub_path.stem
-            author = "Unknown"
+            author = None
+            publisher = None
+            year = None
+            language = "es"
+            description = None
+            isbn = None
+            genre = None
+            series = None
+            volume = None
+
             opf_file = next((name for name in namelist if name.endswith('.opf')), None)
             if opf_file:
                 try:
-                    soup_opf = BeautifulSoup(z.read(opf_file).decode('utf-8'), 'html.parser')
-                    title_elem = soup_opf.find('dc:title') or soup_opf.find('title')
-                    author_elem = soup_opf.find('dc:creator') or soup_opf.find('creator')
-                    if title_elem and title_elem.text:
-                        title = title_elem.text.strip()
-                    if author_elem and author_elem.text:
-                        author = author_elem.text.strip()
+                    soup_opf = BeautifulSoup(z.read(opf_file).decode('utf-8', errors='ignore'), 'html.parser')
+                    
+                    t_elem = soup_opf.find(['dc:title', 'title'])
+                    if t_elem and t_elem.text.strip():
+                        title = t_elem.text.strip()
+
+                    a_elem = soup_opf.find(['dc:creator', 'creator'])
+                    if a_elem and a_elem.text.strip():
+                        author = a_elem.text.strip()
+
+                    p_elem = soup_opf.find(['dc:publisher', 'publisher'])
+                    if p_elem and p_elem.text.strip():
+                        publisher = p_elem.text.strip()
+
+                    d_elem = soup_opf.find(['dc:date', 'date'])
+                    if d_elem and d_elem.text.strip():
+                        year_match = re.search(r'\d{4}', d_elem.text.strip())
+                        if year_match:
+                            year = year_match.group(0)
+
+                    l_elem = soup_opf.find(['dc:language', 'language'])
+                    if l_elem and l_elem.text.strip():
+                        language = l_elem.text.strip()
+
+                    desc_elem = soup_opf.find(['dc:description', 'description'])
+                    if desc_elem and desc_elem.text.strip():
+                        description = desc_elem.text.strip()
+
+                    id_elem = soup_opf.find(['dc:identifier', 'identifier'])
+                    if id_elem and id_elem.text.strip():
+                        isbn = id_elem.text.strip()
+
+                    subj_elem = soup_opf.find(['dc:subject', 'subject'])
+                    if subj_elem and subj_elem.text.strip():
+                        genre = subj_elem.text.strip()
+
+                    # Dynamic Series & Volume extraction from OPF
+                    s_meta = soup_opf.find('meta', attrs={'name': 'calibre:series'}) or soup_opf.find('meta', attrs={'property': 'belongs-to-collection'})
+                    if s_meta and (s_meta.get('content') or s_meta.text.strip()):
+                        series = (s_meta.get('content') or s_meta.text.strip()).strip()
+
+                    v_meta = soup_opf.find('meta', attrs={'name': 'calibre:series_index'}) or soup_opf.find('meta', attrs={'property': 'group-position'})
+                    if v_meta and (v_meta.get('content') or v_meta.text.strip()):
+                        try:
+                            volume = int(float((v_meta.get('content') or v_meta.text.strip()).strip()))
+                        except Exception:
+                            pass
+
                 except Exception as e:
-                    logger.warning(f"Could not parse content.opf: {e}")
+                    logger.warning(f"Could not parse content.opf metadata: {e}")
 
             book_id = sanitize_book_id(title)
             output_dir = BOOKS_DIR / book_id
@@ -75,8 +129,20 @@ class EPUBImporter:
                     image_map[img_filename] = f"images/{img_filename}"
                     image_map[name] = f"images/{img_filename}"
 
-            # Step 1: Discover all XHTML/HTML files and map filenames to section IDs
-            xhtml_files = [n for n in namelist if n.endswith(('.xhtml', '.html'))]
+            def natural_file_sort_key(fname):
+                base = Path(fname).name.lower()
+                if base in ('cubierta.xhtml', 'titulo.xhtml', 'info.xhtml', 'sinopsis.xhtml'):
+                    return (-2, 0, base)
+                if 'dedicatoria' in base or 'aten' in base or 'portada' in base:
+                    return (-1, 0, base)
+                nums = re.findall(r'\d+', base)
+                if nums:
+                    return (0, int(nums[0]), base)
+                return (1, 0, base)
+
+            # Step 1: Discover all XHTML/HTML files naturally sorted by embedded page numbers
+            raw_xhtml_files = [n for n in namelist if n.endswith(('.xhtml', '.html'))]
+            xhtml_files = sorted(raw_xhtml_files, key=natural_file_sort_key)
             file_to_node_id = {}
             node_id_to_num = {}
 
@@ -104,17 +170,19 @@ class EPUBImporter:
 
             # Step 2: Build Nodes
             nodes = {}
-            start_node_id = "sec_002" # Default CYOA start page if page 2 exists
+            start_node_id = "sec_001"
 
-            for fname in xhtml_files:
+            # Filter valid content files
+            valid_xhtml_files = [
+                f for f in xhtml_files 
+                if Path(f).name.lower() not in ('cubierta.xhtml', 'info.xhtml', 'sinopsis.xhtml', 'titulo.xhtml')
+            ]
+
+            for fname in valid_xhtml_files:
                 base_name = Path(fname).name
                 node_id = file_to_node_id[fname]
                 content = z.read(fname).decode('utf-8', errors='ignore')
                 soup = BeautifulSoup(content, 'html.parser')
-
-                # Skip meta pages like info, cubierta, titulo, notas unless they have story content
-                if base_name in ('cubierta.xhtml', 'info.xhtml', 'sinopsis.xhtml', 'titulo.xhtml'):
-                    continue
 
                 h1 = soup.find('h1')
                 display_num = node_id_to_num.get(node_id)
@@ -123,7 +191,6 @@ class EPUBImporter:
                 # Collect paragraph texts
                 paragraphs = []
                 for p in soup.find_all('p'):
-                    # Skip cover image paragraph or note links
                     if p.get('class') and 'cubierta' in p.get('class'):
                         continue
                     text_p = p.get_text().strip()
@@ -160,10 +227,6 @@ class EPUBImporter:
                         })
                         choice_idx += 1
 
-                # If no h1 digit but file is epl02, set start_node
-                if node_id == "sec_002" or (display_num == 2 and start_node_id == "sec_002"):
-                    start_node_id = node_id
-
                 audio_rel_path = f"audios/{node_id}.mp3"
                 node_data = {
                     "id": node_id,
@@ -176,18 +239,90 @@ class EPUBImporter:
                 }
                 nodes[node_id] = node_data
 
-            # Sort nodes by ID or display number
-            if "sec_002" in nodes:
-                start_node_id = "sec_002"
+            # Add sequential linear continuation choice for pages with 0 choices (intro/rules/prologue)
+            for i in range(len(valid_xhtml_files) - 1):
+                cur_file = valid_xhtml_files[i]
+                next_file = valid_xhtml_files[i + 1]
+                cur_id = file_to_node_id.get(cur_file)
+                next_id = file_to_node_id.get(next_file)
+
+                if cur_id and next_id and cur_id in nodes:
+                    if len(nodes[cur_id]["choices"]) == 0:
+                        next_title = nodes[next_id].get("title") or ""
+                        nodes[cur_id]["choices"].append({
+                            "choice_id": 1,
+                            "text": f"Continuar leyendo ({next_title})" if next_title else "Continuar a la siguiente página",
+                            "target_node": next_id,
+                            "target_display_number": nodes[next_id].get("display_number")
+                        })
+
+            # Always start at the very first content section (page 1 / introduction)
+            if valid_xhtml_files:
+                start_node_id = file_to_node_id[valid_xhtml_files[0]]
             elif nodes:
-                start_node_id = min(nodes.keys())
+                start_node_id = sorted(nodes.keys())[0]
+            else:
+                start_node_id = "sec_001"
+
+            # Smart Cover Detection (OPF Metadata -> Keyword matching -> Fallback)
+            cover_image_path = None
+            if opf_file and soup_opf:
+                try:
+                    meta_cover = soup_opf.find('meta', attrs={'name': 'cover'})
+                    if meta_cover and meta_cover.get('content'):
+                        cover_id = meta_cover['content']
+                        item = soup_opf.find('item', attrs={'id': cover_id})
+                        if item and item.get('href'):
+                            fname = Path(item['href']).name
+                            if fname in image_map:
+                                cover_image_path = image_map[fname]
+                    if not cover_image_path:
+                        item_prop = soup_opf.find('item', attrs={'properties': 'cover-image'})
+                        if item_prop and item_prop.get('href'):
+                            fname = Path(item_prop['href']).name
+                            if fname in image_map:
+                                cover_image_path = image_map[fname]
+                except Exception as e:
+                    logger.warning(f"Error parsing OPF cover: {e}")
+
+            if not cover_image_path:
+                for kw in ['cover', 'cubierta', 'portada', 'front']:
+                    for img_fname, img_rel in image_map.items():
+                        if kw in Path(img_fname).name.lower():
+                            cover_image_path = img_rel
+                            break
+                    if cover_image_path:
+                        break
+
+            if not cover_image_path:
+                cover_image_path = image_map.get("01.jpg") or image_map.get("00.jpg") or (list(image_map.values())[0] if image_map else None)
+
+            total_sections = len(nodes)
+            total_words = sum(len(n.get('text', '').split()) for n in nodes.values())
+            est_duration_minutes = max(5, round(total_words / 180)) if total_words > 0 else (total_sections * 2)
 
             book_json_data = {
                 "book_id": book_id,
                 "title": title,
                 "author": author,
-                "cover_image": image_map.get("01.jpg") or image_map.get("00.jpg") or (list(image_map.values())[0] if image_map else None),
+                "publisher": publisher,
+                "year": year,
+                "language": language,
+                "description": description,
+                "isbn": isbn,
+                "genre": genre,
+                "series": series,
+                "volume": volume,
+                "estimated_duration": f"{est_duration_minutes} minutos",
+                "cover_image": cover_image_path,
+                "total_sections": total_sections,
                 "start_node": start_node_id,
+                "features": {
+                    "inventory": False,
+                    "dice": False,
+                    "combat": False,
+                    "variables": False
+                },
                 "nodes": nodes
             }
 
@@ -195,16 +330,24 @@ class EPUBImporter:
             with open(book_json_path, 'w', encoding='utf-8') as f:
                 json.dump(book_json_data, f, ensure_ascii=False, indent=2)
 
-            logger.info(f"Imported {len(nodes)} nodes to {book_json_path}")
+            logger.info(f"Imported {total_sections} nodes with extended metadata to {book_json_path}")
 
-            # Generate audios with TTS if requested
             if generate_audios:
-                logger.info(f"Generating TTS audio for {len(nodes)} nodes...")
+                logger.info(f"Generating TTS audio for {total_sections} nodes...")
                 for n_id, n_data in nodes.items():
                     audio_path = output_dir / n_data["audio"]
                     if not audio_path.exists():
-                        # Read text for TTS
-                        tts_text = f"{n_data['title']}.\n\n{n_data['text']}"
-                        self.tts_manager.generate_audio(tts_text, audio_path)
+                        tts_parts = [n_data['title']]
+                        if n_data.get('text'):
+                            tts_parts.append(n_data['text'])
+                        
+                        choices = n_data.get('choices', [])
+                        if choices:
+                            tts_parts.append("¿Qué deseas hacer?")
+                            for c in choices:
+                                tts_parts.append(f"Opción {c['choice_id']}: {c['text']}.")
+                        
+                        tts_text = "\n\n".join(tts_parts)
+                        self.tts_manager.generate_audio(tts_text, audio_path, language=language)
 
             return book_json_path

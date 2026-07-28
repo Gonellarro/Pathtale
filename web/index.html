@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ALJ - Motor de Librojuegos Interactivos</title>
+  <meta name="description" content="Plataforma interactiva de librojuegos con narración de voz, reconocimiento de voz y guardado automático.">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- Navbar -->
+    <header class="navbar">
+      <div class="nav-brand" id="nav-brand">
+        <div class="logo-icon">📜</div>
+        <span class="logo-text">ALJ <small>Narrator</small></span>
+      </div>
+      <div class="nav-actions">
+        <button id="btn-nav-library" class="nav-btn active" title="Biblioteca">
+          <span class="icon">📚</span> <span class="lbl">Biblioteca</span>
+        </button>
+        <button id="btn-nav-history" class="nav-btn hidden" title="Historial">
+          <span class="icon">📜</span> <span class="lbl">Historial</span>
+        </button>
+        <button id="btn-nav-settings" class="nav-btn" title="Configuración">
+          <span class="icon">⚙️</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- VIEW: BIBLIOTECA -->
+      <section id="view-library" class="view active">
+        <div class="library-header">
+          <div class="hero-banner">
+            <h1>Tu Biblioteca de Aventuras</h1>
+            <p>Escucha, responde con tu voz y vive historias donde tú tomas las decisiones.</p>
+          </div>
+          <div class="library-toolbar">
+            <span class="library-count" id="library-count">Cargando libros...</span>
+            <div class="view-toggle-wrap">
+              <button id="btn-view-grid" class="btn-toggle active" title="Vista Tarjetas (Grande)">
+                <span>🔲 Tarjetas</span>
+              </button>
+              <button id="btn-view-table" class="btn-toggle" title="Vista Lista Compacta (Tabla)">
+                <span>☰ Lista Compacta</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="library-grid" id="library-grid">
+          <!-- Book cards rendered via JS -->
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando biblioteca...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: JUEGO -->
+      <section id="view-game" class="view">
+        <div class="game-container">
+          <!-- Top Bar -->
+          <div class="game-topbar">
+            <button id="btn-game-back" class="btn-icon" title="Volver a la Biblioteca">
+              <span>←</span>
+            </button>
+            <div class="game-meta">
+              <h2 id="game-book-title">Cargando libro...</h2>
+              <div class="progress-bar-wrap">
+                <div id="game-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
+              </div>
+            </div>
+            <span id="game-progress-badge" class="badge">0%</span>
+            <button id="btn-game-restart" class="btn-secondary-sm" title="Reiniciar esta partida">
+              <span>🔄 Reiniciar</span>
+            </button>
+          </div>
+
+          <!-- Story Canvas Card -->
+          <article class="story-card">
+            <!-- Node Image -->
+            <div id="node-image-container" class="node-image-container hidden">
+              <img id="node-image" src="" alt="Ilustración de la sección">
+            </div>
+
+            <!-- Header Title -->
+            <div class="node-header">
+              <span id="node-badge" class="node-badge">Página 1</span>
+              <h1 id="node-title">Título del Capítulo</h1>
+            </div>
+
+            <!-- Main Body Text -->
+            <div id="node-text" class="node-text">
+              <!-- Rendered story paragraphs -->
+            </div>
+
+            <!-- Audio & Voice Control Panel -->
+            <div class="media-controls">
+              <!-- Audio Player -->
+              <div class="audio-player-box">
+                <button id="btn-audio-play" class="btn-media btn-play">
+                  <span id="audio-icon">▶</span>
+                  <span id="audio-label">Escuchar Narración</span>
+                </button>
+                <div class="audio-timeline">
+                  <span id="audio-time-current">0:00</span>
+                  <input type="range" id="audio-slider" min="0" max="100" value="0">
+                  <span id="audio-time-total">0:00</span>
+                </div>
+                <button id="btn-audio-speed" class="btn-pill">1.0x</button>
+              </div>
+
+              <!-- Voice Input Button -->
+              <div class="voice-input-box">
+                <button id="btn-voice-record" class="btn-media btn-voice">
+                  <span class="mic-icon">🎤</span>
+                  <span id="voice-label">Responder por Voz</span>
+                </button>
+                <input type="file" id="input-voice-file" accept="audio/*" capture="microphone" class="hidden">
+                <div id="voice-status" class="voice-status hidden">
+                  <span class="pulse-dot"></span>
+                  <span id="voice-status-text">Escuchando...</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Transcription Feedback Toast -->
+            <div id="transcription-toast" class="transcription-toast hidden">
+              <span class="icon">🗣️</span>
+              <span id="transcription-text"></span>
+            </div>
+
+            <!-- Choices Section -->
+            <div class="choices-container">
+              <h3 class="choices-heading">¿Qué deseas hacer?</h3>
+              <div id="choices-list" class="choices-list">
+                <!-- Choice buttons rendered via JS -->
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <!-- Drawer: Historial -->
+    <aside id="drawer-history" class="drawer">
+      <div class="drawer-header">
+        <h2>Historial de Decisiones</h2>
+        <button id="btn-close-history" class="btn-icon">✕</button>
+      </div>
+      <div class="drawer-body">
+        <ul id="history-list" class="history-list">
+          <!-- Timeline items -->
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Modal: Configuración -->
+    <div id="modal-settings" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Configuración de Lectura</h2>
+          <button id="btn-close-settings" class="btn-icon">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="setting-item">
+            <label for="setting-theme">Tema Visual</label>
+            <select id="setting-theme" class="select-input">
+              <option value="dark">Oscuro Místico</option>
+              <option value="sepia">Sepia Editorial</option>
+              <option value="night">Noche Nocturna</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <label for="setting-font-size">Tamaño de Letra</label>
+            <select id="setting-font-size" class="select-input">
+              <option value="font-sm">Pequeña</option>
+              <option value="font-md" selected>Normal</option>
+              <option value="font-lg">Grande</option>
+              <option value="font-xl">Muy Grande</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <label class="switch-label">
+              <span>Reproducir audio automáticamente</span>
+              <input type="checkbox" id="setting-autoplay">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label class="switch-label">
+              <span>Respuesta por voz inteligente (Whisper)</span>
+              <input type="checkbox" id="setting-voice-enabled" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="html-audio-player" preload="auto"></audio>
+  <script src="/app.js"></script>
+</body>
+</html>

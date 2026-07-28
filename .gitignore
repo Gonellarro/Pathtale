@@ -1,0 +1,42 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ===== Virtual Environment =====
+venv/
+env/
+
+# ===== Environment Variables & Secrets =====
+.env
+.env.local
+.env.*.local
+
+# ===== Data: ignore contents, keep directory structure =====
+data/**
+!data/
+!data/books/
+!data/books/.gitkeep
+!data/temp/
+!data/temp/.gitkeep
+
+# ===== Libros: ignore EPUBs, keep directory =====
+Libros/**
+!Libros/.gitkeep
+
+# ===== Models: ignore Piper ONNX files =====
+models/
+
+# ===== Logs & Temp =====
+*.log
+*.tmp
+*.temp
+
+# ===== IDE & OS =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store

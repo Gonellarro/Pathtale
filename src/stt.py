@@ -12,15 +12,14 @@ class STTManager:
 
     def _init_whisper(self):
         try:
-            import whisper
-            logger.info(f"Loading Whisper model '{self.model_size}'...")
-            self.whisper_model = whisper.load_model(self.model_size)
-            logger.info("Whisper model loaded successfully.")
+            from faster_whisper import WhisperModel
+            logger.info(f"Loading Faster-Whisper model '{self.model_size}' (CPU / int8)...")
+            self.whisper_model = WhisperModel(self.model_size, device="cpu", compute_type="int8")
+            logger.info("Faster-Whisper model loaded successfully.")
         except Exception as e:
-            logger.warning(f"Could not load OpenAI Whisper: {e}. STT fallback mode enabled.")
+            logger.warning(f"Could not load Faster-Whisper: {e}. STT in fallback mode.")
 
     def transcribe(self, audio_path: Path, language: str = "es") -> Optional[str]:
-        """Transcribes audio file to text."""
         audio_path = Path(audio_path)
         if not audio_path.exists():
             logger.error(f"Audio file not found: {audio_path}")
@@ -28,12 +27,12 @@ class STTManager:
 
         if self.whisper_model is not None:
             try:
-                result = self.whisper_model.transcribe(str(audio_path), language=language)
-                text = result.get("text", "").strip()
+                segments, info = self.whisper_model.transcribe(str(audio_path), language=language)
+                text = " ".join([s.text.strip() for s in segments]).strip()
                 logger.info(f"Whisper transcription: '{text}'")
                 return text
             except Exception as e:
                 logger.error(f"Whisper transcription error: {e}")
 
-        logger.error("STT transcription unavailable (Whisper model failed).")
+        logger.error("STT transcription unavailable.")
         return None
