@@ -129,14 +129,15 @@ body {
 }
 
 .nav-content {
-  max-width: 1217px;
+  max-width: 1265px;
   margin: 0 auto;
   width: 100%;
   height: 100%;
-  padding: 0 0.25rem;
+  padding: 0 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
 }
 
 .nav-brand {
