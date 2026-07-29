@@ -2202,6 +2202,35 @@ body {
    Landings & Interactive Features Styles
    ========================================================================== */
 
+/* Monochromatic Theme-Toned SVG Icons for Landing & Presentation */
+.landing-svg-icon {
+  width: 44px;
+  height: 44px;
+  stroke: var(--accent-gold);
+  color: var(--accent-gold);
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.landing-svg-icon.sm {
+  width: 20px;
+  height: 20px;
+}
+
+.node-svg-icon {
+  width: 22px;
+  height: 22px;
+  stroke: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.genre-svg-icon {
+  width: 40px;
+  height: 40px;
+  stroke: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
 /* Adventure Trail Nav (Interactive Node Path) */
 .adventure-trail-nav {
   position: relative;
