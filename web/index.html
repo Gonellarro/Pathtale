@@ -85,22 +85,24 @@
             </div>
           </div>
 
-          <!-- Authenticated Library Toolbar (Hidden when logged out) -->
-          <div id="library-toolbar" class="library-toolbar hidden">
-            <span class="library-count" id="library-count">Cargando libros...</span>
-            <div class="view-toggle-wrap">
-              <button id="btn-view-grid" class="btn-toggle active" title="Vista Tarjetas (Grande)">
-                <span>🔲 Tarjetas</span>
-              </button>
-              <button id="btn-view-table" class="btn-toggle" title="Vista Lista Compacta (Tabla)">
-                <span>☰ Lista Compacta</span>
-              </button>
+          <!-- Section: BIBLIOTECA DE AVENTURAS (6 Últimos Libros) -->
+          <div class="section-container">
+            <div class="section-header">
+              <h2 class="section-title">BIBLIOTECA DE AVENTURAS</h2>
+            </div>
+
+            <!-- Filter Tag Pills -->
+            <div id="filter-tags-bar" class="tags-filter-bar">
+              <button class="tag-pill active" data-tag="Todos">TODOS</button>
+              <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
+              <!-- Dynamic category/series tags loaded via JS -->
+            </div>
+
+            <!-- Featured 6 Books Grid -->
+            <div class="featured-books-grid" id="library-grid">
+              <!-- Rendered via JS -->
             </div>
           </div>
-        </div>
-
-        <div class="library-grid hidden" id="library-grid">
-          <!-- Book cards rendered via JS -->
         </div>
       </section>
 

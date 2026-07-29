@@ -51,6 +51,29 @@ class Database:
                 )
             """)
 
+            # Books metadata table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS books (
+                    book_id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    author TEXT,
+                    publisher TEXT,
+                    year TEXT,
+                    language TEXT DEFAULT 'es',
+                    description TEXT,
+                    isbn TEXT,
+                    genre TEXT,
+                    series TEXT,
+                    volume INTEGER,
+                    estimated_duration TEXT,
+                    cover_image TEXT,
+                    total_sections INTEGER,
+                    start_node TEXT,
+                    rating REAL DEFAULT 4.8,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
             # Migration check: if savegames table exists with old schema, migrate to composite PRIMARY KEY (user_id, book_id)
             cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='savegames'")
             row = cursor.fetchone()
@@ -257,6 +280,59 @@ class Database:
             """, (user_id, limit))
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
+
+    def upsert_book(self, b: Dict[str, Any]):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO books (
+                    book_id, title, author, publisher, year, language, description,
+                    isbn, genre, series, volume, estimated_duration, cover_image,
+                    total_sections, start_node
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(book_id) DO UPDATE SET
+                    title = excluded.title,
+                    author = excluded.author,
+                    publisher = excluded.publisher,
+                    year = excluded.year,
+                    language = excluded.language,
+                    description = excluded.description,
+                    isbn = excluded.isbn,
+                    genre = excluded.genre,
+                    series = excluded.series,
+                    volume = excluded.volume,
+                    estimated_duration = excluded.estimated_duration,
+                    cover_image = excluded.cover_image,
+                    total_sections = excluded.total_sections,
+                    start_node = excluded.start_node
+            """, (
+                b.get("book_id"), b.get("title"), b.get("author"), b.get("publisher"),
+                b.get("year"), b.get("language", "es"), b.get("description"), b.get("isbn"),
+                b.get("genre", "Ficción Interactiva"), b.get("series"), b.get("volume"),
+                b.get("estimated_duration", "30 minutos"), b.get("cover_image"),
+                b.get("total_sections", 1), b.get("start_node")
+            ))
+            conn.commit()
+
+    def get_top_tags(self, limit: int = 5) -> List[str]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT genre, series FROM books")
+            rows = cursor.fetchall()
+            
+            tags = []
+            for r in rows:
+                if r["genre"]:
+                    for g in r["genre"].replace("·", ",").replace("/", ",").split(","):
+                        g_clean = g.strip()
+                        if g_clean and g_clean.lower() not in [t.lower() for t in tags]:
+                            tags.append(g_clean)
+                if r["series"]:
+                    s_clean = r["series"].strip()
+                    if s_clean and s_clean.lower() not in [t.lower() for t in tags]:
+                        tags.append(s_clean)
+            
+            return tags[:limit]
 
     def save_game(self, user_id: int, book_id: str, current_node_id: str, inventory: Optional[dict] = None, variables: Optional[dict] = None):
         inv_json = json.dumps(inventory or {})

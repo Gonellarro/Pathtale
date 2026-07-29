@@ -101,115 +101,119 @@ export async function loadInProgressSection(startGameFn) {
   }
 }
 
-export async function loadLibrary(onShowLanding, startGameFn) {
-  if (!state.authToken || !state.currentUser) {
-    checkLastActiveGame();
-    loadInProgressSection();
-    if (onShowLanding) onShowLanding();
-    return;
-  }
+export async function loadCategoryTags() {
+  const filterBar = document.getElementById("filter-tags-bar");
+  if (!filterBar) return;
 
+  try {
+    const res = await authFetch(`${API_BASE}/api/tags`);
+    const data = await res.json();
+    const tags = data.tags || [];
+
+    const defaultPills = `
+      <button class="tag-pill active" data-tag="Todos">TODOS</button>
+      <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
+    `;
+
+    const tagPills = tags.map(t => `<button class="tag-pill" data-tag="${escapeHtml(t)}">${escapeHtml(t.toUpperCase())}</button>`).join("");
+    filterBar.innerHTML = defaultPills + tagPills;
+
+    filterBar.querySelectorAll(".tag-pill").forEach(btn => {
+      btn.onclick = () => {
+        filterBar.querySelectorAll(".tag-pill").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const tag = btn.getAttribute("data-tag");
+        loadLibrary(null, null, tag, 6);
+      };
+    });
+  } catch (err) {
+    console.warn("Could not load category tags:", err);
+  }
+}
+
+export async function loadLibrary(onShowLanding, startGameFn, tag = "Todos", limit = 6) {
   checkLastActiveGame(startGameFn);
   loadInProgressSection(startGameFn);
+  loadCategoryTags();
 
+  const libraryGrid = document.getElementById("library-grid");
   if (libraryGrid) {
     libraryGrid.innerHTML = `
-      <div class="loading-spinner">
+      <div class="loading-spinner" style="grid-column: 1/-1;">
         <div class="spinner"></div>
         <p>Cargando biblioteca...</p>
       </div>`;
   }
 
+  const uid = (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
+
   try {
-    const res = await authFetch(`${API_BASE}/api/books`);
+    const res = await authFetch(`${API_BASE}/api/books?limit=${limit}&tag=${encodeURIComponent(tag)}&user_id=${uid}`);
     const data = await res.json();
     state.allLibraryBooks = data.books || [];
-    renderLibrary(state.allLibraryBooks);
+    renderLibrary(state.allLibraryBooks, startGameFn);
   } catch (err) {
     console.error("Error loading library:", err);
     if (libraryGrid) {
-      libraryGrid.innerHTML = `<p class="error-msg">Error al conectar con la API del servidor.</p>`;
+      libraryGrid.innerHTML = `<p class="error-msg" style="grid-column: 1/-1;">Error al conectar con la API del servidor.</p>`;
     }
   }
 }
 
-export function filterLibraryByCategory(category) {
-  if (category === "Todos") {
-    renderLibrary(state.allLibraryBooks);
-  } else if (category === "En curso") {
-    renderLibrary(state.allLibraryBooks.filter(b => b.has_savegame && b.progress_percent > 0));
-  } else {
-    renderLibrary(state.allLibraryBooks.filter(b => 
-      (b.genre && b.genre.toLowerCase().includes(category.toLowerCase())) ||
-      (b.description && b.description.toLowerCase().includes(category.toLowerCase())) ||
-      (b.series && b.series.toLowerCase().includes(category.toLowerCase())) ||
-      (b.title && b.title.toLowerCase().includes(category.toLowerCase()))
-    ));
-  }
-}
-
-export function renderLibrary(books) {
-  const libraryCount = document.getElementById("library-count");
-  if (libraryCount) {
-    libraryCount.textContent = `Mostrando ${books.length} libro${books.length === 1 ? '' : 's'}`;
-  }
-  setLibraryViewMode(state.libraryViewMode);
-
+export function renderLibrary(books, startGameFn) {
+  const libraryGrid = document.getElementById("library-grid");
   if (!libraryGrid) return;
 
   if (books.length === 0) {
     libraryGrid.innerHTML = `
-      <div class="loading-spinner">
-        <p>No se encontraron libros. Copia un EPUB a la carpeta <code>Libros/</code> e impórtalo.</p>
+      <div class="loading-spinner" style="grid-column: 1/-1;">
+        <p>No se encontraron libros para esta categoría.</p>
       </div>`;
     return;
   }
 
   libraryGrid.innerHTML = books.map(b => {
-    const langFlag = (b.language && b.language.toLowerCase().startsWith("en")) ? "🇬🇧" : "🇪🇸";
-    const seriesText = b.series ? `📚 ${b.series}${b.volume ? ' #' + b.volume : ''}` : "";
+    let statusBadgeText = "Nuevo";
+    let statusClass = "nuevo";
+
+    if (b.status === "en_curso" || (b.has_savegame && b.progress_percent > 0 && b.progress_percent < 90)) {
+      statusBadgeText = "En curso";
+      statusClass = "en_curso";
+    } else if (b.status === "completado" || b.progress_percent >= 90) {
+      statusBadgeText = "Completado";
+      statusClass = "completado";
+    }
+
+    const ratingVal = b.rating || 4.8;
 
     return `
-    <div class="book-card">
-      <div class="book-cover">
+    <div class="portrait-book-card" data-action="continue" data-book-id="${b.book_id}">
+      <div class="portrait-cover-wrap">
+        <span class="card-status-badge ${statusClass}">${statusBadgeText}</span>
         ${b.cover_image_url 
-          ? `<img src="${b.cover_image_url}?v=${Date.now()}" alt="${b.title}">` 
-          : `<div class="book-cover-placeholder">📜</div>`}
-        <span class="book-badge">${langFlag} ${b.total_sections} secc.</span>
+          ? `<img src="${b.cover_image_url}?v=${Date.now()}" alt="${escapeHtml(b.title)}" class="portrait-cover-img">` 
+          : `<div class="book-cover-placeholder" style="font-size:2rem">📜</div>`}
+        <div class="card-hover-play">▶</div>
       </div>
-      <div class="book-info">
-        <h3 class="book-title">${langFlag} ${b.title}</h3>
-        <p class="book-author">${b.author}${b.year ? ' • ' + b.year : ''}</p>
-        ${seriesText ? `<p class="book-series">${seriesText}</p>` : ''}
-        <p class="book-desc">${b.description || "Aventura interactiva."}</p>
-        
-        <div class="book-progress-wrap">
-          <div class="book-progress-info">
-            <span>Progreso</span>
-            <span>${b.progress_percent || 0}%</span>
-          </div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width: ${b.progress_percent || 0}%"></div>
-          </div>
+      <div class="portrait-card-info">
+        <p class="portrait-genre">${escapeHtml(b.genre || "Ficción Interactiva")}</p>
+        <h3 class="portrait-title">${escapeHtml(b.title)}</h3>
+        <div class="portrait-rating">
+          <span class="portrait-rating-stars">★★★★★</span>
+          <span class="portrait-rating-val">${ratingVal}</span>
         </div>
-      </div>
-      <div class="book-actions">
-        ${b.has_savegame ? `
-          <button class="btn-primary" data-action="continue" data-book-id="${b.book_id}">
-            <span>▶ Continuar</span>
-          </button>
-          <button class="btn-secondary" data-action="restart" data-book-id="${b.book_id}" title="Reiniciar Partida">
-            <span>🔄</span>
-          </button>
-        ` : `
-          <button class="btn-primary" data-action="start" data-book-id="${b.book_id}">
-            <span>✨ Iniciar Partida</span>
-          </button>
-        `}
       </div>
     </div>
   `;
   }).join("");
+
+  libraryGrid.querySelectorAll(".portrait-book-card").forEach(card => {
+    card.onclick = () => {
+      const bookId = card.getAttribute("data-book-id");
+      const hasSave = card.querySelector(".card-status-badge.en_curso");
+      if (startGameFn) startGameFn(bookId, !hasSave);
+    };
+  });
 }
 
 export async function confirmRestartGame(bookId, startGameFn) {

@@ -116,23 +116,55 @@ def get_me(authorization: Optional[str] = Header(None)):
 
 # --- REST API Game Endpoints ---
 
+@app.get("/api/tags")
+def get_tags():
+    """Returns top category/series tags for filtering."""
+    tags = engine.db.get_top_tags(limit=5)
+    return {"tags": tags}
+
 @app.get("/api/books")
-def list_books(authorization: Optional[str] = Header(None), user_id: Optional[int] = Query(None)):
-    """Returns a list of all imported books with rich metadata and user progress."""
+def list_books(
+    authorization: Optional[str] = Header(None),
+    user_id: Optional[int] = Query(None),
+    limit: Optional[int] = Query(None),
+    tag: Optional[str] = Query(None)
+):
+    """Returns a list of imported books with rich metadata and user progress status."""
     current_uid = resolve_user_id(authorization, user_id)
     books = engine.list_books()
     result = []
+    
     for b_summary in books:
         b_id = b_summary["book_id"]
         full_data = engine.books.get(b_id, {})
         
+        genre = full_data.get("genre", "Ficción Interactiva")
+        series = full_data.get("series", "")
+        
+        # Tag filtering if specified
+        if tag and tag.lower() != "todos":
+            tag_lower = tag.lower()
+            matches_tag = (
+                tag_lower in genre.lower() or
+                tag_lower in series.lower() or
+                (tag_lower == "en curso" and engine.db.get_savegame(current_uid, b_id))
+            )
+            if not matches_tag:
+                continue
+
         progress_pct = 0
         savegame = engine.db.get_savegame(current_uid, b_id)
+        status = "nuevo"
+
         if savegame:
             history = engine.db.get_history(current_uid, b_id, limit=500)
             visited_count = len(set(h["to_node_id"] for h in history))
             total_sections = full_data.get("total_sections", 1)
             progress_pct = min(100, int((visited_count / max(1, total_sections)) * 100))
+            if progress_pct >= 90:
+                status = "completado"
+            else:
+                status = "en_curso"
 
         result.append({
             "book_id": b_id,
@@ -143,8 +175,8 @@ def list_books(authorization: Optional[str] = Header(None), user_id: Optional[in
             "language": full_data.get("language", "es"),
             "description": full_data.get("description", ""),
             "isbn": full_data.get("isbn", ""),
-            "genre": full_data.get("genre", "Ficción Interactiva"),
-            "series": full_data.get("series", ""),
+            "genre": genre,
+            "series": series,
             "volume": full_data.get("volume", 1),
             "estimated_duration": full_data.get("estimated_duration", "30 minutos"),
             "cover_image_url": f"/api/books/{b_id}/asset/{full_data.get('cover_image')}" if full_data.get("cover_image") else None,
@@ -152,8 +184,14 @@ def list_books(authorization: Optional[str] = Header(None), user_id: Optional[in
             "start_node": full_data.get("start_node", "sec_002"),
             "features": full_data.get("features", {}),
             "has_savegame": bool(savegame),
-            "progress_percent": progress_pct
+            "progress_percent": progress_pct,
+            "status": status,
+            "rating": 4.8
         })
+
+    if limit and limit > 0:
+        result = result[:limit]
+
     return {"books": result}
 
 @app.get("/api/books/{book_id}")

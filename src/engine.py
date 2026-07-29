@@ -33,6 +33,10 @@ class GameEngine:
                             data = json.load(f)
                             b_id = data["book_id"]
                             self.books[b_id] = data
+                            try:
+                                self.db.upsert_book(data)
+                            except Exception as dbe:
+                                logger.warning(f"Could not upsert book '{b_id}' to DB: {dbe}")
                             logger.info(f"📖 Loaded book '{data.get('title')}' ({b_id}) -> start_node = '{data.get('start_node')}' ({len(data.get('nodes', {}))} nodes)")
                     except Exception as e:
                         logger.error(f"Error loading book JSON {book_json}: {e}")
