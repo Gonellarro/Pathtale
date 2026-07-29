@@ -7,24 +7,6 @@ import { openAuthModal } from "./auth.js";
 
 const libraryGrid = document.getElementById("library-grid");
 
-export function setLibraryViewMode(mode) {
-  state.libraryViewMode = mode;
-  localStorage.setItem("alj_library_view", mode);
-  
-  const btnGrid = document.getElementById("btn-view-grid");
-  const btnTable = document.getElementById("btn-view-table");
-  
-  if (mode === "table") {
-    if (libraryGrid) libraryGrid.classList.add("view-table");
-    if (btnGrid) btnGrid.classList.remove("active");
-    if (btnTable) btnTable.classList.add("active");
-  } else {
-    if (libraryGrid) libraryGrid.classList.remove("view-table");
-    if (btnGrid) btnGrid.classList.add("active");
-    if (btnTable) btnTable.classList.remove("active");
-  }
-}
-
 export async function checkLastActiveGame(startGameFn) {
   const heroActions = document.getElementById("hero-actions");
   const btnContinue = document.getElementById("btn-hero-continue");
