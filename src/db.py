@@ -468,7 +468,7 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT t.tier_id, t.code, t.name, t.level
+                SELECT t.tier_id, t.code, t.name, t.level, COALESCE(b.is_visible, 1) as is_visible
                 FROM books b
                 LEFT JOIN subscription_tiers t ON b.tier_id = t.tier_id
                 WHERE b.book_id = ?
@@ -476,7 +476,7 @@ class Database:
             row = cursor.fetchone()
             if row and row["tier_id"]:
                 return dict(row)
-            return {"tier_id": 1, "code": "demo", "name": "Demo Gratuita", "level": 0}
+            return {"tier_id": 1, "code": "demo", "name": "Demo Gratuita", "level": 0, "is_visible": 1}
 
     # --- Admin Users Management ---
 
@@ -586,7 +586,11 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT * FROM savegames WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1
+                SELECT s.* 
+                FROM savegames s
+                JOIN books b ON s.book_id = b.book_id
+                WHERE s.user_id = ? AND COALESCE(b.is_visible, 1) = 1
+                ORDER BY s.updated_at DESC LIMIT 1
             """, (user_id,))
             row = cursor.fetchone()
             if not row:
@@ -602,7 +606,11 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT * FROM savegames WHERE user_id = ? ORDER BY updated_at DESC LIMIT ?
+                SELECT s.* 
+                FROM savegames s
+                JOIN books b ON s.book_id = b.book_id
+                WHERE s.user_id = ? AND COALESCE(b.is_visible, 1) = 1
+                ORDER BY s.updated_at DESC LIMIT ?
             """, (user_id, limit))
             rows = cursor.fetchall()
             return [dict(r) for r in rows]

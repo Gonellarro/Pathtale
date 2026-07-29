@@ -256,6 +256,11 @@ def list_books(
                     continue
 
         book_tier = engine.db.get_book_tier(b_id)
+        if book_tier.get("is_visible") == 0:
+            user = engine.db.get_user_by_token(authorization.split(" ")[1]) if authorization and authorization.startswith("Bearer ") else None
+            if not (user and user.get("role_name") == "admin"):
+                continue
+
         is_locked = book_tier["level"] > user_tier["level"]
 
         result.append({
@@ -470,13 +475,20 @@ def get_book_asset(book_id: str, subpath: str):
 
 @app.post("/api/games")
 def start_game(req: StartGameRequest, authorization: Optional[str] = Header(None)):
-    """Starts or resets a game session for a user and book after tier enforcement."""
     uid = resolve_user_id(authorization, req.user_id)
-
-    # Subscription Tier Access Enforcement
     user_tier = engine.db.get_user_active_tier(uid)
     book_tier = engine.db.get_book_tier(req.book_id)
 
+    # Visibility Enforcement
+    if book_tier.get("is_visible") == 0:
+        user = engine.db.get_user_by_token(authorization.split(" ")[1]) if authorization and authorization.startswith("Bearer ") else None
+        if not (user and user.get("role_name") == "admin"):
+            raise HTTPException(
+                status_code=403,
+                detail="Este audiolibro no está disponible actualmente."
+            )
+
+    # Subscription Tier Access Enforcement
     if book_tier["level"] > user_tier["level"]:
         raise HTTPException(
             status_code=403,
