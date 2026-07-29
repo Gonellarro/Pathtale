@@ -154,8 +154,12 @@ export function renderFeaturedGrid(books, container, startGameFn) {
   container.innerHTML = books.map(b => {
     let statusBadgeText = "Nuevo";
     let statusClass = "nuevo";
+    const isLocked = b.is_locked;
 
-    if (b.status === "en_curso" || (b.has_savegame && b.progress_percent > 0 && b.progress_percent < 90)) {
+    if (isLocked) {
+      statusBadgeText = `🔒 ${escapeHtml(b.tier_name)}`;
+      statusClass = "locked";
+    } else if (b.status === "en_curso" || (b.has_savegame && b.progress_percent > 0 && b.progress_percent < 90)) {
       statusBadgeText = "En curso";
       statusClass = "en_curso";
     } else if (b.status === "completado" || b.progress_percent >= 90) {
@@ -166,13 +170,13 @@ export function renderFeaturedGrid(books, container, startGameFn) {
     const ratingVal = b.rating || 4.8;
 
     return `
-    <div class="portrait-book-card" data-action="continue" data-book-id="${b.book_id}">
+    <div class="portrait-book-card ${isLocked ? 'card-locked' : ''}" data-action="continue" data-book-id="${b.book_id}">
       <div class="portrait-cover-wrap">
-        <span class="card-status-badge ${statusClass}">${statusBadgeText}</span>
+        <span class="card-status-badge ${statusClass}" ${isLocked ? 'style="background:rgba(239, 68, 68, 0.9); color:#fff; border:1px solid rgba(239, 68, 68, 0.4); font-size:0.68rem;"' : ''}>${statusBadgeText}</span>
         ${b.cover_image_url 
           ? `<img src="${b.cover_image_url}?v=${Date.now()}" alt="${escapeHtml(b.title)}" class="portrait-cover-img">` 
           : `<div class="book-cover-placeholder" style="font-size:2rem">📜</div>`}
-        <div class="card-hover-play">▶</div>
+        <div class="card-hover-play">${isLocked ? '🔒' : '▶'}</div>
       </div>
       <div class="portrait-card-info">
         <p class="portrait-genre">${escapeHtml(b.genre || "Ficción Interactiva")}</p>
@@ -189,6 +193,13 @@ export function renderFeaturedGrid(books, container, startGameFn) {
   container.querySelectorAll(".portrait-book-card").forEach(card => {
     card.onclick = () => {
       const bookId = card.getAttribute("data-book-id");
+      const book = books.find(b => b.book_id === bookId);
+
+      if (book && book.is_locked) {
+        alert(`🔒 Este audiolibro requiere la membresía '${book.tier_name}'. Tu plan actual no permite acceder a este contenido. Contacta con el administrador.`);
+        return;
+      }
+
       const hasSave = card.querySelector(".card-status-badge.en_curso");
       if (startGameFn) startGameFn(bookId, !hasSave);
     };
