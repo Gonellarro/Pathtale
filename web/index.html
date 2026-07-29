@@ -57,6 +57,7 @@
     <!-- Main Content Area -->
     <main class="main-content">
       <!-- VIEW: INICIO / HOME -->
+      <!-- VIEW: HOME (Landing & Catalog Presentation) -->
       <section id="view-home" class="view active">
         <div class="app-container">
           <!-- Figma Hero Cover Banner -->
@@ -66,12 +67,12 @@
             <div class="hero-content">
               <p class="hero-tagline">Audiolibrojuegos Inmersivos</p>
               <h1 class="hero-title">
-                <span class="hero-title-line">Donde cada elección</span><br>
-                <span class="hero-highlight">escribe tu historia</span>
+                <span class="hero-title-line">Escucha la historia.</span><br>
+                <span class="hero-highlight">Decide su destino.</span>
               </h1>
               <p class="hero-subtitle">
-                Sumérgete en mundos de fantasía donde tu voz interior guía el relato.
-                Escucha, decide y descubre finales únicos.
+                Sumérgete en mundos de fantasía donde tu voz guía el relato.
+                Escucha, toma decisiones y descubre finales únicos.
               </p>
               <div id="hero-actions" class="hero-actions hidden">
                 <button id="btn-hero-continue" class="btn-hero-primary">
@@ -82,45 +83,452 @@
             </div>
           </div>
 
-          <!-- Container for home sections (Visible ONLY when logged in) -->
-          <div id="authenticated-home-content" class="authenticated-home-content hidden">
-            <!-- Section: Continúa Tu Aventura -->
-            <div id="section-continue-reading" class="section-container hidden">
-              <div class="section-header">
-                <h2 class="section-title">CONTINÚA TU AVENTURA</h2>
+          <!-- Interactive Path Roadmap Trail -->
+          <div class="adventure-trail-nav">
+            <div class="trail-line"></div>
+            <a href="#section-whatis" class="trail-node" title="¿Qué es PathTale?">
+              <span class="trail-icon">🎧</span>
+              <span class="trail-label">¿Qué es?</span>
+            </a>
+            <a href="#section-howworks" class="trail-node" title="¿Cómo funciona?">
+              <span class="trail-icon">🧭</span>
+              <span class="trail-label">Cómo funciona</span>
+            </a>
+            <a href="#section-map" class="trail-node" title="Mapa de decisiones">
+              <span class="trail-icon">🗺️</span>
+              <span class="trail-label">Mapa decisiones</span>
+            </a>
+            <a href="#section-demo" class="trail-node" title="Demostración">
+              <span class="trail-icon">📱</span>
+              <span class="trail-label">Demostración</span>
+            </a>
+            <a href="#section-features" class="trail-node" title="Características">
+              <span class="trail-icon">⚡</span>
+              <span class="trail-label">Ventajas</span>
+            </a>
+            <a href="#section-stats" class="trail-node" title="Estadísticas">
+              <span class="trail-icon">📊</span>
+              <span class="trail-label">Estadísticas</span>
+            </a>
+            <a href="#section-genres" class="trail-node" title="Géneros">
+              <span class="trail-icon">🧙</span>
+              <span class="trail-label">Géneros</span>
+            </a>
+            <a href="#section-why" class="trail-node" title="¿Por qué PathTale?">
+              <span class="trail-icon">🔮</span>
+              <span class="trail-label">¿Por qué PathTale?</span>
+            </a>
+          </div>
+
+          <!-- Section: Continúa Tu Aventura (For Active Savegames) -->
+          <div id="section-continue-reading" class="section-container hidden">
+            <div class="section-header">
+              <h2 class="section-title">CONTINÚA TU AVENTURA</h2>
+            </div>
+            <div id="continue-cards-grid" class="continue-grid">
+              <!-- Active progress cards rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Section: BIBLIOTECA DE AVENTURAS (6 Libros Aleatorios) -->
+          <div id="section-featured-library" class="section-container">
+            <div class="section-header">
+              <h2 class="section-title">BIBLIOTECA DE AVENTURAS</h2>
+            </div>
+
+            <!-- Filter Tag Pills -->
+            <div id="filter-tags-bar" class="tags-filter-bar">
+              <button class="tag-pill active" data-tag="Todos">TODOS</button>
+              <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
+              <!-- Dynamic category/series tags loaded via JS -->
+            </div>
+
+            <!-- Featured 6 Random Books Grid -->
+            <div class="featured-books-grid" id="home-featured-grid">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Section 1: ¿Qué es PathTale? -->
+          <div id="section-whatis" class="section-container landing-block">
+            <div class="section-header text-center">
+              <p class="section-subtitle-tag">EXPANDIENDO LOS LÍMITES DE LA LECTURA</p>
+              <h2 class="landing-title">¿Qué es PathTale?</h2>
+              <p class="landing-desc">Una experiencia interactiva donde tú no eres un espectador pasivo, sino el protagonista de la historia.</p>
+            </div>
+
+            <div class="pillars-grid">
+              <div class="pillar-card">
+                <div class="pillar-icon">🎧</div>
+                <h3 class="pillar-title">Escucha</h3>
+                <p class="pillar-text">Narración profesional y paisajes sonoros ambientales que sumergen tus sentidos en la atmósfera del libro.</p>
               </div>
-              <div id="continue-cards-grid" class="continue-grid">
-                <!-- Active progress cards rendered via JS -->
+
+              <div class="pillar-card">
+                <div class="pillar-icon">🧭</div>
+                <h3 class="pillar-title">Decide</h3>
+                <p class="pillar-text">Cada elección abre caminos insospechados. Tu voz interior marca el rumbo de los acontecimientos.</p>
+              </div>
+
+              <div class="pillar-card">
+                <div class="pillar-icon">🏆</div>
+                <h3 class="pillar-title">Descubre</h3>
+                <p class="pillar-text">Decenas de finales alternativos, secretos ocultos y ramas narrativas vivas en cada rejugabilidad.</p>
               </div>
             </div>
 
-            <!-- Section: BIBLIOTECA DE AVENTURAS (6 Libros Aleatorios) -->
-            <div class="section-container">
-              <div class="section-header">
-                <h2 class="section-title">BIBLIOTECA DE AVENTURAS</h2>
-              </div>
+            <div class="pillar-highlight-bar">
+              <span class="highlight-spark">✨</span>
+              <span><strong>Tu aventura cobra vida en una sola pantalla.</strong> Sencillo, inmersivo y sin complicaciones.</span>
+            </div>
+          </div>
 
-              <!-- Filter Tag Pills -->
-              <div id="filter-tags-bar" class="tags-filter-bar">
-                <button class="tag-pill active" data-tag="Todos">TODOS</button>
-                <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
-                <!-- Dynamic category/series tags loaded via JS -->
-              </div>
-
-              <!-- Featured 6 Random Books Grid -->
-              <div class="featured-books-grid" id="home-featured-grid">
-                <!-- Rendered via JS -->
-              </div>
+          <!-- Section 2: ¿Cómo funciona? -->
+          <div id="section-howworks" class="section-container landing-block">
+            <div class="section-header text-center">
+              <p class="section-subtitle-tag">PASO A PASO</p>
+              <h2 class="landing-title">¿Cómo funciona?</h2>
             </div>
 
-            <!-- Section: NARRADORES -->
-            <div id="section-narrators" class="section-container">
-              <div class="section-header">
-                <h2 class="section-title">NARRADORES</h2>
+            <div class="steps-flow-grid">
+              <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-icon">📚</div>
+                <h4>Elige tu aventura</h4>
+                <p>Explora nuestro catálogo de audiolibrojuegos por géneros y categorías.</p>
               </div>
-              <div id="narrators-grid" class="narrators-grid">
-                <!-- Rendered via JS -->
+              <div class="step-arrow">➔</div>
+
+              <div class="step-card">
+                <div class="step-num">2</div>
+                <div class="step-icon">🎧</div>
+                <h4>Escucha el relato</h4>
+                <p>Déjate llevar por la voz del narrador e infórmate del escenario actual.</p>
               </div>
+              <div class="step-arrow">➔</div>
+
+              <div class="step-card">
+                <div class="step-num">3</div>
+                <div class="step-icon">🎤</div>
+                <h4>Toma decisiones por voz</h4>
+                <p>Elige tu opción pulsando un botón o simplemente hablando con tu micrófono.</p>
+              </div>
+              <div class="step-arrow">➔</div>
+
+              <div class="step-card">
+                <div class="step-num">4</div>
+                <div class="step-icon">🏆</div>
+                <h4>Descubre tu final</h4>
+                <p>Alcanza desenlaces únicos según la combinación exacta de tus decisiones.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Mapa Interactivo con Decisiones -->
+          <div id="section-map" class="section-container landing-block">
+            <div class="section-header text-center">
+              <p class="section-subtitle-tag">BIFURCACIONES NARRATIVAS VIVAS</p>
+              <h2 class="landing-title">Ninguna partida es igual</h2>
+              <p class="landing-desc">Pasa el ratón por el mapa interactivo para iluminar los caminos del destino.</p>
+            </div>
+
+            <div class="interactive-map-box">
+              <div class="map-tree-nodes">
+                <div class="map-node node-start" data-target="path-all">
+                  <span class="node-badge-icon">📍</span>
+                  <span class="node-name">Inicio</span>
+                </div>
+                
+                <div class="map-branches">
+                  <div class="map-branch branch-top">
+                    <div class="branch-connector"></div>
+                    <div class="map-node" data-target="path-forest">
+                      <span class="node-badge-icon">🌲</span>
+                      <span class="node-name">El Bosque Sombrío</span>
+                    </div>
+                  </div>
+
+                  <div class="map-branch branch-mid">
+                    <div class="branch-connector"></div>
+                    <div class="map-node" data-target="path-castle">
+                      <span class="node-badge-icon">🏰</span>
+                      <span class="node-name">El Castillo Ancestral</span>
+                    </div>
+                  </div>
+
+                  <div class="map-branch branch-bottom">
+                    <div class="branch-connector"></div>
+                    <div class="map-node" data-target="path-cave">
+                      <span class="node-badge-icon">🕳️</span>
+                      <span class="node-name">La Cueva del Dragón</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="map-footer-note">
+                <span>💡 <strong>Cada rama desbloquea objetos, variables y finales alternativos.</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Capturas / Demostración del Juego -->
+          <div id="section-demo" class="section-container landing-block">
+            <div class="section-header text-center">
+              <p class="section-subtitle-tag">INTERFAZ DE LECTURA EN TIEMPO REAL</p>
+              <h2 class="landing-title">Siente la inmersión del juego</h2>
+              <p class="landing-desc">Así se ve la experiencia interactiva mientras escuchas y decides.</p>
+            </div>
+
+            <div class="game-mockup-card">
+              <div class="mockup-header">
+                <span class="mockup-dot red"></span>
+                <span class="mockup-dot yellow"></span>
+                <span class="mockup-dot green"></span>
+                <span class="mockup-title">Capítulo 12 — El Desfiladero del Destino</span>
+              </div>
+              <div class="mockup-body">
+                <div class="mockup-audio-bar">
+                  <button class="mockup-play-btn">▶</button>
+                  <div class="mockup-audio-wave">
+                    <span class="bar bar-1"></span>
+                    <span class="bar bar-2"></span>
+                    <span class="bar bar-3"></span>
+                    <span class="bar bar-4"></span>
+                    <span class="bar bar-5"></span>
+                  </div>
+                  <span class="mockup-time">🎧 Narrando... 1:45 / 3:20</span>
+                </div>
+
+                <div class="mockup-text-excerpt">
+                  "Te encuentras frente al imponente portón del castillo. El viento aúlla en las almenas y la hiedra oculta una antigua inscripción rúnica..."
+                </div>
+
+                <div class="mockup-choices-list">
+                  <div class="mockup-choice-btn active">
+                    <span class="num">1</span>
+                    <span>Abrir el portón con la llave de plata hallada en la cueva.</span>
+                    <span class="arrow">➔</span>
+                  </div>
+                  <div class="mockup-choice-btn">
+                    <span class="num">2</span>
+                    <span>Rodear el foso buscando una entrada secundaria.</span>
+                    <span class="arrow">➔</span>
+                  </div>
+                  <div class="mockup-choice-btn">
+                    <span class="num">3</span>
+                    <span>Examinar detenidamente las runas de la pared.</span>
+                    <span class="arrow">➔</span>
+                  </div>
+                </div>
+
+                <div class="mockup-voice-badge">
+                  <span class="mic-dot">🎤</span>
+                  <span>También puedes pronunciar "Opción 1" para avanzar</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 5: Características -->
+          <div id="section-features" class="section-container landing-block">
+            <div class="section-header text-center">
+              <p class="section-subtitle-tag">TECNOLOGÍA Y DISEÑO AL SERVICIO DE LA HISTORIA</p>
+              <h2 class="landing-title">Características Destacadas</h2>
+            </div>
+
+            <div class="features-checklist-grid">
+              <div class="feature-item">
+                <span class="feature-check">✓</span>
+                <div>
+                  <strong>Historias ramificadas</strong>
+                  <p>Cientos de nodos narrativos entrelazados con árbol de decisiones real.</p>
+                </div>
+              </div>
+
+              <div class="feature-item">
+                <span class="feature-check">✓</span>
+                <div>
+                  <strong>Decisiones por voz</strong>
+                  <p>Habla con tu micrófono para seleccionar alternativas en tiempo real.</p>
+                </div>
+              </div>
+
+              <div class="feature-item">
+                <span class="feature-check">✓</span>
+                <div>
+                  <strong>Guarda el progreso</strong>
+                  <p>Guarda de forma automática para retomar tu partida en cualquier dispositivo.</p>
+                </div>
+              </div>
+
+              <div class="feature-item">
+                <span class="feature-check">✓</span>
+                <div>
+                  <strong>Finales alternativos</strong>
+                  <p>Descubre finales trágicos, heroicos o secretos según tus hábitos.</p>
+                </div>
+              </div>
+
+              <div class="feature-item">
+                <span class="feature-check">✓</span>
+                <div>
+                  <strong>Compatible con móvil y PC</strong>
+                  <p>Diseño responsive de máxima fidelidad para leer u oír en movimiento.</p>
+                </div>
+              </div>
+
+              <div class="feature-item">
+                <span class="feature-check">✓</span>
+                <div>
+                  <strong>Continúa donde lo dejaste</strong>
+                  <p>Reanudación inmediata en un solo clic con historial de elecciones.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 6: Estadísticas -->
+          <div id="section-stats" class="section-container landing-block">
+            <div class="stats-counter-grid">
+              <div class="stat-counter-card">
+                <span class="stat-number">+120</span>
+                <span class="stat-label">Capítulos Ramificados</span>
+              </div>
+              <div class="stat-counter-card">
+                <span class="stat-number">+850</span>
+                <span class="stat-label">Finales Posibles</span>
+              </div>
+              <div class="stat-counter-card">
+                <span class="stat-number">+35h</span>
+                <span class="stat-label">Audio Inmersivo</span>
+              </div>
+              <div class="stat-counter-card">
+                <span class="stat-number">Miles</span>
+                <span class="stat-label">Elecciones Tomadas</span>
+              </div>
+            </div>
+            <p class="stats-footer-text">Catálogo e historias en constante expansión.</p>
+          </div>
+
+          <!-- Section 7: Géneros -->
+          <div id="section-genres" class="section-container landing-block">
+            <div class="section-header text-center">
+              <p class="section-subtitle-tag">EXPLORA NUESTROS UNIVERSOS</p>
+              <h2 class="landing-title">Géneros de Aventuras</h2>
+            </div>
+
+            <div class="genres-grid">
+              <div class="genre-card">
+                <span class="genre-icon">🧙</span>
+                <h3>Fantasía</h3>
+                <p>Mágia, espada y criaturas en reinos olvidados.</p>
+              </div>
+
+              <div class="genre-card">
+                <span class="genre-icon">👽</span>
+                <h3>Ciencia Ficción</h3>
+                <p>Odiseas estelares, IA y distopías del futuro.</p>
+              </div>
+
+              <div class="genre-card">
+                <span class="genre-icon">🏴‍☠️</span>
+                <h3>Piratas</h3>
+                <p>Navíos, abordajes y tesoros de mares vírgenes.</p>
+              </div>
+
+              <div class="genre-card">
+                <span class="genre-icon">🧛</span>
+                <h3>Terror</h3>
+                <p>Tensión, pesadillas y leyendas de la noche.</p>
+              </div>
+
+              <div class="genre-card">
+                <span class="genre-icon">🕵️</span>
+                <h3>Misterio</h3>
+                <p>Enigmas, detectives y crímenes por resolver.</p>
+              </div>
+
+              <div class="genre-card">
+                <span class="genre-icon">🤠</span>
+                <h3>Oeste</h3>
+                <p>Duelos al sol y leyendas de la frontera salvaje.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 8: ¿Por qué PathTale? -->
+          <div id="section-why" class="section-container landing-block">
+            <div class="why-banner-card">
+              <div class="why-content">
+                <span class="why-tag">EL CONCEPTO PATHTALE</span>
+                <h2>No es solo un audiolibro. No es solo un videojuego.</h2>
+                <p>Es una aventura interactiva donde tú tomas el control. Escucha la voz del narrador, siente los efectos de sonido y decide cada paso con tus propias palabras.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 9: CTA Final -->
+          <div id="section-cta" class="section-container landing-block">
+            <div class="final-cta-card">
+              <h2>Empieza tu primera aventura hoy mismo</h2>
+              <p>Descubre mundos donde tu voz y tus decisiones marcan la diferencia. Es totalmente gratis.</p>
+              <button id="btn-landing-cta" class="btn-primary btn-lg" onclick="document.getElementById('section-featured-library').scrollIntoView({behavior: 'smooth'})">
+                🚀 Explorar Catálogo de Aventuras
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 10: Footer Completo -->
+          <footer class="app-footer">
+            <div class="footer-content">
+              <div class="footer-brand-col">
+                <div class="footer-logo">
+                  <img src="/assets/pathtale_logo_clear.png" alt="PathTale" class="logo-img">
+                </div>
+                <p class="footer-desc">Plataforma de audiolibrojuegos interactivos inmersivos guiados por voz.</p>
+              </div>
+
+              <div class="footer-links-col">
+                <h4>Navegación</h4>
+                <ul>
+                  <li><a href="#section-featured-library">Biblioteca</a></li>
+                  <li><a href="#section-whatis">¿Qué es?</a></li>
+                  <li><a href="#section-howworks">Cómo funciona</a></li>
+                  <li><a href="#section-map">Mapa</a></li>
+                </ul>
+              </div>
+
+              <div class="footer-links-col">
+                <h4>Plataforma</h4>
+                <ul>
+                  <li><a href="#section-features">Características</a></li>
+                  <li><a href="#section-stats">Estadísticas</a></li>
+                  <li><a href="#section-genres">Géneros</a></li>
+                  <li><a href="#section-why">¿Por qué PathTale?</a></li>
+                </ul>
+              </div>
+
+              <div class="footer-links-col">
+                <h4>Comunidad & Legal</h4>
+                <ul>
+                  <li><a href="javascript:void(0)" onclick="alert('PathTale v2.5 — Motor de Audiolibrojuegos Interactivas')">Acerca de</a></li>
+                  <li><a href="javascript:void(0)" onclick="alert('Contacto: info@pathtale.com')">Contacto & FAQ</a></li>
+                  <li><a href="javascript:void(0)" onclick="alert('Términos y Privacidad en cumplimiento de la normativa')">Privacidad & Términos</a></li>
+                </ul>
+              </div>
+            </div>
+            <div class="footer-bottom">
+              <p>© 2026 PathTale. Todos los derechos reservados. Creado con pasión para los amantes de los librojuegos.</p>
+            </div>
+          </footer>
+
+          <!-- Section: NARRADORES (Always visible on home) -->
+          <div id="section-narrators" class="section-container" style="margin-top: 2rem;">
+            <div class="section-header">
+              <h2 class="section-title">NARRADORES DESTACADOS</h2>
+            </div>
+            <div id="narrators-grid" class="narrators-grid">
+              <!-- Rendered via JS -->
             </div>
           </div>
         </div>
