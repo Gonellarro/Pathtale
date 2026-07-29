@@ -114,6 +114,9 @@ export function closeAuthModal() {
   if (errEl) errEl.classList.add("hidden");
 }
 
+// Single toggle flag to enable/disable public user registration
+export const ENABLE_PUBLIC_REGISTRATION = false;
+
 export function setAuthMode(mode) {
   state.authMode = mode;
   const tabLogin = document.getElementById("tab-auth-login");
@@ -121,19 +124,49 @@ export function setAuthMode(mode) {
   const modalTitle = document.getElementById("auth-modal-title");
   const submitBtn = document.getElementById("btn-auth-submit");
   const errEl = document.getElementById("auth-error-msg");
+  const usernameInput = document.getElementById("auth-username");
+  const passwordInput = document.getElementById("auth-password");
 
-  if (errEl) errEl.classList.add("hidden");
+  if (errEl) {
+    errEl.classList.add("hidden");
+    errEl.classList.remove("auth-notice");
+  }
 
   if (mode === "register") {
     if (tabLogin) tabLogin.classList.remove("active");
     if (tabRegister) tabRegister.classList.add("active");
     if (modalTitle) modalTitle.textContent = "Crear nueva cuenta";
-    if (submitBtn) submitBtn.textContent = "Registrarse y Entrar";
+
+    if (!ENABLE_PUBLIC_REGISTRATION) {
+      if (errEl) {
+        errEl.textContent = "🔒 Temporalmente deshabilitado. Solo altas con invitación.";
+        errEl.classList.remove("hidden");
+        errEl.classList.add("auth-notice");
+      }
+      if (usernameInput) usernameInput.disabled = true;
+      if (passwordInput) passwordInput.disabled = true;
+      if (submitBtn) {
+        submitBtn.textContent = "Altas por invitación";
+        submitBtn.disabled = true;
+      }
+    } else {
+      if (usernameInput) usernameInput.disabled = false;
+      if (passwordInput) passwordInput.disabled = false;
+      if (submitBtn) {
+        submitBtn.textContent = "Registrarse y Entrar";
+        submitBtn.disabled = false;
+      }
+    }
   } else {
     if (tabLogin) tabLogin.classList.add("active");
     if (tabRegister) tabRegister.classList.remove("active");
     if (modalTitle) modalTitle.textContent = "Iniciar Sesión";
-    if (submitBtn) submitBtn.textContent = "Iniciar Sesión";
+    if (usernameInput) usernameInput.disabled = false;
+    if (passwordInput) passwordInput.disabled = false;
+    if (submitBtn) {
+      submitBtn.textContent = "Iniciar Sesión";
+      submitBtn.disabled = false;
+    }
   }
 }
 

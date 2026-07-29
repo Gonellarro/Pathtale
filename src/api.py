@@ -120,11 +120,13 @@ def require_admin(authorization: Optional[str] = Header(None)) -> Dict[str, Any]
         raise HTTPException(status_code=403, detail="Acceso denegado. Se requiere rol de Administrador.")
     return user
 
-# --- Authentication Endpoints ---
+ENABLE_PUBLIC_REGISTRATION = False  # Single toggle flag: set to True to open public registration
 
 @app.post("/api/auth/register")
 def register(req: RegisterRequest):
     """Registers a new user account."""
+    if not ENABLE_PUBLIC_REGISTRATION:
+        raise HTTPException(status_code=403, detail="Temporalmente deshabilitado. Solo altas con invitación.")
     try:
         user_info = engine.db.register_user(req.username, req.password, req.first_name)
         return {"status": "success", "user": user_info}
