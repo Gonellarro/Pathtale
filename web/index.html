@@ -83,32 +83,45 @@
             </div>
           </div>
 
-          <!-- Section: Continúa Tu Aventura (For Active Savegames) -->
-          <div id="section-continue-reading" class="section-container hidden">
-            <div class="section-header">
-              <h2 class="section-title">CONTINÚA TU AVENTURA</h2>
-            </div>
-            <div id="continue-cards-grid" class="continue-grid">
-              <!-- Active progress cards rendered via JS -->
-            </div>
-          </div>
-
-          <!-- Section: BIBLIOTECA DE AVENTURAS (6 Libros Aleatorios) -->
-          <div id="section-featured-library" class="section-container">
-            <div class="section-header">
-              <h2 class="section-title">BIBLIOTECA DE AVENTURAS</h2>
+          <!-- Container for authenticated home sections (Savegames, 6 featured books & Narrators) -->
+          <div id="authenticated-home-content" class="authenticated-home-content">
+            <!-- Section: Continúa Tu Aventura (For Active Savegames) -->
+            <div id="section-continue-reading" class="section-container hidden">
+              <div class="section-header">
+                <h2 class="section-title">CONTINÚA TU AVENTURA</h2>
+              </div>
+              <div id="continue-cards-grid" class="continue-grid">
+                <!-- Active progress cards rendered via JS -->
+              </div>
             </div>
 
-            <!-- Filter Tag Pills -->
-            <div id="filter-tags-bar" class="tags-filter-bar">
-              <button class="tag-pill active" data-tag="Todos">TODOS</button>
-              <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
-              <!-- Dynamic category/series tags loaded via JS -->
+            <!-- Section: BIBLIOTECA DE AVENTURAS (6 Libros Aleatorios) -->
+            <div id="section-featured-library" class="section-container">
+              <div class="section-header">
+                <h2 class="section-title">BIBLIOTECA DE AVENTURAS</h2>
+              </div>
+
+              <!-- Filter Tag Pills -->
+              <div id="filter-tags-bar" class="tags-filter-bar">
+                <button class="tag-pill active" data-tag="Todos">TODOS</button>
+                <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
+                <!-- Dynamic category/series tags loaded via JS -->
+              </div>
+
+              <!-- Featured 6 Random Books Grid -->
+              <div class="featured-books-grid" id="home-featured-grid">
+                <!-- Rendered via JS -->
+              </div>
             </div>
 
-            <!-- Featured 6 Random Books Grid -->
-            <div class="featured-books-grid" id="home-featured-grid">
-              <!-- Rendered via JS -->
+            <!-- Section: NARRADORES DESTACADOS -->
+            <div id="section-narrators" class="section-container">
+              <div class="section-header">
+                <h2 class="section-title">NARRADORES DESTACADOS</h2>
+              </div>
+              <div id="narrators-grid" class="narrators-grid">
+                <!-- Rendered via JS -->
+              </div>
             </div>
           </div>
 
@@ -535,16 +548,6 @@
               <p>© 2026 PathTale. Todos los derechos reservados. Creado con pasión para los amantes de los librojuegos.</p>
             </div>
           </footer>
-
-          <!-- Section: NARRADORES (Always visible on home) -->
-          <div id="section-narrators" class="section-container" style="margin-top: 2rem;">
-            <div class="section-header">
-              <h2 class="section-title">NARRADORES DESTACADOS</h2>
-            </div>
-            <div id="narrators-grid" class="narrators-grid">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
         </div>
       </section>
 

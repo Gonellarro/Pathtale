@@ -2795,34 +2795,34 @@ body {
   background: linear-gradient(135deg, #1f160a 0%, #120e0c 100%);
   border: 1px solid var(--accent-gold);
   border-radius: var(--radius-lg);
-  padding: 3rem 2.5rem;
+  padding: 1.75rem 1.5rem;
   text-align: center;
   box-shadow: var(--shadow-glow);
 }
 
 .why-tag {
   font-family: 'Cinzel', serif;
-  font-size: 0.75rem;
-  letter-spacing: 0.2em;
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
   color: var(--accent-gold);
   font-weight: 700;
   display: block;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.4rem;
 }
 
 .why-banner-card h2 {
   font-family: 'Cinzel', serif;
-  font-size: 2rem;
+  font-size: 1.35rem;
   color: var(--text-main);
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .why-banner-card p {
-  font-size: 1.05rem;
+  font-size: 0.92rem;
   color: var(--text-muted);
-  max-width: 680px;
+  max-width: 600px;
   margin: 0 auto;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 /* Final CTA Card */
@@ -2830,26 +2830,26 @@ body {
   background: linear-gradient(135deg, rgba(201, 138, 58, 0.18) 0%, rgba(201, 138, 58, 0.05) 100%);
   border: 1px solid var(--accent-gold);
   border-radius: var(--radius-lg);
-  padding: 3.5rem 2rem;
+  padding: 1.75rem 1.5rem;
   text-align: center;
 }
 
 .final-cta-card h2 {
   font-family: 'Cinzel', serif;
-  font-size: 2.2rem;
+  font-size: 1.4rem;
   color: var(--text-main);
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.4rem;
 }
 
 .final-cta-card p {
-  font-size: 1.05rem;
+  font-size: 0.92rem;
   color: var(--text-muted);
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
 }
 
 .btn-lg {
-  padding: 0.9rem 2.2rem;
-  font-size: 1.05rem;
+  padding: 0.65rem 1.6rem;
+  font-size: 0.92rem;
   border-radius: var(--radius-md);
 }
 
