@@ -75,42 +75,45 @@
             </div>
           </div>
 
-          <!-- Section: Continúa Tu Aventura -->
-          <div id="section-continue-reading" class="section-container hidden">
-            <div class="section-header">
-              <h2 class="section-title">CONTINÚA TU AVENTURA</h2>
-            </div>
-            <div id="continue-cards-grid" class="continue-grid">
-              <!-- Active progress cards rendered via JS -->
-            </div>
-          </div>
-
-          <!-- Section: BIBLIOTECA DE AVENTURAS (6 Libros Aleatorios) -->
-          <div class="section-container">
-            <div class="section-header">
-              <h2 class="section-title">BIBLIOTECA DE AVENTURAS</h2>
+          <!-- Container for home sections (Visible ONLY when logged in) -->
+          <div id="authenticated-home-content" class="authenticated-home-content hidden">
+            <!-- Section: Continúa Tu Aventura -->
+            <div id="section-continue-reading" class="section-container hidden">
+              <div class="section-header">
+                <h2 class="section-title">CONTINÚA TU AVENTURA</h2>
+              </div>
+              <div id="continue-cards-grid" class="continue-grid">
+                <!-- Active progress cards rendered via JS -->
+              </div>
             </div>
 
-            <!-- Filter Tag Pills -->
-            <div id="filter-tags-bar" class="tags-filter-bar">
-              <button class="tag-pill active" data-tag="Todos">TODOS</button>
-              <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
-              <!-- Dynamic category/series tags loaded via JS -->
+            <!-- Section: BIBLIOTECA DE AVENTURAS (6 Libros Aleatorios) -->
+            <div class="section-container">
+              <div class="section-header">
+                <h2 class="section-title">BIBLIOTECA DE AVENTURAS</h2>
+              </div>
+
+              <!-- Filter Tag Pills -->
+              <div id="filter-tags-bar" class="tags-filter-bar">
+                <button class="tag-pill active" data-tag="Todos">TODOS</button>
+                <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
+                <!-- Dynamic category/series tags loaded via JS -->
+              </div>
+
+              <!-- Featured 6 Random Books Grid -->
+              <div class="featured-books-grid" id="home-featured-grid">
+                <!-- Rendered via JS -->
+              </div>
             </div>
 
-            <!-- Featured 6 Random Books Grid -->
-            <div class="featured-books-grid" id="home-featured-grid">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-
-          <!-- Section: NARRADORES -->
-          <div id="section-narrators" class="section-container">
-            <div class="section-header">
-              <h2 class="section-title">NARRADORES</h2>
-            </div>
-            <div id="narrators-grid" class="narrators-grid">
-              <!-- Rendered via JS -->
+            <!-- Section: NARRADORES -->
+            <div id="section-narrators" class="section-container">
+              <div class="section-header">
+                <h2 class="section-title">NARRADORES</h2>
+              </div>
+              <div id="narrators-grid" class="narrators-grid">
+                <!-- Rendered via JS -->
+              </div>
             </div>
           </div>
         </div>

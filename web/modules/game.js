@@ -31,10 +31,18 @@ export function showHomeView() {
   if (views.home) { views.home.classList.add("active"); views.home.classList.remove("hidden"); }
   if (navBtns.library) navBtns.library.classList.remove("active");
   updateAuthUI();
-  checkLastActiveGame(startGame);
-  loadInProgressSection(startGame);
-  loadFeaturedLibrary(startGame);
-  loadNarratorsSection();
+
+  const authContent = document.getElementById("authenticated-home-content");
+
+  if (state.authToken && state.currentUser) {
+    if (authContent) authContent.classList.remove("hidden");
+    checkLastActiveGame(startGame);
+    loadInProgressSection(startGame);
+    loadFeaturedLibrary(startGame);
+    loadNarratorsSection();
+  } else {
+    if (authContent) authContent.classList.add("hidden");
+  }
 }
 
 export function showFullLibraryView() {
