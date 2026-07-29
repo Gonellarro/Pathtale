@@ -2136,6 +2136,22 @@ body {
   border: 1px solid rgba(201, 138, 58, 0.3);
 }
 
+.admin-badge.admin-badge-tier {
+  background: rgba(201, 138, 58, 0.08);
+  color: var(--accent-gold);
+  border: 1px dashed rgba(201, 138, 58, 0.35);
+}
+
+/* Locked Card styles */
+.book-card.card-locked {
+  opacity: 0.85;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.book-card.card-locked:hover {
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
 .admin-upload-zone {
   border: 2px dashed rgba(201, 138, 58, 0.35);
   border-radius: var(--radius-lg);

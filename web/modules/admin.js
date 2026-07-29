@@ -61,6 +61,7 @@ export async function loadAdminUsers() {
             <th>Usuario</th>
             <th>Nombre</th>
             <th>Rol</th>
+            <th>Plan / Tier</th>
             <th>Fecha Registro</th>
             <th>Acciones</th>
           </tr>
@@ -76,9 +77,15 @@ export async function loadAdminUsers() {
                   ${u.role === 'admin' ? '⚡ ADMIN' : 'USER'}
                 </span>
               </td>
+              <td>
+                <span class="admin-badge admin-badge-tier">
+                  💳 ${escapeHtml(u.tier_name || 'Demo Gratuita')}
+                </span>
+              </td>
               <td>${formatTimeAgo(u.created_at)}</td>
               <td class="td-actions">
                 <button class="btn-secondary btn-sm btn-edit-user" data-id="${u.user_id}" data-name="${escapeHtml(u.first_name || '')}" data-role="${u.role}">✏️ Editar</button>
+                <button class="btn-secondary btn-sm btn-tier-user" data-id="${u.user_id}" data-name="${escapeHtml(u.username)}" data-tier="${u.tier_id || 1}">💳 Tier</button>
                 ${u.user_id !== 1 ? `<button class="btn-secondary btn-sm btn-delete-user" data-id="${u.user_id}" style="color: #ff6b6b">🗑️</button>` : ''}
               </td>
             </tr>
@@ -87,13 +94,22 @@ export async function loadAdminUsers() {
       </table>
     `;
 
-    // Bind edit/delete
+    // Bind edit/tier/delete
     container.querySelectorAll(".btn-edit-user").forEach(btn => {
       btn.onclick = () => {
         const uid = btn.getAttribute("data-id");
         const fname = btn.getAttribute("data-name");
         const urole = btn.getAttribute("data-role");
         promptEditUser(uid, fname, urole);
+      };
+    });
+
+    container.querySelectorAll(".btn-tier-user").forEach(btn => {
+      btn.onclick = () => {
+        const uid = btn.getAttribute("data-id");
+        const uname = btn.getAttribute("data-name");
+        const utier = btn.getAttribute("data-tier");
+        promptUserSubscription(uid, uname, utier);
       };
     });
 
@@ -112,6 +128,43 @@ export async function loadAdminUsers() {
     }
   } catch (err) {
     console.error("Error loading admin users:", err);
+  }
+}
+
+async function promptUserSubscription(userId, username, currentTierId) {
+  const tierChoice = prompt(
+    `Selecciona el Nivel de Membresía para @${username}:\n1 = Demo Gratuita\n2 = Tier 1 (Bronce)\n3 = Tier 2 (Plata)\n4 = Tier 3 (Oro)`,
+    currentTierId || "1"
+  );
+  if (!tierChoice) return;
+  const tierId = parseInt(tierChoice);
+  if (isNaN(tierId) || tierId < 1 || tierId > 4) {
+    alert("❌ Nivel no válido. Debe ser 1, 2, 3 o 4.");
+    return;
+  }
+
+  const durationChoice = prompt(
+    `Duración en días para la suscripción de @${username}:\nEscribe 0 para Permanente / Sin Caducidad,\no número de días (ej: 30 para 1 mes, 365 para 1 año):`,
+    "0"
+  );
+  if (durationChoice === null) return;
+  const durationDays = parseInt(durationChoice) || 0;
+
+  try {
+    const res = await authFetch(`${API_BASE}/api/admin/users/${userId}/subscription`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tier_id: tierId, duration_days: durationDays })
+    });
+    if (res.ok) {
+      alert(`✅ Suscripción de @${username} actualizada.`);
+      loadAdminUsers();
+    } else {
+      const data = await res.json();
+      alert(`❌ Error: ${data.detail}`);
+    }
+  } catch (err) {
+    alert(`❌ Error al conectar: ${err.message}`);
   }
 }
 
@@ -200,6 +253,7 @@ export async function loadAdminBooks() {
             <th>Título</th>
             <th>Autor</th>
             <th>Narrador</th>
+            <th>Nivel Tier</th>
             <th>Género / Serie</th>
             <th>Secciones</th>
             <th>Acciones</th>
@@ -216,16 +270,31 @@ export async function loadAdminBooks() {
               <td class="td-title"><strong>${escapeHtml(b.title)}</strong><br><small style="color:var(--text-muted)">ID: ${b.book_id}</small></td>
               <td class="td-author">${escapeHtml(b.author || 'Desconocido')}</td>
               <td><span class="admin-badge admin-badge-narrator">🎙️ ${escapeHtml(b.narrator_name || 'DaveFX')}</span></td>
+              <td>
+                <span class="admin-badge admin-badge-tier">
+                  🔒 ${escapeHtml(b.tier_name || 'Demo Gratuita')}
+                </span>
+              </td>
               <td class="td-genre">${escapeHtml(b.genre || b.series || '-')}</td>
               <td>${b.total_sections || 0} caps.</td>
               <td class="td-actions">
-                <button class="btn-secondary btn-sm btn-delete-book" data-id="${b.book_id}" style="color: #ff6b6b">🗑️ Eliminar</button>
+                <button class="btn-secondary btn-sm btn-tier-book" data-id="${b.book_id}" data-title="${escapeHtml(b.title)}" data-tier="${b.tier_id || 1}">🏷️ Tier</button>
+                <button class="btn-secondary btn-sm btn-delete-book" data-id="${b.book_id}" style="color: #ff6b6b">🗑️</button>
               </td>
             </tr>
           `).join("")}
         </tbody>
       </table>
     `;
+
+    container.querySelectorAll(".btn-tier-book").forEach(btn => {
+      btn.onclick = () => {
+        const bid = btn.getAttribute("data-id");
+        const btitle = btn.getAttribute("data-title");
+        const btier = btn.getAttribute("data-tier");
+        promptBookTier(bid, btitle, btier);
+      };
+    });
 
     container.querySelectorAll(".btn-delete-book").forEach(btn => {
       btn.onclick = () => {
@@ -237,6 +306,36 @@ export async function loadAdminBooks() {
     });
   } catch (err) {
     console.error("Error loading admin books:", err);
+  }
+}
+
+async function promptBookTier(bookId, bookTitle, currentTierId) {
+  const tierChoice = prompt(
+    `Selecciona el Nivel de Membresía requerido para '${bookTitle}':\n1 = Demo Gratuita\n2 = Tier 1 (Bronce)\n3 = Tier 2 (Plata)\n4 = Tier 3 (Oro)`,
+    currentTierId || "1"
+  );
+  if (!tierChoice) return;
+  const tierId = parseInt(tierChoice);
+  if (isNaN(tierId) || tierId < 1 || tierId > 4) {
+    alert("❌ Nivel no válido. Debe ser 1, 2, 3 o 4.");
+    return;
+  }
+
+  try {
+    const res = await authFetch(`${API_BASE}/api/admin/books/${bookId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tier_id: tierId })
+    });
+    if (res.ok) {
+      alert(`✅ Nivel requerido para '${bookTitle}' actualizado.`);
+      loadAdminBooks();
+    } else {
+      const data = await res.json();
+      alert(`❌ Error: ${data.detail}`);
+    }
+  } catch (err) {
+    alert(`❌ Error al conectar: ${err.message}`);
   }
 }
 

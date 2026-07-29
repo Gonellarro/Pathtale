@@ -161,7 +161,46 @@ class Database:
 
             cursor.execute("UPDATE books SET narrator_id = 1 WHERE narrator_id IS NULL OR narrator_id = 0")
 
-            # 7. Book Genres intermediate table (N:M relation in 3FN)
+            # 7. Subscription Tiers table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS subscription_tiers (
+                    tier_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code TEXT UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    level INTEGER NOT NULL DEFAULT 0,
+                    description TEXT
+                )
+            """)
+
+            # Seed subscription tiers
+            cursor.execute("INSERT OR IGNORE INTO subscription_tiers (tier_id, code, name, level, description) VALUES (1, 'demo', 'Demo Gratuita', 0, 'Acceso únicamente a audiolibros gratuitos de prueba')")
+            cursor.execute("INSERT OR IGNORE INTO subscription_tiers (tier_id, code, name, level, description) VALUES (2, 'tier1', 'Tier 1 - Bronce', 1, 'Acceso a libros Demo y Tier 1')")
+            cursor.execute("INSERT OR IGNORE INTO subscription_tiers (tier_id, code, name, level, description) VALUES (3, 'tier2', 'Tier 2 - Plata', 2, 'Acceso a libros Demo, Tier 1 y Tier 2')")
+            cursor.execute("INSERT OR IGNORE INTO subscription_tiers (tier_id, code, name, level, description) VALUES (4, 'tier3', 'Tier 3 - Oro', 3, 'Acceso ilimitado a todo el catálogo (Demo, Tier 1, 2 y 3)')")
+
+            # Migration for tier_id in books if table existed without it
+            try:
+                cursor.execute("ALTER TABLE books ADD COLUMN tier_id INTEGER DEFAULT 1")
+            except Exception:
+                pass
+
+            cursor.execute("UPDATE books SET tier_id = 1 WHERE tier_id IS NULL OR tier_id = 0")
+
+            # 8. User Subscriptions table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_subscriptions (
+                    subscription_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    tier_id INTEGER NOT NULL DEFAULT 1,
+                    start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    end_date TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                    FOREIGN KEY (tier_id) REFERENCES subscription_tiers(tier_id) ON DELETE RESTRICT
+                )
+            """)
+
+            # 9. Book Genres intermediate table (N:M relation in 3FN)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS book_genres (
                     book_id TEXT NOT NULL,
@@ -373,15 +412,85 @@ class Database:
                 )
                 conn.commit()
 
+    # --- Subscriptions & Tier Management ---
+
+    def get_all_subscription_tiers(self) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM subscription_tiers ORDER BY level ASC")
+            return [dict(r) for r in cursor.fetchall()]
+
+    def get_user_active_tier(self, user_id: int) -> Dict[str, Any]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT t.tier_id, t.code, t.name, t.level, t.description, s.end_date
+                FROM user_subscriptions s
+                JOIN subscription_tiers t ON s.tier_id = t.tier_id
+                WHERE s.user_id = ?
+                  AND (s.end_date IS NULL OR s.end_date >= CURRENT_TIMESTAMP)
+                ORDER BY t.level DESC, s.created_at DESC
+                LIMIT 1
+            """, (user_id,))
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+
+            cursor.execute("SELECT tier_id, code, name, level, description FROM subscription_tiers WHERE code = 'demo'")
+            demo_row = cursor.fetchone()
+            res = dict(demo_row) if demo_row else {"tier_id": 1, "code": "demo", "name": "Demo Gratuita", "level": 0}
+            res["end_date"] = None
+            return res
+
+    def assign_user_subscription(self, user_id: int, tier_id: int, duration_days: Optional[int] = None):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            end_date = None
+            if duration_days and int(duration_days) > 0:
+                cursor.execute("SELECT datetime('now', '+' || ? || ' days')", (int(duration_days),))
+                end_date = cursor.fetchone()[0]
+
+            cursor.execute("""
+                INSERT INTO user_subscriptions (user_id, tier_id, end_date)
+                VALUES (?, ?, ?)
+            """, (user_id, tier_id, end_date))
+            conn.commit()
+
+    def get_book_tier(self, book_id: str) -> Dict[str, Any]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT t.tier_id, t.code, t.name, t.level
+                FROM books b
+                LEFT JOIN subscription_tiers t ON b.tier_id = t.tier_id
+                WHERE b.book_id = ?
+            """, (book_id,))
+            row = cursor.fetchone()
+            if row and row["tier_id"]:
+                return dict(row)
+            return {"tier_id": 1, "code": "demo", "name": "Demo Gratuita", "level": 0}
+
     # --- Admin Users Management ---
 
     def get_all_users_admin(self) -> List[Dict[str, Any]]:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT u.user_id, u.username, u.first_name, u.created_at, r.name as role
+                SELECT u.user_id, u.username, u.first_name, u.created_at, r.name as role,
+                       COALESCE(st.name, 'Demo Gratuita') as tier_name,
+                       COALESCE(st.code, 'demo') as tier_code,
+                       COALESCE(st.level, 0) as tier_level,
+                       us.end_date as tier_end_date,
+                       COALESCE(st.tier_id, 1) as tier_id
                 FROM users u
                 LEFT JOIN roles r ON u.role_id = r.role_id
+                LEFT JOIN (
+                    SELECT user_id, tier_id, end_date,
+                           ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC) as rn
+                    FROM user_subscriptions
+                    WHERE end_date IS NULL OR end_date >= CURRENT_TIMESTAMP
+                ) us ON u.user_id = us.user_id AND us.rn = 1
+                LEFT JOIN subscription_tiers st ON us.tier_id = st.tier_id
                 ORDER BY u.user_id ASC
             """)
             rows = cursor.fetchall()
@@ -611,9 +720,13 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT b.*, n.display_name as narrator_name
+                SELECT b.*, n.display_name as narrator_name,
+                       COALESCE(st.name, 'Demo Gratuita') as tier_name,
+                       COALESCE(st.code, 'demo') as tier_code,
+                       COALESCE(st.level, 0) as tier_level
                 FROM books b
                 LEFT JOIN narrators n ON b.narrator_id = n.narrator_id
+                LEFT JOIN subscription_tiers st ON b.tier_id = st.tier_id
                 ORDER BY b.created_at DESC
             """)
             rows = cursor.fetchall()
@@ -622,7 +735,7 @@ class Database:
     def update_book_admin(self, book_id: str, updates: Dict[str, Any]):
         fields = []
         values = []
-        for k in ["title", "author", "genre", "series", "volume", "description", "language", "narrator_id"]:
+        for k in ["title", "author", "genre", "series", "volume", "description", "language", "narrator_id", "tier_id"]:
             if k in updates and updates[k] is not None:
                 fields.append(f"{k} = ?")
                 values.append(updates[k])

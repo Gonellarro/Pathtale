@@ -87,11 +87,16 @@ class AdminBookUpdateRequest(BaseModel):
     title: Optional[str] = None
     author: Optional[str] = None
     narrator_id: Optional[int] = None
+    tier_id: Optional[int] = None
     genre: Optional[str] = None
     series: Optional[str] = None
     volume: Optional[int] = None
     description: Optional[str] = None
     language: Optional[str] = None
+
+class AdminUserSubscriptionRequest(BaseModel):
+    tier_id: int
+    duration_days: Optional[int] = None
 
 # Helper to resolve user_id from Authorization Bearer header or fallback
 def resolve_user_id(authorization: Optional[str] = Header(None), query_user_id: Optional[int] = None) -> int:
@@ -144,22 +149,31 @@ def logout(authorization: Optional[str] = Header(None)):
 
 @app.get("/api/auth/me")
 def get_me(authorization: Optional[str] = Header(None)):
-    """Returns profile and statistics for currently authenticated user."""
+    """Returns profile, subscription tier, and statistics for currently authenticated user."""
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
         user = engine.db.get_user_by_token(token)
         if user:
             stats = engine.db.get_user_stats(user["user_id"])
+            active_tier = engine.db.get_user_active_tier(user["user_id"])
             return {
                 "authenticated": True,
                 "user": user,
+                "tier": active_tier,
                 "stats": stats
             }
     return {
         "authenticated": False,
         "user": {"user_id": 1, "username": "invitado", "first_name": "Invitado", "settings": {}},
+        "tier": {"tier_id": 1, "code": "demo", "name": "Demo Gratuita", "level": 0},
         "stats": {"books_started": 0, "decisions_made": 0}
     }
+
+@app.get("/api/subscription_tiers")
+def get_subscription_tiers():
+    """Returns list of all available subscription tiers."""
+    tiers = engine.db.get_all_subscription_tiers()
+    return {"tiers": tiers}
 
 # --- REST API Game Endpoints ---
 
@@ -186,15 +200,18 @@ def list_books(
 ):
     """Returns a list of imported books with rich metadata and user progress status."""
     current_uid = resolve_user_id(authorization, user_id)
+    user_tier = engine.db.get_user_active_tier(current_uid)
     books = engine.list_books()
 
     is_en_curso_filter = tag and tag.lower() == "en curso"
-
-    # Exclude books currently in-progress if random_sample is requested (unless filtering specifically for "EN CURSO")
     in_progress_ids = set()
+
     if random_sample and not is_en_curso_filter:
-        in_progress_saves = engine.db.get_in_progress_games(current_uid, limit=50)
-        in_progress_ids = set(s["book_id"] for s in in_progress_saves)
+        in_progress_list = engine.db.get_in_progress_games(current_uid, limit=10)
+        in_progress_ids = set(g["book_id"] for g in in_progress_list)
+
+    if narrator and narrator.lower() != "todos":
+        books = [b for b in books if (engine.books.get(b["book_id"], {}).get("narrator") or "DaveFX").lower() == narrator.lower()]
 
     result = []
     
@@ -237,6 +254,9 @@ def list_books(
                 if not matches_tag:
                     continue
 
+        book_tier = engine.db.get_book_tier(b_id)
+        is_locked = book_tier["level"] > user_tier["level"]
+
         result.append({
             "book_id": b_id,
             "title": full_data.get("title", b_id),
@@ -258,6 +278,11 @@ def list_books(
             "progress_percent": progress_pct,
             "status": status,
             "narrator": full_data.get("narrator") or "DaveFX",
+            "tier_id": book_tier["tier_id"],
+            "tier_code": book_tier["code"],
+            "tier_name": book_tier["name"],
+            "tier_level": book_tier["level"],
+            "is_locked": is_locked,
             "rating": 4.8
         })
 
@@ -422,6 +447,12 @@ async def admin_upload_epub_book(file: UploadFile = File(...), authorization: Op
         "book_folder": str(book_folder.name)
     }
 
+@app.post("/api/admin/users/{user_id}/subscription")
+def admin_assign_user_subscription(user_id: int, req: AdminUserSubscriptionRequest, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    engine.db.assign_user_subscription(user_id, req.tier_id, req.duration_days)
+    return {"status": "success", "message": f"Suscripción del usuario #{user_id} actualizada correctamente."}
+
 @app.get("/api/admin/logs")
 def admin_list_logs(limit: int = Query(50), authorization: Optional[str] = Header(None)):
     require_admin(authorization)
@@ -438,8 +469,19 @@ def get_book_asset(book_id: str, subpath: str):
 
 @app.post("/api/games")
 def start_game(req: StartGameRequest, authorization: Optional[str] = Header(None)):
-    """Starts or resets a game session for a user and book."""
+    """Starts or resets a game session for a user and book after tier enforcement."""
     uid = resolve_user_id(authorization, req.user_id)
+
+    # Subscription Tier Access Enforcement
+    user_tier = engine.db.get_user_active_tier(uid)
+    book_tier = engine.db.get_book_tier(req.book_id)
+
+    if book_tier["level"] > user_tier["level"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Este audiolibro requiere la membresía '{book_tier['name']}'. Tu nivel actual es '{user_tier['name']}'."
+        )
+
     state = engine.start_game(uid, req.book_id)
     if not state:
         raise HTTPException(status_code=400, detail="Could not start game session")

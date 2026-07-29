@@ -355,8 +355,9 @@ export function renderFullLibrary(books, startGameFn) {
           ${books.map(b => {
             const langFlag = (b.language && b.language.toLowerCase().startsWith("en")) ? "🇬🇧" : "🇪🇸";
             const seriesText = b.series ? `${b.series}${b.volume ? ' #' + b.volume : ''}` : (b.genre || "-");
+            const isLocked = b.is_locked;
             return `
-              <tr>
+              <tr class="${isLocked ? 'row-locked' : ''}">
                 <td class="td-thumb">
                   ${b.cover_image_url 
                     ? `<img src="${b.cover_image_url}?v=${Date.now()}" alt="${escapeHtml(b.title)}" class="table-thumb-img">`
@@ -364,6 +365,7 @@ export function renderFullLibrary(books, startGameFn) {
                 </td>
                 <td class="td-title">
                   <strong>${langFlag} ${escapeHtml(b.title)}</strong>
+                  ${isLocked ? `<br><span class="admin-badge" style="background:rgba(239, 68, 68, 0.15); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); margin-top:0.2rem; font-size:0.68rem">🔒 ${escapeHtml(b.tier_name)}</span>` : ''}
                 </td>
                 <td class="td-author">${escapeHtml(b.author || "Desconocido")}</td>
                 <td class="td-genre">${escapeHtml(seriesText)}</td>
@@ -374,7 +376,11 @@ export function renderFullLibrary(books, startGameFn) {
                   <span class="table-progress-pct">${b.progress_percent || 0}%</span>
                 </td>
                 <td class="td-actions">
-                  ${b.has_savegame ? `
+                  ${isLocked ? `
+                    <button class="btn-secondary btn-sm" data-action="locked" data-book-id="${b.book_id}" style="color:#ef4444">
+                      🔒 ${escapeHtml(b.tier_name)}
+                    </button>
+                  ` : b.has_savegame ? `
                     <button class="btn-primary btn-sm" data-action="continue" data-book-id="${b.book_id}">
                       ▶ Continuar
                     </button>
@@ -406,14 +412,16 @@ export function renderFullLibrary(books, startGameFn) {
     container.innerHTML = books.map(b => {
       const langFlag = (b.language && b.language.toLowerCase().startsWith("en")) ? "🇬🇧" : "🇪🇸";
       const seriesText = b.series ? `📚 ${escapeHtml(b.series)}${b.volume ? ' #' + b.volume : ''}` : "";
+      const isLocked = b.is_locked;
 
       return `
-        <div class="book-card">
+        <div class="book-card ${isLocked ? 'card-locked' : ''}">
           <div class="book-cover">
             ${b.cover_image_url 
               ? `<img src="${b.cover_image_url}?v=${Date.now()}" alt="${escapeHtml(b.title)}">` 
               : `<div class="book-cover-placeholder">📜</div>`}
             <span class="book-badge">${langFlag} ${b.total_sections} secc.</span>
+            ${isLocked ? `<span class="card-status-badge tier-locked-badge" style="background:#ef4444; color:#fff">🔒 ${escapeHtml(b.tier_name)}</span>` : ''}
           </div>
           <div class="book-info">
             <h3 class="book-title">${langFlag} ${escapeHtml(b.title)}</h3>
@@ -432,7 +440,11 @@ export function renderFullLibrary(books, startGameFn) {
             </div>
           </div>
           <div class="book-actions">
-            ${b.has_savegame ? `
+            ${isLocked ? `
+              <button class="btn-secondary" data-action="locked" data-book-id="${b.book_id}" style="color:#ef4444">
+                <span>🔒 Requiere ${escapeHtml(b.tier_name)}</span>
+              </button>
+            ` : b.has_savegame ? `
               <button class="btn-primary" data-action="continue" data-book-id="${b.book_id}">
                 <span>▶ Continuar</span>
               </button>
@@ -456,6 +468,13 @@ export function renderFullLibrary(books, startGameFn) {
       e.stopPropagation();
       const action = btn.getAttribute("data-action");
       const bookId = btn.getAttribute("data-book-id");
+      const book = books.find(b => b.book_id === bookId);
+
+      if (action === "locked" || (book && book.is_locked)) {
+        alert(`🔒 Este audiolibro requiere la membresía '${book ? book.tier_name : 'Superior'}'. Tu plan actual no permite acceder a este contenido. Contacta con el administrador.`);
+        return;
+      }
+
       if (action === "continue" || action === "start") {
         if (startGameFn) startGameFn(bookId, action === "start");
       } else if (action === "restart") {
