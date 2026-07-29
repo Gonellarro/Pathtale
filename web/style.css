@@ -2046,3 +2046,94 @@ body {
 .landing-auth-footer a:hover {
   color: var(--accent-gold);
 }
+
+/* Admin Dashboard Styles */
+.admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+  overflow-x: auto;
+}
+
+.admin-tab {
+  font-family: 'Cinzel', serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 1.2rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.admin-tab:hover {
+  color: var(--accent-gold);
+  border-color: rgba(201, 138, 58, 0.3);
+}
+
+.admin-tab.active {
+  color: #0c0906;
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(201, 138, 58, 0.3);
+}
+
+.admin-panel {
+  display: none;
+}
+
+.admin-panel.active {
+  display: block;
+}
+
+.admin-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.admin-upload-zone {
+  border: 2px dashed rgba(201, 138, 58, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 2.2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-bottom: 1.5rem;
+  background: rgba(201, 138, 58, 0.03);
+}
+
+.admin-upload-zone:hover,
+.admin-upload-zone.dragover {
+  border-color: var(--accent-gold);
+  background: rgba(201, 138, 58, 0.08);
+  transform: translateY(-2px);
+}
+
+.upload-icon {
+  font-size: 2.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.upload-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  opacity: 0.8;
+}
+
+.upload-progress {
+  text-align: center;
+  padding: 2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+}

@@ -5,16 +5,19 @@
 import { state, authFetch, escapeHtml, formatTimeAgo, API_BASE } from "./state.js";
 import { openAuthModal, updateAuthUI } from "./auth.js";
 import { checkLastActiveGame, loadInProgressSection, loadFeaturedLibrary, loadNarratorsSection, loadFullLibrary } from "./library.js";
+import { loadAdminDashboard } from "./admin.js";
 
 const views = {
   home: document.getElementById("view-home"),
   library: document.getElementById("view-library"),
+  admin: document.getElementById("view-admin"),
   game: document.getElementById("view-game")
 };
 
 const navBtns = {
   library: document.getElementById("btn-nav-library"),
-  history: document.getElementById("btn-nav-history")
+  history: document.getElementById("btn-nav-history"),
+  admin: document.getElementById("btn-nav-admin")
 };
 
 const audioPlayer = document.getElementById("html-audio-player");
@@ -28,6 +31,7 @@ export function showHomeView() {
   if (audioPlayer) audioPlayer.pause();
   if (views.game) { views.game.classList.remove("active"); views.game.classList.add("hidden"); }
   if (views.library) { views.library.classList.remove("active"); views.library.classList.add("hidden"); }
+  if (views.admin) { views.admin.classList.remove("active"); views.admin.classList.add("hidden"); }
   if (views.home) { views.home.classList.add("active"); views.home.classList.remove("hidden"); }
   if (navBtns.library) navBtns.library.classList.remove("active");
   updateAuthUI();
@@ -49,10 +53,25 @@ export function showFullLibraryView() {
   if (audioPlayer) audioPlayer.pause();
   if (views.game) { views.game.classList.remove("active"); views.game.classList.add("hidden"); }
   if (views.home) { views.home.classList.remove("active"); views.home.classList.add("hidden"); }
+  if (views.admin) { views.admin.classList.remove("active"); views.admin.classList.add("hidden"); }
   if (views.library) { views.library.classList.add("active"); views.library.classList.remove("hidden"); }
   if (navBtns.library) navBtns.library.classList.add("active");
   updateAuthUI();
   loadFullLibrary(startGame);
+}
+
+export function showAdminView() {
+  const role = state.currentUser ? (state.currentUser.role || state.currentUser.role_name) : null;
+  if (!state.authToken || role !== "admin") return;
+
+  if (audioPlayer) audioPlayer.pause();
+  if (views.game) { views.game.classList.remove("active"); views.game.classList.add("hidden"); }
+  if (views.home) { views.home.classList.remove("active"); views.home.classList.add("hidden"); }
+  if (views.library) { views.library.classList.remove("active"); views.library.classList.add("hidden"); }
+  if (views.admin) { views.admin.classList.add("active"); views.admin.classList.remove("hidden"); }
+  if (navBtns.library) navBtns.library.classList.remove("active");
+  updateAuthUI();
+  loadAdminDashboard();
 }
 
 export function showGameView() {
@@ -62,6 +81,7 @@ export function showGameView() {
   }
   if (views.home) { views.home.classList.remove("active"); views.home.classList.add("hidden"); }
   if (views.library) { views.library.classList.remove("active"); views.library.classList.add("hidden"); }
+  if (views.admin) { views.admin.classList.remove("active"); views.admin.classList.add("hidden"); }
   if (views.game) { views.game.classList.add("active"); views.game.classList.remove("hidden"); }
   if (navBtns.library) navBtns.library.classList.remove("active");
   updateAuthUI();

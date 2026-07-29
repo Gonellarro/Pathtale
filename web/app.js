@@ -11,7 +11,7 @@ import {
 } from "./modules/audio.js";
 import { setLibraryViewMode, confirmRestartGame } from "./modules/library.js";
 import { 
-  showHomeView, showFullLibraryView, showGameView, startGame, submitChoice, 
+  showHomeView, showFullLibraryView, showAdminView, showGameView, startGame, submitChoice, 
   jumpToSection, goBackHistory, initVoiceControls, toggleVoiceRecording, 
   toggleHistoryDrawer 
 } from "./modules/game.js";
@@ -19,6 +19,7 @@ import {
 const audioPlayer = document.getElementById("html-audio-player");
 const navBtns = {
   library: document.getElementById("btn-nav-library"),
+  admin: document.getElementById("btn-nav-admin"),
   history: document.getElementById("btn-nav-history")
 };
 
@@ -36,6 +37,7 @@ function initEventListeners() {
   const navBrand = document.getElementById("nav-brand");
   if (navBrand) navBrand.addEventListener("click", showHomeView);
   if (navBtns.library) navBtns.library.addEventListener("click", showFullLibraryView);
+  if (navBtns.admin) navBtns.admin.addEventListener("click", showAdminView);
   const btnProfile = document.getElementById("btn-nav-profile");
   if (btnProfile) btnProfile.addEventListener("click", toggleSettingsModal);
   if (navBtns.history) navBtns.history.addEventListener("click", toggleHistoryDrawer);

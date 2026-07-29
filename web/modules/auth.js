@@ -30,6 +30,7 @@ export function updateAuthUI() {
   const btnLogin = document.getElementById("btn-nav-login");
   const btnNavLib = document.getElementById("btn-nav-library");
   const btnNavProf = document.getElementById("btn-nav-profile");
+  const btnNavAdmin = document.getElementById("btn-nav-admin");
   const profileName = document.getElementById("profile-user-name");
   const profileSub = document.getElementById("profile-user-sub");
   const btnLogout = document.getElementById("btn-logout");
@@ -38,9 +39,16 @@ export function updateAuthUI() {
   const libraryToolbar = document.getElementById("library-toolbar");
   const libraryGrid = document.getElementById("library-grid");
 
+  const role = state.currentUser ? (state.currentUser.role || state.currentUser.role_name) : null;
+  const isAdmin = role === "admin";
+
   if (state.currentUser && state.authToken) {
     if (btnNavLib) btnNavLib.classList.remove("hidden");
     if (btnNavProf) btnNavProf.classList.remove("hidden");
+    if (btnNavAdmin) {
+      if (isAdmin) btnNavAdmin.classList.remove("hidden");
+      else btnNavAdmin.classList.add("hidden");
+    }
     if (btnLogin) btnLogin.classList.add("hidden");
 
     if (landingTagline) landingTagline.classList.add("hidden");
@@ -48,11 +56,12 @@ export function updateAuthUI() {
     if (libraryGrid) libraryGrid.classList.remove("hidden");
 
     if (profileName) profileName.textContent = state.currentUser.first_name || state.currentUser.username;
-    if (profileSub) profileSub.textContent = `Cuenta: @${state.currentUser.username}`;
+    if (profileSub) profileSub.textContent = `Cuenta: @${state.currentUser.username} ${isAdmin ? '(⚡ Admin)' : ''}`;
     if (btnLogout) btnLogout.classList.remove("hidden");
   } else {
     if (btnNavLib) btnNavLib.classList.add("hidden");
     if (btnNavProf) btnNavProf.classList.add("hidden");
+    if (btnNavAdmin) btnNavAdmin.classList.add("hidden");
     if (btnLogin) btnLogin.classList.remove("hidden");
 
     if (landingTagline) landingTagline.classList.remove("hidden");

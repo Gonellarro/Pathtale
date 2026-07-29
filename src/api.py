@@ -58,6 +58,41 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+# Admin Pydantic Request Models
+class AdminUserCreateRequest(BaseModel):
+    username: str
+    password: str
+    first_name: Optional[str] = None
+    role: Optional[str] = "user"
+
+class AdminUserUpdateRequest(BaseModel):
+    first_name: Optional[str] = None
+    role: Optional[str] = None
+    password: Optional[str] = None
+
+class AdminNarratorCreateRequest(BaseModel):
+    name: str
+    display_name: str
+    specialty: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+
+class AdminNarratorUpdateRequest(BaseModel):
+    display_name: Optional[str] = None
+    specialty: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+
+class AdminBookUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    author: Optional[str] = None
+    narrator_id: Optional[int] = None
+    genre: Optional[str] = None
+    series: Optional[str] = None
+    volume: Optional[int] = None
+    description: Optional[str] = None
+    language: Optional[str] = None
+
 # Helper to resolve user_id from Authorization Bearer header or fallback
 def resolve_user_id(authorization: Optional[str] = Header(None), query_user_id: Optional[int] = None) -> int:
     if authorization and authorization.startswith("Bearer "):
@@ -66,6 +101,18 @@ def resolve_user_id(authorization: Optional[str] = Header(None), query_user_id: 
         if user:
             return user["user_id"]
     return query_user_id or 1
+
+# Helper to enforce Admin Role for backend endpoints
+def require_admin(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="No autenticado. Token requerido.")
+    token = authorization.split(" ")[1]
+    user = engine.db.get_user_by_token(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Sesión inválida o expirada.")
+    if user.get("role_name") != "admin":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Se requiere rol de Administrador.")
+    return user
 
 # --- Authentication Endpoints ---
 
@@ -269,6 +316,117 @@ def regenerate_book_audios(book_id: str):
     importer.process(generate_audios=True)
     engine._load_installed_books()
     return {"status": "success", "message": f"Regenerated TTS audios for '{book_id}' with options."}
+
+# --- Admin Dashboard Endpoints ---
+
+@app.get("/api/admin/users")
+def admin_list_users(authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    return {"users": engine.db.get_all_users_admin()}
+
+@app.post("/api/admin/users")
+def admin_create_user(req: AdminUserCreateRequest, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    try:
+        user_info = engine.db.create_user_admin(req.username, req.password, req.first_name, req.role or "user")
+        return {"status": "success", "user": user_info}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.put("/api/admin/users/{user_id}")
+def admin_update_user(user_id: int, req: AdminUserUpdateRequest, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    engine.db.update_user_admin(user_id, req.first_name, req.role, req.password)
+    return {"status": "success", "message": f"Usuario {user_id} actualizado."}
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_delete_user(user_id: int, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    try:
+        engine.db.delete_user_admin(user_id)
+        return {"status": "success", "message": f"Usuario {user_id} eliminado."}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/admin/narrators")
+def admin_list_narrators(authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    return {"narrators": engine.db.get_narrators_stats()}
+
+@app.post("/api/admin/narrators")
+def admin_create_narrator(req: AdminNarratorCreateRequest, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    narrator_info = engine.db.create_narrator_admin(req.name, req.display_name, req.specialty, req.avatar_url, req.bio)
+    return {"status": "success", "narrator": narrator_info}
+
+@app.put("/api/admin/narrators/{narrator_id}")
+def admin_update_narrator(narrator_id: int, req: AdminNarratorUpdateRequest, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    engine.db.update_narrator_admin(narrator_id, req.display_name, req.specialty, req.avatar_url, req.bio)
+    return {"status": "success", "message": f"Narrador {narrator_id} actualizado."}
+
+@app.delete("/api/admin/narrators/{narrator_id}")
+def admin_delete_narrator(narrator_id: int, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    try:
+        engine.db.delete_narrator_admin(narrator_id)
+        return {"status": "success", "message": f"Narrador {narrator_id} eliminado."}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/admin/books")
+def admin_list_books(authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    return {"books": engine.db.get_all_books_admin()}
+
+@app.put("/api/admin/books/{book_id}")
+def admin_update_book(book_id: str, req: AdminBookUpdateRequest, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    updates = req.dict(exclude_unset=True)
+    engine.db.update_book_admin(book_id, updates)
+    engine._load_installed_books()
+    return {"status": "success", "message": f"Libro {book_id} actualizado."}
+
+@app.delete("/api/admin/books/{book_id}")
+def admin_delete_book(book_id: str, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    engine.db.delete_book_admin(book_id)
+    engine._load_installed_books()
+    return {"status": "success", "message": f"Libro {book_id} eliminado."}
+
+@app.post("/api/admin/books/upload")
+async def admin_upload_epub_book(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
+    """Uploads an .epub file, places it in Libros/, and runs EPUBImporter pipeline with TTS."""
+    require_admin(authorization)
+    if not file.filename.endswith(".epub"):
+        raise HTTPException(status_code=400, detail="El archivo debe tener extensión .epub")
+
+    from config import INPUT_BOOKS_DIR
+    from src.importer import EPUBImporter
+
+    INPUT_BOOKS_DIR.mkdir(parents=True, exist_ok=True)
+    target_path = INPUT_BOOKS_DIR / file.filename
+
+    with open(target_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    logger.info(f"📖 Web EPUB Upload received: '{file.filename}'. Starting import pipeline...")
+    importer = EPUBImporter(target_path)
+    book_folder = importer.process(generate_audios=True)
+    engine._load_installed_books()
+
+    return {
+        "status": "success",
+        "message": f"Libro '{file.filename}' importado y sintetizado correctamente.",
+        "book_folder": str(book_folder.name)
+    }
+
+@app.get("/api/admin/logs")
+def admin_list_logs(limit: int = Query(50), authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    logs = engine.db.get_reading_logs_admin(limit=limit)
+    return {"logs": logs}
 
 @app.get("/api/books/{book_id}/asset/{subpath:path}")
 def get_book_asset(book_id: str, subpath: str):
