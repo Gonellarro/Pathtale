@@ -418,14 +418,21 @@ body {
   border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: transparent;
+  border: none;
 }
 
 .continue-thumb-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center top;
+  transform: scale(1.08);
+  transition: transform 0.35s ease;
+}
+
+.continue-card:hover .continue-thumb-img {
+  transform: scale(1.15);
 }
 
 .continue-info {
@@ -648,8 +655,8 @@ body {
   aspect-ratio: 3 / 4;
   border-radius: var(--radius-md);
   overflow: hidden;
-  border: 1px solid var(--border-color);
-  background-color: #120e0c;
+  border: none;
+  background-color: transparent;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
   /* Force hardware-accelerated rounded border clipping across all browsers */
   mask-image: -webkit-radial-gradient(white, black);
@@ -663,11 +670,12 @@ body {
   object-fit: cover;
   object-position: center top;
   display: block;
+  transform: scale(1.08);
   transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .portrait-book-card:hover .portrait-cover-img {
-  transform: scale(1.05);
+  transform: scale(1.16);
 }
 
 /* Status Badge Top Left Overlay */
@@ -921,16 +929,24 @@ body {
 
 .book-cover {
   width: 100%;
-  height: 200px;
-  background-color: var(--bg-secondary);
+  height: 220px;
+  background-color: transparent;
   position: relative;
   overflow: hidden;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 .book-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center top;
+  transform: scale(1.08);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.book-card:hover .book-cover img {
+  transform: scale(1.16);
 }
 
 .book-cover-placeholder {
