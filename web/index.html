@@ -88,15 +88,31 @@
               <span>←</span>
             </button>
             <div class="game-meta">
-              <h2 id="game-book-title">Cargando libro...</h2>
+              <div class="game-title-row">
+                <h2 id="game-book-title">Cargando libro...</h2>
+                <span id="game-progress-badge" class="badge">0%</span>
+              </div>
               <div class="progress-bar-wrap">
                 <div id="game-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
               </div>
             </div>
-            <span id="game-progress-badge" class="badge">0%</span>
-            <button id="btn-game-restart" class="btn-secondary-sm" title="Reiniciar esta partida">
+          </div>
+
+          <!-- Controls Toolbar: Atrás, Reiniciar, Ir a Sección -->
+          <div class="game-controls-bar">
+            <button id="btn-game-history-back" class="btn-game-action" title="Volver a la sección anterior" disabled>
+              <span>⬅️ Atrás</span>
+            </button>
+            <button id="btn-game-restart" class="btn-game-action" title="Reiniciar esta partida desde el inicio">
               <span>🔄 Reiniciar</span>
             </button>
+
+            <div class="goto-section-box">
+              <input type="text" id="input-goto-section" class="goto-input" placeholder="Nº Sección (ej: 40)" autocomplete="off">
+              <button id="btn-game-goto" class="btn-game-action btn-goto-action" title="Ir a la sección especificada">
+                <span>Ir ➔</span>
+              </button>
+            </div>
           </div>
 
           <!-- Story Canvas Card -->

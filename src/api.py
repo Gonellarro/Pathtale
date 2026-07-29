@@ -264,9 +264,17 @@ def make_choice(user_id: int, book_id: str, req: ChoiceRequest, authorization: O
     if not chosen:
         raise HTTPException(status_code=400, detail="Invalid choice option selected")
 
-    chosen["book_id"] = book_id
-    new_state = engine.make_choice(uid, chosen)
-    return _format_game_state_response(uid, book_id, new_state)
+class JumpRequest(BaseModel):
+    target: str
+
+@app.post("/api/games/{user_id}/{book_id}/jump")
+def jump_section(user_id: int, book_id: str, req: JumpRequest, authorization: Optional[str] = Header(None)):
+    """Jumps directly to a target section by number or node_id."""
+    uid = resolve_user_id(authorization, user_id)
+    state = engine.jump_to_node(uid, book_id, req.target)
+    if not state:
+        raise HTTPException(status_code=404, detail=f"No se encontró la sección '{req.target}' en este libro.")
+    return _format_game_state_response(uid, book_id, state)
 
 @app.post("/api/voice/transcribe")
 async def transcribe_voice(file: UploadFile = File(...)):

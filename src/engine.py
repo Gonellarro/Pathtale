@@ -135,3 +135,52 @@ class GameEngine:
 
         logger.info(f"🔀 User {user_id} moved from '{from_node_id}' to '{target_node_id}' in book '{book_id}'")
         return self.get_current_state(user_id, book_id)
+
+    def jump_to_node(self, user_id: int, book_id: str, target: str) -> Optional[Dict[str, Any]]:
+        """Jumps directly to a target section by section number or node ID."""
+        if book_id not in self.books:
+            return None
+        book_data = self.books[book_id]
+        nodes = book_data.get("nodes", {})
+
+        target_node_id = None
+        target_str = str(target).strip()
+
+        # 1. Exact node_id match
+        if target_str in nodes:
+            target_node_id = target_str
+        else:
+            # 2. Match by display_number or numeric string
+            import re
+            nums = re.findall(r'\d+', target_str)
+            clean_num = int(nums[0]) if nums else None
+
+            if clean_num is not None:
+                # Search by display_number
+                for n_id, n_data in nodes.items():
+                    if n_data.get("display_number") == clean_num:
+                        target_node_id = n_id
+                        break
+
+                # Search by padded/short node_id patterns
+                if not target_node_id:
+                    padded_id = f"sec_{clean_num:03d}"
+                    short_id = f"sec_{clean_num}"
+                    if padded_id in nodes:
+                        target_node_id = padded_id
+                    elif short_id in nodes:
+                        target_node_id = short_id
+
+        if not target_node_id:
+            logger.warning(f"Jump failed: Section target '{target}' not found in book '{book_id}'")
+            return None
+
+        savegame = self.db.get_savegame(user_id, book_id)
+        from_node_id = savegame["current_node_id"] if savegame else None
+
+        self.db.save_game(user_id, book_id, target_node_id)
+        display_num = nodes[target_node_id].get("display_number", target_node_id)
+        self.db.record_step(user_id, book_id, from_node_id, target_node_id, f"Navegación a sección {display_num}")
+
+        logger.info(f"⚡ User {user_id} jumped to '{target_node_id}' in book '{book_id}'")
+        return self.get_current_state(user_id, book_id)

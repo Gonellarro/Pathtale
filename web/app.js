@@ -17,6 +17,8 @@ let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
 let libraryViewMode = localStorage.getItem("alj_library_view") || "grid";
+let navigationHistory = [];
+let isNavigatingBack = false;
 
 // Helper for authenticated API calls
 function authFetch(url, options = {}) {
@@ -65,6 +67,23 @@ function initEventListeners() {
   document.getElementById("btn-game-restart").addEventListener("click", () => {
     if (currentBookId) confirmRestartGame(currentBookId);
   });
+  
+  const btnHistoryBack = document.getElementById("btn-game-history-back");
+  if (btnHistoryBack) btnHistoryBack.addEventListener("click", goBackHistory);
+
+  const btnGoto = document.getElementById("btn-game-goto");
+  const inputGoto = document.getElementById("input-goto-section");
+  if (btnGoto && inputGoto) {
+    const handleGoto = () => {
+      const val = inputGoto.value.trim();
+      if (val) jumpToSection(val);
+    };
+    btnGoto.addEventListener("click", handleGoto);
+    inputGoto.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleGoto();
+    });
+  }
+
   document.getElementById("btn-close-settings").addEventListener("click", toggleSettingsModal);
   document.getElementById("btn-close-history").addEventListener("click", toggleHistoryDrawer);
 
@@ -487,6 +506,9 @@ async function startGame(bookId, forceNew = false) {
     openAuthModal();
     return;
   }
+  if (currentBookId !== bookId || forceNew) {
+    navigationHistory = [];
+  }
   currentBookId = bookId;
   showGameView();
 
@@ -524,11 +546,62 @@ async function submitChoice(choiceId, targetNode) {
   }
 }
 
+async function jumpToSection(target, isBack = false) {
+  if (!currentBookId || !target) return;
+
+  try {
+    const res = await authFetch(`${API_BASE}/api/games/1/${encodeURIComponent(currentBookId)}/jump`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target: target })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json();
+      alert(errData.detail || `No se pudo ir a la sección '${target}'.`);
+      return;
+    }
+
+    isNavigatingBack = isBack;
+    const newState = await res.json();
+    renderGameState(newState);
+
+    const gotoInput = document.getElementById("input-goto-section");
+    if (gotoInput) gotoInput.value = "";
+  } catch (err) {
+    console.error("Error jumping to section:", err);
+    alert(`No se encontró la sección '${target}' en este libro.`);
+  }
+}
+
+function goBackHistory() {
+  if (navigationHistory.length > 1) {
+    navigationHistory.pop();
+    const prevNodeId = navigationHistory[navigationHistory.length - 1];
+    jumpToSection(prevNodeId, true);
+  }
+}
+
 let currentAudioType = "narrative";
 
 function renderGameState(state) {
   currentGameState = state;
   currentAudioType = "narrative";
+
+  // Manage history stack
+  if (state.node_id) {
+    if (!isNavigatingBack) {
+      if (navigationHistory.length === 0 || navigationHistory[navigationHistory.length - 1] !== state.node_id) {
+        navigationHistory.push(state.node_id);
+      }
+    }
+  }
+  isNavigatingBack = false;
+
+  const btnHistoryBack = document.getElementById("btn-game-history-back");
+  if (btnHistoryBack) {
+    btnHistoryBack.disabled = (navigationHistory.length <= 1);
+  }
 
   document.getElementById("game-book-title").textContent = state.book_title || "Librojuego";
   document.getElementById("game-progress-bar").style.width = `${state.progress_percent || 0}%`;
