@@ -45,6 +45,10 @@ export function showGameView() {
   updateAuthUI();
 }
 
+function getUserId() {
+  return (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
+}
+
 export async function startGame(bookId, forceNew = false) {
   if (!state.authToken || !state.currentUser) {
     openAuthModal();
@@ -56,6 +60,8 @@ export async function startGame(bookId, forceNew = false) {
   state.currentBookId = bookId;
   showGameView();
 
+  const uid = getUserId();
+
   try {
     let res;
     if (forceNew) {
@@ -65,15 +71,22 @@ export async function startGame(bookId, forceNew = false) {
         body: JSON.stringify({ book_id: bookId })
       });
     } else {
-      res = await authFetch(`${API_BASE}/api/games/1/${encodeURIComponent(bookId)}`);
+      res = await authFetch(`${API_BASE}/api/games/${uid}/${encodeURIComponent(bookId)}`);
       if (res.status === 404) {
         return await startGame(bookId, true);
       }
     }
 
+    if (!res.ok) {
+      console.error("Error loading game state:", res.status);
+      return;
+    }
+
     const data = await res.json();
-    state.currentGameState = data;
-    renderGameState(data);
+    if (data && data.node_id) {
+      state.currentGameState = data;
+      renderGameState(data);
+    }
   } catch (err) {
     console.error("Error starting game:", err);
     alert("Error al cargar la partida. Revisa la consola o los logs del servidor.");
@@ -82,9 +95,10 @@ export async function startGame(bookId, forceNew = false) {
 
 export async function submitChoice(choiceId, targetNode, textQuery = null) {
   if (!state.currentBookId) return;
+  const uid = getUserId();
 
   try {
-    const res = await authFetch(`${API_BASE}/api/games/1/${encodeURIComponent(state.currentBookId)}/choice`, {
+    const res = await authFetch(`${API_BASE}/api/games/${uid}/${encodeURIComponent(state.currentBookId)}/choice`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -94,9 +108,16 @@ export async function submitChoice(choiceId, targetNode, textQuery = null) {
       })
     });
 
+    if (!res.ok) {
+      console.error("Error submitting choice response status:", res.status);
+      return;
+    }
+
     const data = await res.json();
-    state.currentGameState = data;
-    renderGameState(data);
+    if (data && data.node_id) {
+      state.currentGameState = data;
+      renderGameState(data);
+    }
   } catch (err) {
     console.error("Error submitting choice:", err);
   }
@@ -104,9 +125,10 @@ export async function submitChoice(choiceId, targetNode, textQuery = null) {
 
 export async function jumpToSection(target) {
   if (!state.currentBookId || !target) return;
+  const uid = getUserId();
 
   try {
-    const res = await authFetch(`${API_BASE}/api/games/1/${encodeURIComponent(state.currentBookId)}/jump`, {
+    const res = await authFetch(`${API_BASE}/api/games/${uid}/${encodeURIComponent(state.currentBookId)}/jump`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target: target })
@@ -119,8 +141,10 @@ export async function jumpToSection(target) {
     }
 
     const data = await res.json();
-    state.currentGameState = data;
-    renderGameState(data);
+    if (data && data.node_id) {
+      state.currentGameState = data;
+      renderGameState(data);
+    }
   } catch (err) {
     console.error("Error jumping to section:", err);
   }
@@ -147,7 +171,7 @@ export function updateBackHistoryUI() {
 }
 
 export function renderGameState(gameState) {
-  if (!gameState.node_id) return;
+  if (!gameState || !gameState.node_id) return;
 
   if (!state.isNavigatingBack) {
     if (state.navigationHistory.length === 0 || state.navigationHistory[state.navigationHistory.length - 1] !== gameState.node_id) {

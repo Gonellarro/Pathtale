@@ -32,8 +32,9 @@ export async function loadSettings() {
   applySettingsToUI();
 
   if (state.authToken) {
+    const uid = (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
     try {
-      const res = await authFetch(`${API_BASE}/api/users/1/settings`);
+      const res = await authFetch(`${API_BASE}/api/users/${uid}/settings`);
       const data = await res.json();
       if (data && data.settings && Object.keys(data.settings).length > 0) {
         state.appSettings = { ...state.appSettings, ...data.settings };
@@ -77,7 +78,8 @@ export function updateSetting(key, value) {
   applySettingsToUI();
 
   if (state.authToken) {
-    authFetch(`${API_BASE}/api/users/1/settings`, {
+    const uid = (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
+    authFetch(`${API_BASE}/api/users/${uid}/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ settings: state.appSettings })
