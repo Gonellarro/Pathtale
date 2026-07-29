@@ -4,9 +4,10 @@
 
 import { state, authFetch, escapeHtml, formatTimeAgo, API_BASE } from "./state.js";
 import { openAuthModal, updateAuthUI } from "./auth.js";
-import { loadLibrary } from "./library.js";
+import { checkLastActiveGame, loadInProgressSection, loadFullLibrary } from "./library.js";
 
 const views = {
+  home: document.getElementById("view-home"),
   library: document.getElementById("view-library"),
   game: document.getElementById("view-game")
 };
@@ -20,18 +21,28 @@ const audioPlayer = document.getElementById("html-audio-player");
 const drawerHistory = document.getElementById("drawer-history");
 
 export function showLandingView() {
-  showLibraryView();
+  showHomeView();
 }
 
-export function showLibraryView() {
+export function showHomeView() {
   if (audioPlayer) audioPlayer.pause();
   if (views.game) views.game.classList.remove("active");
+  if (views.library) views.library.classList.remove("active");
+  if (views.home) views.home.classList.add("active");
+  if (navBtns.library) navBtns.library.classList.remove("active");
+  updateAuthUI();
+  checkLastActiveGame(startGame);
+  loadInProgressSection(startGame);
+}
+
+export function showFullLibraryView() {
+  if (audioPlayer) audioPlayer.pause();
+  if (views.game) views.game.classList.remove("active");
+  if (views.home) views.home.classList.remove("active");
   if (views.library) views.library.classList.add("active");
   if (navBtns.library) navBtns.library.classList.add("active");
   updateAuthUI();
-  if (state.authToken && state.currentUser) {
-    loadLibrary(showLandingView, startGame);
-  }
+  loadFullLibrary(startGame);
 }
 
 export function showGameView() {
@@ -39,6 +50,7 @@ export function showGameView() {
     openAuthModal();
     return;
   }
+  if (views.home) views.home.classList.remove("active");
   if (views.library) views.library.classList.remove("active");
   if (views.game) views.game.classList.add("active");
   if (navBtns.library) navBtns.library.classList.remove("active");

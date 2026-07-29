@@ -11,7 +11,7 @@ import {
 } from "./modules/audio.js";
 import { setLibraryViewMode, confirmRestartGame } from "./modules/library.js";
 import { 
-  showLibraryView, showGameView, startGame, submitChoice, 
+  showHomeView, showFullLibraryView, showGameView, startGame, submitChoice, 
   jumpToSection, goBackHistory, initVoiceControls, toggleVoiceRecording, 
   toggleHistoryDrawer 
 } from "./modules/game.js";
@@ -24,9 +24,9 @@ const navBtns = {
 
 document.addEventListener("DOMContentLoaded", () => {
   initEventListeners();
-  initAuthControls(showLibraryView, showLibraryView);
+  initAuthControls(showHomeView, showHomeView);
   loadSettings();
-  showLibraryView();
+  showHomeView();
 });
 
 function initEventListeners() {
@@ -34,15 +34,21 @@ function initEventListeners() {
 
   // Navigation
   const navBrand = document.getElementById("nav-brand");
-  if (navBrand) navBrand.addEventListener("click", showLibraryView);
-  if (navBtns.library) navBtns.library.addEventListener("click", showLibraryView);
+  if (navBrand) navBrand.addEventListener("click", showHomeView);
+  if (navBtns.library) navBtns.library.addEventListener("click", showFullLibraryView);
   const btnProfile = document.getElementById("btn-nav-profile");
   if (btnProfile) btnProfile.addEventListener("click", toggleSettingsModal);
   if (navBtns.history) navBtns.history.addEventListener("click", toggleHistoryDrawer);
 
+  // View mode toggles for full library view
+  const btnViewGrid = document.getElementById("btn-view-grid");
+  const btnViewTable = document.getElementById("btn-view-table");
+  if (btnViewGrid) btnViewGrid.onclick = () => setLibraryViewMode("grid", startGame);
+  if (btnViewTable) btnViewTable.onclick = () => setLibraryViewMode("table", startGame);
+
   // Game Toolbar
   const btnGameBack = document.getElementById("btn-game-back");
-  if (btnGameBack) btnGameBack.addEventListener("click", showLibraryView);
+  if (btnGameBack) btnGameBack.addEventListener("click", showHomeView);
 
   const btnGameRestart = document.getElementById("btn-game-restart");
   if (btnGameRestart) {

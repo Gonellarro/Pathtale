@@ -49,13 +49,13 @@
   <div id="app" class="app-container">
     <!-- Main Content Area -->
     <main class="main-content">
-      <!-- VIEW: BIBLIOTECA / LANDING -->
-      <section id="view-library" class="view active">
-        <div class="library-header">
+      <!-- VIEW: INICIO / HOME -->
+      <section id="view-home" class="view active">
+        <div class="app-container">
           <!-- Figma Hero Cover Banner -->
           <div class="hero-banner">
             <img src="/assets/pathtale_cover.png" alt="PathTale - Elige tu camino. Escucha tu aventura." class="hero-bg-img">
-             <div class="hero-overlay-gradient"></div>
+            <div class="hero-overlay-gradient"></div>
             <div class="hero-content">
               <p class="hero-tagline">Audiolibrojuegos Inmersivos</p>
               <h1 class="hero-title">
@@ -84,24 +84,31 @@
               <!-- Active progress cards rendered via JS -->
             </div>
           </div>
+        </div>
+      </section>
 
-          <!-- Section: BIBLIOTECA DE AVENTURAS (6 Últimos Libros) -->
-          <div class="section-container">
-            <div class="section-header">
-              <h2 class="section-title">BIBLIOTECA DE AVENTURAS</h2>
-            </div>
+      <!-- VIEW: BIBLIOTECA COMPLETA -->
+      <section id="view-library" class="view hidden">
+        <div class="app-container">
+          <div class="library-header-row" style="margin-bottom: 1.5rem; margin-top: 1rem;">
+            <h1 class="section-title" style="font-size: 1.6rem; letter-spacing: 0.05em;">BIBLIOTECA COMPLETA</h1>
+          </div>
 
-            <!-- Filter Tag Pills -->
-            <div id="filter-tags-bar" class="tags-filter-bar">
-              <button class="tag-pill active" data-tag="Todos">TODOS</button>
-              <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
-              <!-- Dynamic category/series tags loaded via JS -->
+          <!-- Authenticated Library Toolbar -->
+          <div id="library-toolbar" class="library-toolbar">
+            <span class="library-count" id="library-count">Cargando libros...</span>
+            <div class="view-toggle-wrap">
+              <button id="btn-view-grid" class="btn-toggle active" title="Vista Tarjetas (Grande)">
+                <span>🔲 Tarjetas</span>
+              </button>
+              <button id="btn-view-table" class="btn-toggle" title="Vista Lista Compacta (Tabla)">
+                <span>☰ Lista Compacta</span>
+              </button>
             </div>
+          </div>
 
-            <!-- Featured 6 Books Grid -->
-            <div class="featured-books-grid" id="library-grid">
-              <!-- Rendered via JS -->
-            </div>
+          <div class="library-grid" id="full-library-grid">
+            <!-- Full catalog book cards or compact table rendered via JS -->
           </div>
         </div>
       </section>
