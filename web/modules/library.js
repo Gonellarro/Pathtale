@@ -30,12 +30,7 @@ export async function checkLastActiveGame(startGameFn) {
   const btnContinue = document.getElementById("btn-hero-continue");
   if (!heroActions || !btnContinue) return;
 
-  if (!state.authToken || !state.currentUser) {
-    heroActions.classList.add("hidden");
-    return;
-  }
-
-  const uid = state.currentUser.user_id || 1;
+  const uid = (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
   try {
     const res = await authFetch(`${API_BASE}/api/games/${uid}/last_active`);
     const data = await res.json();
@@ -58,12 +53,7 @@ export async function loadInProgressSection(startGameFn) {
   const grid = document.getElementById("continue-cards-grid");
   if (!section || !grid) return;
 
-  if (!state.authToken || !state.currentUser) {
-    section.classList.add("hidden");
-    return;
-  }
-
-  const uid = state.currentUser.user_id || 1;
+  const uid = (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
   try {
     const res = await authFetch(`${API_BASE}/api/games/${uid}/in_progress?limit=3`);
     const data = await res.json();
