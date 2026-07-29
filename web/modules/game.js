@@ -3,7 +3,7 @@
  */
 
 import { state, authFetch, escapeHtml, formatTimeAgo, API_BASE } from "./state.js";
-import { openAuthModal, updateAuthUI } from "./auth.js";
+import { openAuthModal, updateAuthUI, checkAuthStatus } from "./auth.js";
 import { checkLastActiveGame, loadInProgressSection, loadFeaturedLibrary, loadNarratorsSection, loadFullLibrary } from "./library.js";
 import { loadAdminDashboard } from "./admin.js";
 
@@ -60,9 +60,19 @@ export function showFullLibraryView() {
   loadFullLibrary(startGame);
 }
 
-export function showAdminView() {
+export async function showAdminView() {
+  if (!state.authToken) {
+    openAuthModal();
+    return;
+  }
+
+  await checkAuthStatus();
+
   const role = state.currentUser ? (state.currentUser.role || state.currentUser.role_name) : null;
-  if (!state.authToken || role !== "admin") return;
+  if (role !== "admin") {
+    alert("Acceso denegado: Se requiere rol de Administrador.");
+    return;
+  }
 
   if (audioPlayer) audioPlayer.pause();
   if (views.game) { views.game.classList.remove("active"); views.game.classList.add("hidden"); }

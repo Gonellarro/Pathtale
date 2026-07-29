@@ -262,6 +262,7 @@ class Database:
                 "user_id": user_id,
                 "username": username_clean,
                 "first_name": display_name,
+                "role": "user",
                 "role_name": "user",
                 "token": token
             }
@@ -288,11 +289,13 @@ class Database:
             cursor.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user["user_id"]))
             conn.commit()
 
+            role_val = user["role_name"] or "user"
             return {
                 "user_id": user["user_id"],
                 "username": user["username"],
                 "first_name": user["first_name"] or user["username"],
-                "role_name": user["role_name"] or "user",
+                "role": role_val,
+                "role_name": role_val,
                 "token": token
             }
 
@@ -311,11 +314,13 @@ class Database:
             row = cursor.fetchone()
             if not row:
                 return None
+            role_val = row["role_name"] or "user"
             return {
                 "user_id": row["user_id"],
                 "username": row["username"],
                 "first_name": row["first_name"] or row["username"],
-                "role_name": row["role_name"] or "user",
+                "role": role_val,
+                "role_name": role_val,
                 "settings": json.loads(row["settings"] or "{}"),
                 "created_at": row["created_at"]
             }

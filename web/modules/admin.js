@@ -6,7 +6,11 @@
 import { state, authFetch, escapeHtml, formatTimeAgo, API_BASE } from "./state.js";
 
 export async function loadAdminDashboard() {
-  if (!state.currentUser || state.currentUser.role !== "admin") return;
+  const role = state.currentUser ? (state.currentUser.role || state.currentUser.role_name) : null;
+  if (!state.currentUser || role !== "admin") {
+    console.warn("loadAdminDashboard: Current user is not admin", state.currentUser);
+    return;
+  }
 
   initAdminTabs();
   initAdminUploadZone();
