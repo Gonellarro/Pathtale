@@ -1,0 +1,99 @@
+/**
+ * Audio Player Controls Module for PathTale (Piper TTS & Options Player)
+ */
+
+import { state, formatTime } from "./state.js";
+import { updateSetting } from "./settings.js";
+
+const audioPlayer = document.getElementById("html-audio-player");
+
+export function toggleAudioPlay() {
+  if (audioPlayer.paused) {
+    if (!audioPlayer.src && state.currentGameState) {
+      state.currentAudioType = "narrative";
+      audioPlayer.src = `${state.currentGameState.audio_url}?v=${Date.now()}`;
+    }
+    audioPlayer.play().catch(err => console.log("Audio play error:", err));
+  } else {
+    audioPlayer.pause();
+  }
+}
+
+export function playOptionsAudio() {
+  if (!state.currentGameState || !state.currentGameState.audio_options_url) return;
+  state.currentAudioType = "options";
+  audioPlayer.src = `${state.currentGameState.audio_options_url}?v=${Date.now()}`;
+  audioPlayer.play().catch(err => console.log("Options play error:", err));
+}
+
+export function onAudioPlay() {
+  const label = document.getElementById("audio-label");
+  const icon = document.getElementById("audio-icon");
+  const btn = document.getElementById("btn-audio-play");
+  if (icon) icon.textContent = "⏸";
+  if (label) {
+    label.textContent = (state.currentAudioType === "options") ? "Pausar Opciones" : "Pausar Narración";
+  }
+  if (btn) btn.classList.add("playing");
+}
+
+export function onAudioPause() {
+  const label = document.getElementById("audio-label");
+  const icon = document.getElementById("audio-icon");
+  const btn = document.getElementById("btn-audio-play");
+  if (icon) icon.textContent = "▶";
+  if (label) label.textContent = "Escuchar Narración";
+  if (btn) btn.classList.remove("playing");
+}
+
+export function onAudioEnded() {
+  if (state.currentAudioType === "narrative" && state.currentGameState && state.currentGameState.audio_options_url) {
+    state.currentAudioType = "options";
+    audioPlayer.src = `${state.currentGameState.audio_options_url}?v=${Date.now()}`;
+    audioPlayer.play().catch(() => {
+      resetAudioToNarrative();
+    });
+  } else {
+    resetAudioToNarrative();
+  }
+}
+
+export function resetAudioToNarrative() {
+  state.currentAudioType = "narrative";
+  if (state.currentGameState && state.currentGameState.audio_url) {
+    audioPlayer.src = `${state.currentGameState.audio_url}?v=${Date.now()}`;
+  }
+  onAudioPause();
+}
+
+export function updateAudioProgress() {
+  if (!audioPlayer.duration) return;
+  const current = audioPlayer.currentTime;
+  const total = audioPlayer.duration;
+  const pct = (current / total) * 100;
+
+  const slider = document.getElementById("audio-slider");
+  const timeCur = document.getElementById("audio-time-current");
+  const timeTot = document.getElementById("audio-time-total");
+
+  if (slider) slider.value = pct;
+  if (timeCur) timeCur.textContent = formatTime(current);
+  if (timeTot) timeTot.textContent = formatTime(total);
+}
+
+export function onAudioSeek(e) {
+  if (!audioPlayer.duration) return;
+  const pct = e.target.value;
+  audioPlayer.currentTime = (pct / 100) * audioPlayer.duration;
+}
+
+export function toggleAudioSpeed() {
+  const btn = document.getElementById("btn-audio-speed");
+  const speeds = [1.0, 1.25, 1.5, 2.0];
+  let nextIdx = (speeds.indexOf(audioPlayer.playbackRate) + 1) % speeds.length;
+  let newSpeed = speeds[nextIdx];
+
+  audioPlayer.playbackRate = newSpeed;
+  if (btn) btn.textContent = `${newSpeed.toFixed(1)}x`;
+  updateSetting("audioSpeed", newSpeed);
+}
