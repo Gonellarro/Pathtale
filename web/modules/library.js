@@ -279,7 +279,7 @@ export function renderFullLibrary(books, startGameFn) {
         <tbody>
           ${books.map(b => {
             const langFlag = (b.language && b.language.toLowerCase().startsWith("en")) ? "🇬🇧" : "🇪🇸";
-            const seriesText = b.series ? `${escapeHtml(b.series)}${b.volume ? ' #' + b.volume : ''}` : (b.genre || "-");
+            const seriesText = b.series ? `${b.series}${b.volume ? ' #' + b.volume : ''}` : (b.genre || "-");
             return `
               <tr>
                 <td class="td-thumb">
