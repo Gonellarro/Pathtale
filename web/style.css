@@ -236,21 +236,95 @@ body {
   opacity: 1;
 }
 
-/* Library Hero Cover Banner */
-.hero-cover-wrap {
+/* Library Hero Cover Banner with Figma Typography & Gradient Overlay */
+.hero-banner {
+  position: relative;
   width: 100%;
+  min-height: 420px;
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-card);
   margin-bottom: 1.75rem;
   border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
 }
 
-.hero-cover-img {
+@media (min-width: 768px) {
+  .hero-banner {
+    min-height: 480px;
+  }
+}
+
+.hero-bg-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
-  display: block;
+  height: 100%;
   object-fit: cover;
+  object-position: center;
+}
+
+.hero-overlay-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(18, 14, 12, 0.92) 0%, rgba(18, 14, 12, 0.75) 45%, rgba(18, 14, 12, 0.2) 100%),
+              linear-gradient(to top, rgba(18, 14, 12, 0.85) 0%, transparent 60%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 10;
+  padding: 2rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 420px;
+  max-width: 650px;
+}
+
+@media (min-width: 768px) {
+  .hero-content {
+    padding: 3rem 3.5rem;
+    min-height: 480px;
+  }
+}
+
+.hero-tagline {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+
+.hero-title {
+  font-family: 'Cinzel', serif;
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.25;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .hero-title {
+    font-size: 3rem;
+  }
+}
+
+.hero-highlight {
+  color: var(--accent-gold);
+}
+
+.hero-subtitle {
+  font-family: 'Lato', sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 480px;
 }
 
 .library-toolbar {
