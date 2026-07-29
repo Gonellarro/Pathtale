@@ -116,8 +116,10 @@ body {
   position: relative;
 }
 
-/* Navbar (Header bar background stays full-width, content aligns perfectly with app-container) */
+/* Navbar (Header bar constrained to same width as app-container) */
 .navbar {
+  max-width: 1265px;
+  margin: 0 auto;
   width: 100%;
   height: 68px;
   background-color: var(--bg-navbar);
@@ -126,18 +128,15 @@ body {
   top: 0;
   z-index: 100;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  padding: 0 1.5rem;
 }
 
 .nav-content {
-  max-width: 1265px;
-  margin: 0 auto;
   width: 100%;
   height: 100%;
-  padding: 0 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-sizing: border-box;
 }
 
 .nav-brand {
