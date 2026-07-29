@@ -308,13 +308,16 @@ export async function loadAdminBooks() {
             <th>Autor</th>
             <th>Narrador</th>
             <th>Nivel Tier</th>
+            <th>Estado</th>
             <th>Género / Serie</th>
             <th>Secciones</th>
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          ${books.map(b => `
+          ${books.map(b => {
+            const isVisible = b.is_visible !== 0;
+            return `
             <tr>
               <td class="td-thumb">
                 ${b.cover_image 
@@ -329,6 +332,11 @@ export async function loadAdminBooks() {
                   🔒 ${escapeHtml(b.tier_name || 'Demo Gratuita')}
                 </span>
               </td>
+              <td>
+                <button class="btn-secondary btn-sm btn-toggle-visible-book" data-id="${b.book_id}" data-visible="${isVisible ? '1' : '0'}" style="color:${isVisible ? 'var(--success)' : '#ef4444'}">
+                  ${isVisible ? '👁️ Visible' : '🙈 Oculto'}
+                </button>
+              </td>
               <td class="td-genre">${escapeHtml(b.genre || b.series || '-')}</td>
               <td>${b.total_sections || 0} caps.</td>
               <td class="td-actions">
@@ -336,10 +344,30 @@ export async function loadAdminBooks() {
                 <button class="btn-secondary btn-sm btn-delete-book" data-id="${b.book_id}" style="color: #ff6b6b">🗑️</button>
               </td>
             </tr>
-          `).join("")}
+          `;
+          }).join("")}
         </tbody>
       </table>
     `;
+
+    container.querySelectorAll(".btn-toggle-visible-book").forEach(btn => {
+      btn.onclick = async () => {
+        const bid = btn.getAttribute("data-id");
+        const currentVis = btn.getAttribute("data-visible") === "1";
+        try {
+          const res = await authFetch(`${API_BASE}/api/admin/books/${bid}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ is_visible: !currentVis })
+          });
+          if (res.ok) {
+            loadAdminBooks();
+          }
+        } catch (err) {
+          console.error("Error toggling book visibility:", err);
+        }
+      };
+    });
 
     container.querySelectorAll(".btn-tier-book").forEach(btn => {
       btn.onclick = () => {

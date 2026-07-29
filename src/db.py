@@ -186,6 +186,14 @@ class Database:
 
             cursor.execute("UPDATE books SET tier_id = 1 WHERE tier_id IS NULL OR tier_id = 0")
 
+            # Migration for is_visible in books
+            try:
+                cursor.execute("ALTER TABLE books ADD COLUMN is_visible INTEGER DEFAULT 1")
+            except Exception:
+                pass
+
+            cursor.execute("UPDATE books SET is_visible = 1 WHERE is_visible IS NULL")
+
             # 8. User Subscriptions table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_subscriptions (
@@ -735,10 +743,15 @@ class Database:
     def update_book_admin(self, book_id: str, updates: Dict[str, Any]):
         fields = []
         values = []
-        for k in ["title", "author", "genre", "series", "volume", "description", "language", "narrator_id", "tier_id"]:
+        for k in ["title", "author", "genre", "series", "volume", "description", "language", "narrator_id", "tier_id", "is_visible"]:
             if k in updates and updates[k] is not None:
                 fields.append(f"{k} = ?")
-                values.append(updates[k])
+                val = updates[k]
+                if val is True:
+                    val = 1
+                elif val is False:
+                    val = 0
+                values.append(val)
         if not fields:
             return
         values.append(book_id)

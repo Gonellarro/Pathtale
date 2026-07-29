@@ -88,6 +88,7 @@ class AdminBookUpdateRequest(BaseModel):
     author: Optional[str] = None
     narrator_id: Optional[int] = None
     tier_id: Optional[int] = None
+    is_visible: Optional[bool] = None
     genre: Optional[str] = None
     series: Optional[str] = None
     volume: Optional[int] = None
