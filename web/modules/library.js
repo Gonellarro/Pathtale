@@ -249,6 +249,47 @@ export function setLibraryViewMode(mode, startGameFn) {
   }
 }
 
+state.tableSort = state.tableSort || { field: "title", order: "asc" };
+
+function getSortIcon(field) {
+  if (state.tableSort && state.tableSort.field === field) {
+    return `<span class="sort-icon">${state.tableSort.order === "asc" ? "▲" : "▼"}</span>`;
+  }
+  return `<span class="sort-idle">↕</span>`;
+}
+
+export function sortTableBooks(books, field, startGameFn) {
+  if (state.tableSort.field === field) {
+    state.tableSort.order = state.tableSort.order === "asc" ? "desc" : "asc";
+  } else {
+    state.tableSort.field = field;
+    state.tableSort.order = "asc";
+  }
+
+  const mult = state.tableSort.order === "asc" ? 1 : -1;
+
+  books.sort((a, b) => {
+    let valA = a[field] || "";
+    let valB = b[field] || "";
+
+    if (field === "genre") {
+      valA = a.series || a.genre || "";
+      valB = b.series || b.genre || "";
+    } else if (field === "progress") {
+      valA = a.progress_percent || 0;
+      valB = b.progress_percent || 0;
+    }
+
+    if (typeof valA === "number" && typeof valB === "number") {
+      return (valA - valB) * mult;
+    }
+
+    return String(valA).localeCompare(String(valB), "es", { sensitivity: "base" }) * mult;
+  });
+
+  renderFullLibrary(books, startGameFn);
+}
+
 export function renderFullLibrary(books, startGameFn) {
   const container = document.getElementById("full-library-grid");
   if (!container) return;
@@ -269,10 +310,10 @@ export function renderFullLibrary(books, startGameFn) {
         <thead>
           <tr>
             <th>Portada</th>
-            <th>Título</th>
-            <th>Autor</th>
-            <th>Género / Serie</th>
-            <th>Progreso</th>
+            <th class="sortable-th" data-sort="title">Título ${getSortIcon('title')}</th>
+            <th class="sortable-th" data-sort="author">Autor ${getSortIcon('author')}</th>
+            <th class="sortable-th" data-sort="genre">Género / Serie ${getSortIcon('genre')}</th>
+            <th class="sortable-th" data-sort="progress">Progreso ${getSortIcon('progress')}</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -318,6 +359,13 @@ export function renderFullLibrary(books, startGameFn) {
         </tbody>
       </table>
     `;
+
+    container.querySelectorAll(".sortable-th").forEach(th => {
+      th.onclick = () => {
+        const field = th.getAttribute("data-sort");
+        sortTableBooks(state.allLibraryBooks, field, startGameFn);
+      };
+    });
   } else {
     // Rich Cards View
     container.className = "library-grid";
