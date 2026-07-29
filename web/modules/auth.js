@@ -36,6 +36,8 @@ export function updateAuthUI() {
   const btnLogout = document.getElementById("btn-logout");
 
   const landingTagline = document.getElementById("landing-tagline");
+  const landingPublicContent = document.getElementById("landing-public-content");
+  const authenticatedHomeContent = document.getElementById("authenticated-home-content");
   const libraryToolbar = document.getElementById("library-toolbar");
   const libraryGrid = document.getElementById("library-grid");
 
@@ -52,6 +54,8 @@ export function updateAuthUI() {
     if (btnLogin) btnLogin.classList.add("hidden");
 
     if (landingTagline) landingTagline.classList.add("hidden");
+    if (landingPublicContent) landingPublicContent.classList.add("hidden");
+    if (authenticatedHomeContent) authenticatedHomeContent.classList.remove("hidden");
     if (libraryToolbar) libraryToolbar.classList.remove("hidden");
     if (libraryGrid) libraryGrid.classList.remove("hidden");
 
@@ -65,6 +69,8 @@ export function updateAuthUI() {
     if (btnLogin) btnLogin.classList.remove("hidden");
 
     if (landingTagline) landingTagline.classList.remove("hidden");
+    if (landingPublicContent) landingPublicContent.classList.remove("hidden");
+    if (authenticatedHomeContent) authenticatedHomeContent.classList.add("hidden");
     if (libraryToolbar) libraryToolbar.classList.add("hidden");
     if (libraryGrid) libraryGrid.classList.add("hidden");
 
