@@ -150,8 +150,8 @@ def list_books(
 
         full_data = engine.books.get(b_id, {})
         
-        genre = full_data.get("genre", "Ficción Interactiva")
-        series = full_data.get("series", "")
+        genre = full_data.get("genre") or "Ficción Interactiva"
+        series = full_data.get("series") or ""
         
         # Tag filtering if specified
         if tag and tag.lower() != "todos":

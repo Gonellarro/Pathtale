@@ -504,17 +504,20 @@ body {
 
 .tag-pill {
   font-family: 'Cinzel', serif;
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   background: transparent;
   color: var(--text-muted);
   border: 1px solid rgba(201, 138, 58, 0.2);
   border-radius: 9999px;
-  padding: 0.45rem 1.2rem;
+  padding: 0.38rem 0.95rem;
   cursor: pointer;
   white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: all 0.2s ease;
 }
 
@@ -592,9 +595,9 @@ body {
   top: 10px;
   left: 10px;
   z-index: 5;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  padding: 0.25rem 0.6rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 6px;
   letter-spacing: 0.04em;
   box-shadow: 0 2px 8px rgba(0,0,0,0.5);
@@ -622,8 +625,8 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) scale(0.8);
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--accent-gold);
   color: #0c0906;
@@ -644,14 +647,16 @@ body {
 
 /* Card Text Footer */
 .portrait-card-info {
-  padding-top: 0.6rem;
+  padding-top: 0.55rem;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.1rem;
+  width: 100%;
+  overflow: hidden;
 }
 
 .portrait-genre {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -660,7 +665,7 @@ body {
 
 .portrait-title {
   font-family: 'Cinzel', serif;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--text-main);
   text-transform: uppercase;
