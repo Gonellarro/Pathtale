@@ -2,39 +2,41 @@
 
 :root,
 [data-theme="pathtale"] {
-  --bg-primary: #120e0c;
-  --bg-navbar: #181412;
-  --bg-card: #1d1815;
-  --bg-card-hover: #29211c;
-  --border-color: #382c25;
+  /* Exact Figma Theme Color Palette */
+  --bg-primary: #0c0906;
+  --bg-navbar: rgba(12, 9, 6, 0.94);
+  --bg-card: #1a1208;
+  --bg-card-hover: #261b0d;
+  --bg-secondary: #2a1e0e;
+  --border-color: rgba(201, 138, 58, 0.15);
   
-  --text-main: #f4eaab;
-  --text-muted: #c4b39b;
-  --text-dim: #8c7a69;
+  --text-main: #f0e8d8;        /* Figma --foreground: warm parchment */
+  --text-muted: #8a7355;       /* Figma --muted-foreground: warm brown */
+  --text-dim: #6b5742;
   
-  --accent-gold: #d9b382;
-  --accent-gold-bright: #e8c697;
-  --accent-primary: #d9b382;
-  --accent-hover: #c59862;
-  --accent-light: #f0d5b1;
-  --accent-gradient: linear-gradient(135deg, #e5c07b 0%, #b88646 100%);
+  --accent-gold: #c98a3a;      /* Figma --primary: rich warm gold */
+  --accent-gold-bright: #e5a84e; /* Figma --accent: bright gold */
+  --accent-primary: #c98a3a;
+  --accent-hover: #e5a84e;
+  --accent-light: #f0e8d8;
+  --accent-gradient: linear-gradient(135deg, #c98a3a 0%, #a36820 100%);
 
-  --btn-login-border: #4a3b32;
-  --btn-login-hover: #d9b382;
+  --btn-login-border: rgba(201, 138, 58, 0.3);
+  --btn-login-hover: #c98a3a;
   
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
 
-  --font-family-sans: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-family-serif: 'Merriweather', Georgia, serif;
+  --font-family-sans: 'Lato', system-ui, sans-serif;
+  --font-family-serif: 'Cinzel', serif;
 
   --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
   
-  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(217, 179, 130, 0.25);
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 25px rgba(201, 138, 58, 0.25);
 
   --font-body-size: 1.15rem;
   --line-height-body: 1.8;
