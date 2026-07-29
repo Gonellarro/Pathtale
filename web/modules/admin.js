@@ -72,7 +72,7 @@ export async function loadAdminUsers() {
               <td><strong>${escapeHtml(u.username)}</strong></td>
               <td>${escapeHtml(u.first_name || '-')}</td>
               <td>
-                <span class="card-status-badge ${u.role === 'admin' ? 'en_curso' : 'nuevo'}">
+                <span class="admin-badge ${u.role === 'admin' ? 'admin-badge-admin' : 'admin-badge-user'}">
                   ${u.role === 'admin' ? '⚡ ADMIN' : 'USER'}
                 </span>
               </td>
@@ -215,7 +215,7 @@ export async function loadAdminBooks() {
               </td>
               <td class="td-title"><strong>${escapeHtml(b.title)}</strong><br><small style="color:var(--text-muted)">ID: ${b.book_id}</small></td>
               <td class="td-author">${escapeHtml(b.author || 'Desconocido')}</td>
-              <td><span class="card-status-badge en_curso">🎙️ ${escapeHtml(b.narrator_name || 'DaveFX')}</span></td>
+              <td><span class="admin-badge admin-badge-narrator">🎙️ ${escapeHtml(b.narrator_name || 'DaveFX')}</span></td>
               <td class="td-genre">${escapeHtml(b.genre || b.series || '-')}</td>
               <td>${b.total_sections || 0} caps.</td>
               <td class="td-actions">
@@ -433,7 +433,7 @@ export async function loadAdminLogs() {
               <td>${formatTimeAgo(l.created_at)}</td>
               <td><strong>@${escapeHtml(l.username)}</strong></td>
               <td>${escapeHtml(l.book_title || l.book_id)}</td>
-              <td><span class="card-status-badge nuevo">${escapeHtml(l.action_type || 'node_visit')}</span> <code>${escapeHtml(l.node_id)}</code></td>
+              <td><span class="admin-badge admin-badge-user">${escapeHtml(l.action_type || 'node_visit')}</span> <code>${escapeHtml(l.node_id)}</code></td>
               <td>${escapeHtml(l.choice_made || '-')}</td>
             </tr>
           `).join("")}
