@@ -134,9 +134,11 @@ def list_books(
     current_uid = resolve_user_id(authorization, user_id)
     books = engine.list_books()
 
-    # Exclude books currently in-progress if random_sample is requested
+    is_en_curso_filter = tag and tag.lower() == "en curso"
+
+    # Exclude books currently in-progress if random_sample is requested (unless filtering specifically for "EN CURSO")
     in_progress_ids = set()
-    if random_sample:
+    if random_sample and not is_en_curso_filter:
         in_progress_saves = engine.db.get_in_progress_games(current_uid, limit=50)
         in_progress_ids = set(s["book_id"] for s in in_progress_saves)
 
@@ -145,7 +147,7 @@ def list_books(
     for b_summary in books:
         b_id = b_summary["book_id"]
         
-        if random_sample and b_id in in_progress_ids:
+        if random_sample and not is_en_curso_filter and b_id in in_progress_ids:
             continue
 
         full_data = engine.books.get(b_id, {})
@@ -153,19 +155,8 @@ def list_books(
         genre = full_data.get("genre") or "Ficción Interactiva"
         series = full_data.get("series") or ""
         
-        # Tag filtering if specified
-        if tag and tag.lower() != "todos":
-            tag_lower = tag.lower()
-            matches_tag = (
-                tag_lower in genre.lower() or
-                tag_lower in series.lower() or
-                (tag_lower == "en curso" and engine.db.get_savegame(current_uid, b_id))
-            )
-            if not matches_tag:
-                continue
-
-        progress_pct = 0
         savegame = engine.db.get_savegame(current_uid, b_id)
+        progress_pct = 0
         status = "nuevo"
 
         if savegame:
@@ -177,6 +168,20 @@ def list_books(
                 status = "completado"
             else:
                 status = "en_curso"
+
+        # Tag filtering if specified
+        if tag and tag.lower() != "todos":
+            tag_lower = tag.lower()
+            if tag_lower == "en curso":
+                if not (savegame and status == "en_curso"):
+                    continue
+            else:
+                matches_tag = (
+                    tag_lower in genre.lower() or
+                    tag_lower in series.lower()
+                )
+                if not matches_tag:
+                    continue
 
         result.append({
             "book_id": b_id,
