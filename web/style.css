@@ -1267,7 +1267,7 @@ body {
 }
 
 .node-text {
-  font-family: var(--font-family-serif);
+  font-family: var(--font-family-sans);
   font-size: var(--font-body-size);
   line-height: var(--line-height-body);
   color: var(--text-main);
