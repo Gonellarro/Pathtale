@@ -148,7 +148,7 @@ export async function loadLibrary(onShowLanding, startGameFn, tag = "Todos", lim
   const uid = (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
 
   try {
-    const res = await authFetch(`${API_BASE}/api/books?limit=${limit}&tag=${encodeURIComponent(tag)}&user_id=${uid}`);
+    const res = await authFetch(`${API_BASE}/api/books?limit=${limit}&tag=${encodeURIComponent(tag)}&user_id=${uid}&random_sample=true`);
     const data = await res.json();
     state.allLibraryBooks = data.books || [];
     renderLibrary(state.allLibraryBooks, startGameFn);

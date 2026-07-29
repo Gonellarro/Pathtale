@@ -127,15 +127,27 @@ def list_books(
     authorization: Optional[str] = Header(None),
     user_id: Optional[int] = Query(None),
     limit: Optional[int] = Query(None),
-    tag: Optional[str] = Query(None)
+    tag: Optional[str] = Query(None),
+    random_sample: Optional[bool] = Query(False)
 ):
     """Returns a list of imported books with rich metadata and user progress status."""
     current_uid = resolve_user_id(authorization, user_id)
     books = engine.list_books()
+
+    # Exclude books currently in-progress if random_sample is requested
+    in_progress_ids = set()
+    if random_sample:
+        in_progress_saves = engine.db.get_in_progress_games(current_uid, limit=50)
+        in_progress_ids = set(s["book_id"] for s in in_progress_saves)
+
     result = []
     
     for b_summary in books:
         b_id = b_summary["book_id"]
+        
+        if random_sample and b_id in in_progress_ids:
+            continue
+
         full_data = engine.books.get(b_id, {})
         
         genre = full_data.get("genre", "Ficción Interactiva")
@@ -188,6 +200,10 @@ def list_books(
             "status": status,
             "rating": 4.8
         })
+
+    if random_sample and result:
+        import random
+        random.shuffle(result)
 
     if limit and limit > 0:
         result = result[:limit]
