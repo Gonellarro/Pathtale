@@ -122,13 +122,20 @@ def get_tags():
     tags = engine.db.get_top_tags(limit=5)
     return {"tags": tags}
 
+@app.get("/api/narrators")
+def get_narrators():
+    """Returns configured narrators with story count stats."""
+    narrators = engine.db.get_narrators_stats()
+    return {"narrators": narrators}
+
 @app.get("/api/books")
 def list_books(
     authorization: Optional[str] = Header(None),
     user_id: Optional[int] = Query(None),
     limit: Optional[int] = Query(None),
     tag: Optional[str] = Query(None),
-    random_sample: Optional[bool] = Query(False)
+    random_sample: Optional[bool] = Query(False),
+    narrator: Optional[str] = Query(None)
 ):
     """Returns a list of imported books with rich metadata and user progress status."""
     current_uid = resolve_user_id(authorization, user_id)
@@ -203,6 +210,7 @@ def list_books(
             "has_savegame": bool(savegame),
             "progress_percent": progress_pct,
             "status": status,
+            "narrator": full_data.get("narrator") or "DaveFX",
             "rating": 4.8
         })
 

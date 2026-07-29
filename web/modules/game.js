@@ -4,7 +4,7 @@
 
 import { state, authFetch, escapeHtml, formatTimeAgo, API_BASE } from "./state.js";
 import { openAuthModal, updateAuthUI } from "./auth.js";
-import { checkLastActiveGame, loadInProgressSection, loadFeaturedLibrary, loadFullLibrary } from "./library.js";
+import { checkLastActiveGame, loadInProgressSection, loadFeaturedLibrary, loadNarratorsSection, loadFullLibrary } from "./library.js";
 
 const views = {
   home: document.getElementById("view-home"),
@@ -34,6 +34,7 @@ export function showHomeView() {
   checkLastActiveGame(startGame);
   loadInProgressSection(startGame);
   loadFeaturedLibrary(startGame);
+  loadNarratorsSection();
 }
 
 export function showFullLibraryView() {

@@ -195,6 +195,40 @@ export function renderFeaturedGrid(books, container, startGameFn) {
   });
 }
 
+export async function loadNarratorsSection() {
+  const container = document.getElementById("narrators-grid");
+  if (!container) return;
+
+  try {
+    const res = await authFetch(`${API_BASE}/api/narrators`);
+    const data = await res.json();
+    const narrators = data.narrators || [];
+
+    if (!Array.isArray(narrators) || narrators.length === 0) {
+      if (container.parentElement) container.parentElement.classList.add("hidden");
+      return;
+    }
+
+    if (container.parentElement) container.parentElement.classList.remove("hidden");
+    container.innerHTML = narrators.map(n => `
+      <div class="narrator-card" data-narrator-id="${escapeHtml(n.id)}">
+        <img src="${n.avatar_url}" alt="${escapeHtml(n.name)}" class="narrator-avatar">
+        <div class="narrator-info">
+          <h3 class="narrator-name">${escapeHtml(n.name)}</h3>
+          <p class="narrator-specialty">${escapeHtml(n.specialty)}</p>
+          <p class="narrator-stories-count">
+            <span>🎧</span>
+            <span>${n.story_count} historia${n.story_count === 1 ? '' : 's'}</span>
+          </p>
+        </div>
+        <div class="narrator-arrow">›</div>
+      </div>
+    `).join("");
+  } catch (err) {
+    console.warn("Could not load narrators:", err);
+  }
+}
+
 export async function loadFullLibrary(startGameFn) {
   const container = document.getElementById("full-library-grid");
   const countLbl = document.getElementById("library-count");

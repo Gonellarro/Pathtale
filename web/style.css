@@ -534,6 +534,87 @@ body {
   box-shadow: 0 4px 14px rgba(201, 138, 58, 0.35);
 }
 
+/* Narrators Section Grid & Cards */
+.narrators-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.narrator-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.narrator-card:hover {
+  border-color: var(--accent-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(201, 138, 58, 0.25);
+}
+
+.narrator-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border-color);
+  flex-shrink: 0;
+  background-color: var(--bg-secondary);
+}
+
+.narrator-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.narrator-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+  letter-spacing: 0.04em;
+}
+
+.narrator-specialty {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.narrator-stories-count {
+  font-size: 0.78rem;
+  color: var(--accent-gold);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.narrator-arrow {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.narrator-card:hover .narrator-arrow {
+  color: var(--accent-gold);
+  opacity: 1;
+  transform: translateX(4px);
+}
+
 /* Featured 6 Books Grid */
 .featured-books-grid {
   display: grid;

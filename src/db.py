@@ -69,10 +69,16 @@ class Database:
                     cover_image TEXT,
                     total_sections INTEGER,
                     start_node TEXT,
+                    narrator TEXT DEFAULT 'DaveFX',
                     rating REAL DEFAULT 4.8,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            try:
+                cursor.execute("ALTER TABLE books ADD COLUMN narrator TEXT DEFAULT 'DaveFX'")
+            except Exception:
+                pass
 
             # Migration check: if savegames table exists with old schema, migrate to composite PRIMARY KEY (user_id, book_id)
             cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='savegames'")
@@ -304,15 +310,49 @@ class Database:
                     estimated_duration = excluded.estimated_duration,
                     cover_image = excluded.cover_image,
                     total_sections = excluded.total_sections,
-                    start_node = excluded.start_node
+                    start_node = excluded.start_node,
+                    narrator = excluded.narrator
             """, (
                 b.get("book_id"), b.get("title"), b.get("author"), b.get("publisher"),
                 b.get("year"), b.get("language", "es"), b.get("description"), b.get("isbn"),
                 b.get("genre", "Ficción Interactiva"), b.get("series"), b.get("volume"),
                 b.get("estimated_duration", "30 minutos"), b.get("cover_image"),
-                b.get("total_sections", 1), b.get("start_node")
+                b.get("total_sections", 1), b.get("start_node"), b.get("narrator") or "DaveFX"
             ))
             conn.commit()
+
+    def get_narrators_stats(self) -> List[Dict[str, Any]]:
+        narrators = [
+            {
+                "id": "DaveFX",
+                "name": "DAVEFX",
+                "specialty": "Español · Fantasía y Misterio",
+                "avatar_url": "/assets/narrator_davefx.jpg"
+            },
+            {
+                "id": "Lessac",
+                "name": "LESSAC",
+                "specialty": "Inglés · Drama y Aventuras",
+                "avatar_url": "/assets/narrator_lessac.jpg"
+            }
+        ]
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT narrator, COUNT(*) as count FROM books GROUP BY narrator")
+            rows = cursor.fetchall()
+            counts = {r["narrator"].lower(): r["count"] for r in rows if r["narrator"]}
+            
+            cursor.execute("SELECT COUNT(*) as count FROM books")
+            total_b = cursor.fetchone()["count"]
+
+        for n in narrators:
+            c = counts.get(n["id"].lower(), 0)
+            if n["id"] == "DaveFX" and c == 0:
+                c = total_b
+            n["story_count"] = c
+
+        return narrators
 
     def get_top_tags(self, limit: int = 5) -> List[str]:
         with self.get_connection() as conn:
