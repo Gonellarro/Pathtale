@@ -337,6 +337,37 @@ body {
   max-width: 480px;
 }
 
+.hero-actions {
+  margin-top: 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-hero-primary {
+  background: var(--accent-gold);
+  color: #0c0906;
+  border: none;
+  padding: 0.8rem 1.6rem;
+  border-radius: var(--radius-sm);
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 18px rgba(201, 138, 58, 0.35);
+}
+
+.btn-hero-primary:hover {
+  background: var(--accent-gold-bright);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(201, 138, 58, 0.5);
+}
+
 .library-toolbar {
   display: flex;
   align-items: center;

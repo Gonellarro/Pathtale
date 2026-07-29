@@ -233,6 +233,22 @@ class Database:
                 "updated_at": row["updated_at"]
             }
 
+    def get_last_active_game(self, user_id: int) -> Optional[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM savegames WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1
+            """, (user_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "user_id": row["user_id"],
+                "book_id": row["book_id"],
+                "current_node_id": row["current_node_id"],
+                "updated_at": row["updated_at"]
+            }
+
     def save_game(self, user_id: int, book_id: str, current_node_id: str, inventory: Optional[dict] = None, variables: Optional[dict] = None):
         inv_json = json.dumps(inventory or {})
         vars_json = json.dumps(variables or {})

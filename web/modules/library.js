@@ -25,11 +25,42 @@ export function setLibraryViewMode(mode) {
   }
 }
 
-export async function loadLibrary(onShowLanding) {
+export async function checkLastActiveGame(startGameFn) {
+  const heroActions = document.getElementById("hero-actions");
+  const btnContinue = document.getElementById("btn-hero-continue");
+  if (!heroActions || !btnContinue) return;
+
   if (!state.authToken || !state.currentUser) {
+    heroActions.classList.add("hidden");
+    return;
+  }
+
+  const uid = state.currentUser.user_id || 1;
+  try {
+    const res = await authFetch(`${API_BASE}/api/games/${uid}/last_active`);
+    const data = await res.json();
+    if (data && data.has_active_game && data.book_id) {
+      heroActions.classList.remove("hidden");
+      btnContinue.onclick = () => {
+        if (startGameFn) startGameFn(data.book_id, false);
+      };
+    } else {
+      heroActions.classList.add("hidden");
+    }
+  } catch (err) {
+    console.warn("Could not check last active game:", err);
+    heroActions.classList.add("hidden");
+  }
+}
+
+export async function loadLibrary(onShowLanding, startGameFn) {
+  if (!state.authToken || !state.currentUser) {
+    checkLastActiveGame();
     if (onShowLanding) onShowLanding();
     return;
   }
+
+  checkLastActiveGame(startGameFn);
 
   if (libraryGrid) {
     libraryGrid.innerHTML = `

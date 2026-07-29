@@ -227,6 +227,24 @@ def get_favicon():
         return FileResponse(fav)
     return Response(status_code=204)
 
+@app.get("/api/games/{user_id}/last_active")
+def get_last_active_game(user_id: int, authorization: Optional[str] = Header(None)):
+    """Returns the most recently played game session for the user."""
+    uid = resolve_user_id(authorization, user_id)
+    last_game = engine.db.get_last_active_game(uid)
+    if not last_game:
+        return {"has_active_game": False}
+
+    book_id = last_game["book_id"]
+    book_data = engine.books.get(book_id, {})
+    return {
+        "has_active_game": True,
+        "book_id": book_id,
+        "book_title": book_data.get("title", book_id),
+        "current_node_id": last_game["current_node_id"],
+        "updated_at": last_game["updated_at"]
+    }
+
 @app.get("/api/games/{user_id}/{book_id}")
 def get_game_state(user_id: int, book_id: str, authorization: Optional[str] = Header(None)):
     """Retrieves current game state for active user session."""
@@ -263,6 +281,15 @@ def make_choice(user_id: int, book_id: str, req: ChoiceRequest, authorization: O
 
     if not chosen:
         raise HTTPException(status_code=400, detail="Invalid choice option selected")
+
+    chosen_copy = dict(chosen)
+    chosen_copy["book_id"] = book_id
+
+    new_state = engine.make_choice(uid, chosen_copy)
+    if not new_state:
+        raise HTTPException(status_code=500, detail="Could not advance game state")
+
+    return _format_game_state_response(uid, book_id, new_state)
 
 class JumpRequest(BaseModel):
     target: str

@@ -30,7 +30,7 @@ export function showLibraryView() {
   if (navBtns.library) navBtns.library.classList.add("active");
   updateAuthUI();
   if (state.authToken && state.currentUser) {
-    loadLibrary(showLandingView);
+    loadLibrary(showLandingView, startGame);
   }
 }
 
