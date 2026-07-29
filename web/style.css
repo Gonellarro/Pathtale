@@ -104,31 +104,39 @@ body {
   overflow-x: hidden;
 }
 
-/* Container */
+/* Container (15% wider: 1265px) */
 .app-container {
-  max-width: 1100px;
+  max-width: 1265px;
   margin: 0 auto;
   width: 100%;
+  padding: 0 1.5rem;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   position: relative;
 }
 
-/* Navbar */
+/* Navbar (Header bar background stays full-width, content aligns perfectly with app-container) */
 .navbar {
   width: 100%;
   height: 68px;
   background-color: var(--bg-navbar);
   border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2rem;
   position: sticky;
   top: 0;
   z-index: 100;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.nav-content {
+  max-width: 1265px;
+  margin: 0 auto;
+  width: 100%;
+  height: 100%;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .nav-brand {
