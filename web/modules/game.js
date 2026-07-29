@@ -4,7 +4,7 @@
 
 import { state, authFetch, escapeHtml, formatTimeAgo, API_BASE } from "./state.js";
 import { openAuthModal, updateAuthUI } from "./auth.js";
-import { checkLastActiveGame, loadInProgressSection, loadFullLibrary } from "./library.js";
+import { checkLastActiveGame, loadInProgressSection, loadFeaturedLibrary, loadFullLibrary } from "./library.js";
 
 const views = {
   home: document.getElementById("view-home"),
@@ -26,20 +26,21 @@ export function showLandingView() {
 
 export function showHomeView() {
   if (audioPlayer) audioPlayer.pause();
-  if (views.game) views.game.classList.remove("active");
-  if (views.library) views.library.classList.remove("active");
-  if (views.home) views.home.classList.add("active");
+  if (views.game) { views.game.classList.remove("active"); views.game.classList.add("hidden"); }
+  if (views.library) { views.library.classList.remove("active"); views.library.classList.add("hidden"); }
+  if (views.home) { views.home.classList.add("active"); views.home.classList.remove("hidden"); }
   if (navBtns.library) navBtns.library.classList.remove("active");
   updateAuthUI();
   checkLastActiveGame(startGame);
   loadInProgressSection(startGame);
+  loadFeaturedLibrary(startGame);
 }
 
 export function showFullLibraryView() {
   if (audioPlayer) audioPlayer.pause();
-  if (views.game) views.game.classList.remove("active");
-  if (views.home) views.home.classList.remove("active");
-  if (views.library) views.library.classList.add("active");
+  if (views.game) { views.game.classList.remove("active"); views.game.classList.add("hidden"); }
+  if (views.home) { views.home.classList.remove("active"); views.home.classList.add("hidden"); }
+  if (views.library) { views.library.classList.add("active"); views.library.classList.remove("hidden"); }
   if (navBtns.library) navBtns.library.classList.add("active");
   updateAuthUI();
   loadFullLibrary(startGame);
@@ -50,9 +51,9 @@ export function showGameView() {
     openAuthModal();
     return;
   }
-  if (views.home) views.home.classList.remove("active");
-  if (views.library) views.library.classList.remove("active");
-  if (views.game) views.game.classList.add("active");
+  if (views.home) { views.home.classList.remove("active"); views.home.classList.add("hidden"); }
+  if (views.library) { views.library.classList.remove("active"); views.library.classList.add("hidden"); }
+  if (views.game) { views.game.classList.add("active"); views.game.classList.remove("hidden"); }
   if (navBtns.library) navBtns.library.classList.remove("active");
   updateAuthUI();
 }
