@@ -346,7 +346,7 @@ export async function loadAdminBooks() {
         const bid = btn.getAttribute("data-id");
         const btitle = btn.getAttribute("data-title");
         const btier = btn.getAttribute("data-tier");
-        promptBookTier(bid, btitle, btier);
+        openAdminBookTierModal(bid, btitle, btier);
       };
     });
 
@@ -363,33 +363,83 @@ export async function loadAdminBooks() {
   }
 }
 
-async function promptBookTier(bookId, bookTitle, currentTierId) {
-  const tierChoice = prompt(
-    `Selecciona el Nivel de Membresía requerido para '${bookTitle}':\n1 = Demo Gratuita\n2 = Tier 1 (Bronce)\n3 = Tier 2 (Plata)\n4 = Tier 3 (Oro)`,
-    currentTierId || "1"
-  );
-  if (!tierChoice) return;
-  const tierId = parseInt(tierChoice);
-  if (isNaN(tierId) || tierId < 1 || tierId > 4) {
-    alert("❌ Nivel no válido. Debe ser 1, 2, 3 o 4.");
-    return;
+let isAdminBookTierModalEventsBound = false;
+
+function openAdminBookTierModal(bookId, bookTitle, currentTierId) {
+  const modal = document.getElementById("modal-admin-book-tier");
+  const title = document.getElementById("modal-admin-book-tier-title");
+  const subtitle = document.getElementById("admin-book-tier-subtitle");
+  const inputBookId = document.getElementById("admin-book-tier-id-input");
+  const selectTier = document.getElementById("admin-book-tier-select");
+  const errDiv = document.getElementById("admin-book-tier-error");
+
+  if (!modal) return;
+
+  if (errDiv) {
+    errDiv.classList.add("hidden");
+    errDiv.textContent = "";
   }
 
-  try {
-    const res = await authFetch(`${API_BASE}/api/admin/books/${bookId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tier_id: tierId })
-    });
-    if (res.ok) {
-      alert(`✅ Nivel requerido para '${bookTitle}' actualizado.`);
-      loadAdminBooks();
-    } else {
-      const data = await res.json();
-      alert(`❌ Error: ${data.detail}`);
-    }
-  } catch (err) {
-    alert(`❌ Error al conectar: ${err.message}`);
+  title.textContent = `🏷️ Membresía Requerida`;
+  if (subtitle) {
+    subtitle.textContent = `Asigna el nivel de membresía mínimo necesario para que los usuarios puedan reproducir '${bookTitle}':`;
+  }
+  inputBookId.value = bookId;
+  selectTier.value = currentTierId || "1";
+
+  modal.classList.add("open");
+  initAdminBookTierModalEvents();
+}
+
+function closeAdminBookTierModal() {
+  const modal = document.getElementById("modal-admin-book-tier");
+  if (modal) modal.classList.remove("open");
+}
+
+function initAdminBookTierModalEvents() {
+  if (isAdminBookTierModalEventsBound) return;
+  isAdminBookTierModalEventsBound = true;
+
+  const btnClose = document.getElementById("btn-close-modal-admin-book-tier");
+  const btnCancel = document.getElementById("btn-cancel-admin-book-tier");
+  const form = document.getElementById("form-admin-book-tier");
+
+  if (btnClose) btnClose.onclick = closeAdminBookTierModal;
+  if (btnCancel) btnCancel.onclick = closeAdminBookTierModal;
+
+  if (form) {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const bookId = document.getElementById("admin-book-tier-id-input").value;
+      const tierId = parseInt(document.getElementById("admin-book-tier-select").value);
+      const errDiv = document.getElementById("admin-book-tier-error");
+
+      if (errDiv) {
+        errDiv.classList.add("hidden");
+        errDiv.textContent = "";
+      }
+
+      try {
+        const res = await authFetch(`${API_BASE}/api/admin/books/${bookId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tier_id: tierId })
+        });
+
+        if (res.ok) {
+          closeAdminBookTierModal();
+          loadAdminBooks();
+        } else {
+          const data = await res.json();
+          throw new Error(data.detail || "Error al actualizar el nivel del libro.");
+        }
+      } catch (err) {
+        if (errDiv) {
+          errDiv.textContent = `❌ ${err.message}`;
+          errDiv.classList.remove("hidden");
+        }
+      }
+    };
   }
 }
 

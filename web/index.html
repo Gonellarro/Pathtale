@@ -505,6 +505,40 @@
           </form>
         </div>
       </div>
+    <!-- Modal: Cambiar Tier de Libro -->
+    <div id="modal-admin-book-tier" class="modal">
+      <div class="modal-content" style="max-width: 460px;">
+        <div class="modal-header">
+          <h2 id="modal-admin-book-tier-title">🏷️ Membresía Requerida</h2>
+          <button id="btn-close-modal-admin-book-tier" class="btn-icon">✕</button>
+        </div>
+        <div class="modal-body">
+          <form id="form-admin-book-tier" onsubmit="return false;">
+            <input type="hidden" id="admin-book-tier-id-input" value="">
+            
+            <p id="admin-book-tier-subtitle" style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1.25rem;">
+              Selecciona el nivel de membresía mínimo necesario para acceder a este audiolibro:
+            </p>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem;">
+              <label for="admin-book-tier-select" style="font-weight:600;">Nivel de Membresía (Tier)</label>
+              <select id="admin-book-tier-select" class="select-input" style="width: 100%;">
+                <option value="1">Demo Gratuita (Acceso libre)</option>
+                <option value="2">Tier 1 - Bronce</option>
+                <option value="3">Tier 2 - Plata</option>
+                <option value="4">Tier 3 - Oro (Acceso total)</option>
+              </select>
+            </div>
+
+            <div id="admin-book-tier-error" class="auth-error hidden" style="margin-top: 1rem;"></div>
+
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem; justify-content: flex-end;">
+              <button type="button" id="btn-cancel-admin-book-tier" class="btn-secondary" style="padding: 0.6rem 1.2rem;">Cancelar</button>
+              <button type="submit" id="btn-save-admin-book-tier" class="btn-primary" style="padding: 0.6rem 1.4rem;">Guardar Nivel</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   </div>
 
