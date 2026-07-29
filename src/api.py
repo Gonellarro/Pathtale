@@ -245,6 +245,32 @@ def get_last_active_game(user_id: int, authorization: Optional[str] = Header(Non
         "updated_at": last_game["updated_at"]
     }
 
+@app.get("/api/games/{user_id}/in_progress")
+def get_in_progress_games(user_id: int, limit: int = 3, authorization: Optional[str] = Header(None)):
+    """Returns top in-progress game sessions for the user."""
+    uid = resolve_user_id(authorization, user_id)
+    saves = engine.db.get_in_progress_games(uid, limit=limit)
+    result = []
+    for s in saves:
+        b_id = s["book_id"]
+        book_data = engine.books.get(b_id, {})
+        history = engine.db.get_history(uid, b_id, limit=500)
+        visited_count = len(set(h["to_node_id"] for h in history))
+        total_sections = book_data.get("total_sections", 1)
+        progress_pct = min(100, int((visited_count / max(1, total_sections)) * 100))
+        
+        result.append({
+            "book_id": b_id,
+            "title": book_data.get("title", b_id),
+            "genre": book_data.get("genre", "Ficción Interactiva"),
+            "cover_image_url": f"/api/books/{b_id}/asset/{book_data.get('cover_image')}" if book_data.get("cover_image") else None,
+            "estimated_duration": book_data.get("estimated_duration", "30 min"),
+            "total_sections": total_sections,
+            "progress_percent": progress_pct,
+            "updated_at": s["updated_at"]
+        })
+    return {"in_progress": result}
+
 @app.get("/api/games/{user_id}/{book_id}")
 def get_game_state(user_id: int, book_id: str, authorization: Optional[str] = Header(None)):
     """Retrieves current game state for active user session."""

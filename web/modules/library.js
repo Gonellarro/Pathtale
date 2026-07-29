@@ -53,14 +53,74 @@ export async function checkLastActiveGame(startGameFn) {
   }
 }
 
+export async function loadInProgressSection(startGameFn) {
+  const section = document.getElementById("section-continue-reading");
+  const grid = document.getElementById("continue-cards-grid");
+  if (!section || !grid) return;
+
+  if (!state.authToken || !state.currentUser) {
+    section.classList.add("hidden");
+    return;
+  }
+
+  const uid = state.currentUser.user_id || 1;
+  try {
+    const res = await authFetch(`${API_BASE}/api/games/${uid}/in_progress?limit=3`);
+    const data = await res.json();
+    const books = data.in_progress || [];
+
+    if (!Array.isArray(books) || books.length === 0) {
+      section.classList.add("hidden");
+      return;
+    }
+
+    section.classList.remove("hidden");
+    grid.innerHTML = books.map(b => `
+      <div class="continue-card" data-book-id="${b.book_id}">
+        <div class="continue-thumb-wrap">
+          ${b.cover_image_url 
+            ? `<img src="${b.cover_image_url}?v=${Date.now()}" alt="${escapeHtml(b.title)}" class="continue-thumb-img">` 
+            : `<div class="book-cover-placeholder" style="font-size:1.5rem">📜</div>`}
+        </div>
+        <div class="continue-info">
+          <p class="continue-genre">${escapeHtml(b.genre || "Ficción Interactiva")}</p>
+          <h3 class="continue-book-title">${escapeHtml(b.title)}</h3>
+          <div class="continue-progress-row">
+            <div class="continue-progress-bar-wrap">
+              <div class="continue-progress-bar-fill" style="width: ${b.progress_percent || 0}%"></div>
+            </div>
+            <span class="continue-pct-lbl">${b.progress_percent || 0}%</span>
+          </div>
+          <div class="continue-meta-row">
+            <span>⏱ ${escapeHtml(b.estimated_duration || "30 min")}</span>
+            <span>📖 ${b.total_sections || 0} caps.</span>
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    grid.querySelectorAll(".continue-card").forEach(card => {
+      card.onclick = () => {
+        const bookId = card.getAttribute("data-book-id");
+        if (startGameFn) startGameFn(bookId, false);
+      };
+    });
+  } catch (err) {
+    console.warn("Could not load in-progress games:", err);
+    section.classList.add("hidden");
+  }
+}
+
 export async function loadLibrary(onShowLanding, startGameFn) {
   if (!state.authToken || !state.currentUser) {
     checkLastActiveGame();
+    loadInProgressSection();
     if (onShowLanding) onShowLanding();
     return;
   }
 
   checkLastActiveGame(startGameFn);
+  loadInProgressSection(startGameFn);
 
   if (libraryGrid) {
     libraryGrid.innerHTML = `

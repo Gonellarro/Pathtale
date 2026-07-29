@@ -249,6 +249,15 @@ class Database:
                 "updated_at": row["updated_at"]
             }
 
+    def get_in_progress_games(self, user_id: int, limit: int = 3) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM savegames WHERE user_id = ? ORDER BY updated_at DESC LIMIT ?
+            """, (user_id, limit))
+            rows = cursor.fetchall()
+            return [dict(r) for r in rows]
+
     def save_game(self, user_id: int, book_id: str, current_node_id: str, inventory: Optional[dict] = None, variables: Optional[dict] = None):
         inv_json = json.dumps(inventory or {})
         vars_json = json.dumps(variables or {})
