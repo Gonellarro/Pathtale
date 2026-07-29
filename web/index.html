@@ -441,6 +441,71 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal: Administrar Usuario (Crear / Editar) -->
+    <div id="modal-admin-user" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modal-admin-user-title">👤 Usuario</h2>
+          <button id="btn-close-modal-admin-user" class="btn-icon">✕</button>
+        </div>
+        <div class="modal-body">
+          <form id="form-admin-user" onsubmit="return false;">
+            <input type="hidden" id="admin-user-id" value="">
+            
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="admin-user-username">Nombre de Usuario (Login)</label>
+              <input type="text" id="admin-user-username" class="text-input" placeholder="ej: juanperez" required autocomplete="username">
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="admin-user-name">Nombre Visible</label>
+              <input type="text" id="admin-user-name" class="text-input" placeholder="ej: Juan Pérez">
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="admin-user-role">Rol de Sistema</label>
+              <select id="admin-user-role" class="select-input" style="width: 100%;">
+                <option value="user">USER (Usuario Lector Estándar)</option>
+                <option value="admin">⚡ ADMIN (Administrador de Sistema)</option>
+              </select>
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="admin-user-tier">Nivel de Membresía / Tier</label>
+              <select id="admin-user-tier" class="select-input" style="width: 100%;">
+                <option value="1">Demo Gratuita (Tier 0)</option>
+                <option value="2">Tier 1 - Bronce</option>
+                <option value="3">Tier 2 - Plata</option>
+                <option value="4">Tier 3 - Oro</option>
+              </select>
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="admin-user-duration">Duración de la Membresía</label>
+              <select id="admin-user-duration" class="select-input" style="width: 100%;">
+                <option value="0">Permanente / Sin Caducidad</option>
+                <option value="30">1 Mes (30 días)</option>
+                <option value="90">3 Meses (90 días)</option>
+                <option value="365">1 Año (365 días)</option>
+              </select>
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="admin-user-pass">Contraseña <small style="color:var(--text-muted); font-weight:normal">(dejar en blanco para mantener la actual en edición)</small></label>
+              <input type="password" id="admin-user-pass" class="text-input" placeholder="••••••••" autocomplete="new-password">
+            </div>
+
+            <div id="admin-user-error" class="auth-error hidden" style="margin-top: 1rem;"></div>
+
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem; justify-content: flex-end;">
+              <button type="button" id="btn-cancel-admin-user" class="btn-secondary" style="padding: 0.6rem 1.2rem;">Cancelar</button>
+              <button type="submit" id="btn-save-admin-user" class="btn-primary" style="padding: 0.6rem 1.4rem;">Guardar Usuario</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 
   <audio id="html-audio-player" preload="auto"></audio>

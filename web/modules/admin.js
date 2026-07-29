@@ -41,6 +41,9 @@ function initAdminTabs() {
 
 // --- Users Management ---
 
+let adminUsersCache = [];
+let isAdminUserModalEventsBound = false;
+
 export async function loadAdminUsers() {
   const container = document.getElementById("admin-users-table-wrap");
   const countLbl = document.getElementById("admin-users-count");
@@ -49,7 +52,8 @@ export async function loadAdminUsers() {
   try {
     const res = await authFetch(`${API_BASE}/api/admin/users`);
     const data = await res.json();
-    const users = data.users || [];
+    adminUsersCache = data.users || [];
+    const users = adminUsersCache;
 
     if (countLbl) countLbl.textContent = `Total: ${users.length} usuario${users.length === 1 ? '' : 's'}`;
 
@@ -84,8 +88,7 @@ export async function loadAdminUsers() {
               </td>
               <td>${formatTimeAgo(u.created_at)}</td>
               <td class="td-actions">
-                <button class="btn-secondary btn-sm btn-edit-user" data-id="${u.user_id}" data-name="${escapeHtml(u.first_name || '')}" data-role="${u.role}">✏️ Editar</button>
-                <button class="btn-secondary btn-sm btn-tier-user" data-id="${u.user_id}" data-name="${escapeHtml(u.username)}" data-tier="${u.tier_id || 1}">💳 Tier</button>
+                <button class="btn-secondary btn-sm btn-edit-user" data-id="${u.user_id}">✏️ Editar</button>
                 ${u.user_id !== 1 ? `<button class="btn-secondary btn-sm btn-delete-user" data-id="${u.user_id}" style="color: #ff6b6b">🗑️</button>` : ''}
               </td>
             </tr>
@@ -94,22 +97,12 @@ export async function loadAdminUsers() {
       </table>
     `;
 
-    // Bind edit/tier/delete
+    // Bind edit/delete buttons
     container.querySelectorAll(".btn-edit-user").forEach(btn => {
       btn.onclick = () => {
-        const uid = btn.getAttribute("data-id");
-        const fname = btn.getAttribute("data-name");
-        const urole = btn.getAttribute("data-role");
-        promptEditUser(uid, fname, urole);
-      };
-    });
-
-    container.querySelectorAll(".btn-tier-user").forEach(btn => {
-      btn.onclick = () => {
-        const uid = btn.getAttribute("data-id");
-        const uname = btn.getAttribute("data-name");
-        const utier = btn.getAttribute("data-tier");
-        promptUserSubscription(uid, uname, utier);
+        const uid = parseInt(btn.getAttribute("data-id"));
+        const targetUser = adminUsersCache.find(u => u.user_id === uid);
+        if (targetUser) openAdminUserModal(targetUser);
       };
     });
 
@@ -124,101 +117,162 @@ export async function loadAdminUsers() {
 
     const btnAdd = document.getElementById("btn-admin-add-user");
     if (btnAdd) {
-      btnAdd.onclick = () => promptCreateUser();
+      btnAdd.onclick = () => openAdminUserModal(null);
     }
+
+    initAdminUserModalEvents();
   } catch (err) {
     console.error("Error loading admin users:", err);
   }
 }
 
-async function promptUserSubscription(userId, username, currentTierId) {
-  const tierChoice = prompt(
-    `Selecciona el Nivel de Membresía para @${username}:\n1 = Demo Gratuita\n2 = Tier 1 (Bronce)\n3 = Tier 2 (Plata)\n4 = Tier 3 (Oro)`,
-    currentTierId || "1"
-  );
-  if (!tierChoice) return;
-  const tierId = parseInt(tierChoice);
-  if (isNaN(tierId) || tierId < 1 || tierId > 4) {
-    alert("❌ Nivel no válido. Debe ser 1, 2, 3 o 4.");
-    return;
+function openAdminUserModal(user = null) {
+  const modal = document.getElementById("modal-admin-user");
+  const title = document.getElementById("modal-admin-user-title");
+  const userIdInput = document.getElementById("admin-user-id");
+  const usernameInput = document.getElementById("admin-user-username");
+  const nameInput = document.getElementById("admin-user-name");
+  const roleSelect = document.getElementById("admin-user-role");
+  const tierSelect = document.getElementById("admin-user-tier");
+  const durationSelect = document.getElementById("admin-user-duration");
+  const passInput = document.getElementById("admin-user-pass");
+  const errDiv = document.getElementById("admin-user-error");
+
+  if (!modal) return;
+
+  if (errDiv) {
+    errDiv.classList.add("hidden");
+    errDiv.textContent = "";
   }
 
-  const durationChoice = prompt(
-    `Duración en días para la suscripción de @${username}:\nEscribe 0 para Permanente / Sin Caducidad,\no número de días (ej: 30 para 1 mes, 365 para 1 año):`,
-    "0"
-  );
-  if (durationChoice === null) return;
-  const durationDays = parseInt(durationChoice) || 0;
-
-  try {
-    const res = await authFetch(`${API_BASE}/api/admin/users/${userId}/subscription`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tier_id: tierId, duration_days: durationDays })
-    });
-    if (res.ok) {
-      alert(`✅ Suscripción de @${username} actualizada.`);
-      loadAdminUsers();
-    } else {
-      const data = await res.json();
-      alert(`❌ Error: ${data.detail}`);
-    }
-  } catch (err) {
-    alert(`❌ Error al conectar: ${err.message}`);
+  if (user) {
+    // EDIT MODE
+    title.textContent = `✏️ Editar Usuario @${user.username}`;
+    userIdInput.value = user.user_id;
+    usernameInput.value = user.username;
+    usernameInput.disabled = true;
+    nameInput.value = user.first_name || "";
+    roleSelect.value = user.role || "user";
+    tierSelect.value = user.tier_id || "1";
+    durationSelect.value = "0";
+    passInput.value = "";
+  } else {
+    // CREATE NEW MODE
+    title.textContent = "👤 Nuevo Usuario";
+    userIdInput.value = "";
+    usernameInput.value = "";
+    usernameInput.disabled = false;
+    nameInput.value = "";
+    roleSelect.value = "user";
+    tierSelect.value = "1";
+    durationSelect.value = "0";
+    passInput.value = "";
   }
+
+  modal.classList.add("open");
 }
 
-async function promptCreateUser() {
-  const username = prompt("Nombre de usuario (login):");
-  if (!username) return;
-  const password = prompt("Contraseña (mín. 4 caracteres):");
-  if (!password) return;
-  const name = prompt("Nombre visible (opcional):") || username;
-  const isAdmin = confirm("¿Otorgar permisos de Administrador (ADMIN)? OK = Sí, Cancelar = Usuario Normal");
-
-  try {
-    const res = await authFetch(`${API_BASE}/api/admin/users`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username,
-        password,
-        first_name: name,
-        role: isAdmin ? "admin" : "user"
-      })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert(`✅ Usuario '${username}' creado correctamente.`);
-      loadAdminUsers();
-    } else {
-      alert(`❌ Error: ${data.detail}`);
-    }
-  } catch (err) {
-    alert(`❌ Error al conectar: ${err.message}`);
-  }
+function closeAdminUserModal() {
+  const modal = document.getElementById("modal-admin-user");
+  if (modal) modal.classList.remove("open");
 }
 
-async function promptEditUser(userId, currentName, currentRole) {
-  const newName = prompt("Nuevo nombre visible:", currentName);
-  if (newName === null) return;
-  const newRole = confirm(`¿Rol actual: ${currentRole}? Presiona OK para ADMIN o Cancelar para USER`) ? "admin" : "user";
-  const newPass = prompt("Nueva contraseña (deja en blanco para mantener la actual):");
+function initAdminUserModalEvents() {
+  if (isAdminUserModalEventsBound) return;
+  isAdminUserModalEventsBound = true;
 
-  try {
-    const body = { first_name: newName, role: newRole };
-    if (newPass && newPass.trim()) body.password = newPass.trim();
+  const btnClose = document.getElementById("btn-close-modal-admin-user");
+  const btnCancel = document.getElementById("btn-cancel-admin-user");
+  const form = document.getElementById("form-admin-user");
 
-    const res = await authFetch(`${API_BASE}/api/admin/users/${userId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    if (res.ok) {
-      loadAdminUsers();
-    }
-  } catch (err) {
-    alert("Error al actualizar usuario.");
+  if (btnClose) btnClose.onclick = closeAdminUserModal;
+  if (btnCancel) btnCancel.onclick = closeAdminUserModal;
+
+  if (form) {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const userId = document.getElementById("admin-user-id").value;
+      const username = document.getElementById("admin-user-username").value.trim();
+      const name = document.getElementById("admin-user-name").value.trim();
+      const role = document.getElementById("admin-user-role").value;
+      const tierId = parseInt(document.getElementById("admin-user-tier").value);
+      const durationDays = parseInt(document.getElementById("admin-user-duration").value);
+      const pass = document.getElementById("admin-user-pass").value.trim();
+      const errDiv = document.getElementById("admin-user-error");
+
+      if (errDiv) {
+        errDiv.classList.add("hidden");
+        errDiv.textContent = "";
+      }
+
+      try {
+        if (userId) {
+          // EDIT EXISTING USER
+          const body = { first_name: name, role: role };
+          if (pass && pass.length >= 4) body.password = pass;
+
+          const resUpdate = await authFetch(`${API_BASE}/api/admin/users/${userId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          });
+
+          if (!resUpdate.ok) {
+            const errData = await resUpdate.json();
+            throw new Error(errData.detail || "Error al actualizar datos del usuario.");
+          }
+
+          // Update Subscription Tier
+          const resSub = await authFetch(`${API_BASE}/api/admin/users/${userId}/subscription`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tier_id: tierId, duration_days: durationDays })
+          });
+
+          if (!resSub.ok) {
+            const errData = await resSub.json();
+            throw new Error(errData.detail || "Error al actualizar la membresía.");
+          }
+
+          closeAdminUserModal();
+          loadAdminUsers();
+        } else {
+          // CREATE NEW USER
+          if (!username || !pass || pass.length < 4) {
+            throw new Error("Nombre de usuario y contraseña (mín. 4 caracteres) son requeridos.");
+          }
+
+          const resCreate = await authFetch(`${API_BASE}/api/admin/users`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: username, password: pass, first_name: name, role: role })
+          });
+
+          const dataCreate = await resCreate.json();
+          if (!resCreate.ok) {
+            throw new Error(dataCreate.detail || "Error al crear el usuario.");
+          }
+
+          const newUserId = dataCreate.user.user_id;
+
+          if (tierId > 1 || durationDays > 0) {
+            await authFetch(`${API_BASE}/api/admin/users/${newUserId}/subscription`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ tier_id: tierId, duration_days: durationDays })
+            });
+          }
+
+          closeAdminUserModal();
+          loadAdminUsers();
+        }
+      } catch (err) {
+        if (errDiv) {
+          errDiv.textContent = `❌ ${err.message}`;
+          errDiv.classList.remove("hidden");
+        }
+      }
+    };
   }
 }
 
