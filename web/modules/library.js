@@ -2,7 +2,7 @@
  * Library Module for PathTale (Book catalog rendering, view modes, and starting games)
  */
 
-import { state, authFetch, API_BASE } from "./state.js";
+import { state, authFetch, escapeHtml, API_BASE } from "./state.js";
 import { openAuthModal } from "./auth.js";
 
 const libraryGrid = document.getElementById("library-grid");
