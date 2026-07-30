@@ -2066,20 +2066,34 @@ body {
 }
 
 .td-progress {
-  min-width: auto;
-  white-space: nowrap;
+  min-width: 130px;
 }
 
-.table-progress-bar-wrap,
-.continue-progress-bar-wrap,
-.progress-bar-wrap {
-  display: none !important;
+.table-progress-bar-wrap {
+  width: 100px;
+  height: 4px;
+  background: rgba(201, 138, 58, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.5rem;
 }
 
 .table-progress-bar-fill {
   height: 100%;
   background: var(--accent-gold);
   border-radius: 2px;
+}
+
+@media (max-width: 1024px), (orientation: landscape) and (max-height: 650px) {
+  .td-progress {
+    min-width: auto !important;
+    white-space: nowrap !important;
+  }
+  .table-progress-bar-wrap {
+    display: none !important;
+  }
 }
 
 .table-progress-pct {
