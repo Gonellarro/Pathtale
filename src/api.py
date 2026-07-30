@@ -44,9 +44,10 @@ class StartGameRequest(BaseModel):
     book_id: str
 
 class ChoiceRequest(BaseModel):
-    choice_id: Optional[int] = None
+    choice_id: Optional[Any] = None
     target_node: Optional[str] = None
     text: Optional[str] = None
+    text_query: Optional[str] = None
 
 class RegisterRequest(BaseModel):
     username: str
@@ -568,6 +569,12 @@ def get_game_history(user_id: int, book_id: str, authorization: Optional[str] = 
     history = engine.db.get_history(uid, book_id)
     return history
 
+class ChoiceRequest(BaseModel):
+    choice_id: Optional[Any] = None
+    target_node: Optional[str] = None
+    text: Optional[str] = None
+    text_query: Optional[str] = None
+
 @app.post("/api/games/{user_id}/{book_id}/choice")
 def make_choice(user_id: int, book_id: str, req: ChoiceRequest, authorization: Optional[str] = Header(None)):
     """Submits a choice to advance game state."""
@@ -579,12 +586,16 @@ def make_choice(user_id: int, book_id: str, req: ChoiceRequest, authorization: O
     choices = state["current_node"]["choices"]
     chosen = None
 
-    if req.choice_id:
-        chosen = next((c for c in choices if c["choice_id"] == req.choice_id), None)
-    elif req.target_node:
-        chosen = next((c for c in choices if c["target_node"] == req.target_node), None)
-    elif req.text:
-        chosen = voice_parser.parse_intent(req.text, choices)
+    if req.choice_id is not None and str(req.choice_id).strip() != "":
+        chosen = next((c for c in choices if str(c.get("choice_id")) == str(req.choice_id)), None)
+
+    if not chosen and req.target_node:
+        chosen = next((c for c in choices if str(c.get("target_node")) == str(req.target_node)), None)
+
+    if not chosen:
+        query_text = req.text or req.text_query
+        if query_text:
+            chosen = voice_parser.parse_intent(query_text, choices)
 
     if not chosen:
         raise HTTPException(status_code=400, detail="Invalid choice option selected")

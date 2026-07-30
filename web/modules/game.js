@@ -273,6 +273,7 @@ export function renderGameState(gameState) {
   }
 
   if (audioPlayer && gameState.audio_url) {
+    state.currentAudioType = "narrative";
     audioPlayer.src = `${gameState.audio_url}?v=${Date.now()}`;
     if (state.appSettings.autoplay) {
       audioPlayer.play().catch(() => {});
