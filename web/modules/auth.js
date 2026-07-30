@@ -206,7 +206,12 @@ export async function handleAuthSubmit(e, onSuccess) {
     }
 
     state.authToken = data.user.token;
-    state.currentUser = { user_id: data.user.user_id, username: data.user.username, first_name: data.user.first_name };
+    state.currentUser = { 
+      user_id: data.user.user_id, 
+      username: data.user.username, 
+      first_name: data.user.first_name,
+      role: data.user.role || data.user.role_name
+    };
 
     localStorage.setItem("alj_token", state.authToken);
     localStorage.setItem("alj_user", JSON.stringify(state.currentUser));
@@ -221,7 +226,9 @@ export async function handleAuthSubmit(e, onSuccess) {
       errEl.classList.remove("hidden");
     }
   } finally {
-    if (submitBtn) submitBtn.disabled = false;
+    if (submitBtn && !(state.authMode === "register" && !ENABLE_PUBLIC_REGISTRATION)) {
+      submitBtn.disabled = false;
+    }
   }
 }
 
