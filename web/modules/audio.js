@@ -64,6 +64,7 @@ export function resetAudioToNarrative() {
     audioPlayer.src = `${state.currentGameState.audio_url}?v=${Date.now()}`;
   }
   onAudioPause();
+  document.dispatchEvent(new CustomEvent("allAudioEnded"));
 }
 
 export function updateAudioProgress() {

@@ -326,13 +326,11 @@ export function initVoiceControls() {
     });
   }
 
-  if (audioPlayer) {
-    audioPlayer.addEventListener("ended", () => {
-      if (state.currentGameState && state.currentGameState.choices && state.currentGameState.choices.length > 0) {
-        triggerAutoVoiceListening();
-      }
-    });
-  }
+  document.addEventListener("allAudioEnded", () => {
+    if (state.currentGameState && state.currentGameState.choices && state.currentGameState.choices.length > 0) {
+      triggerAutoVoiceListening();
+    }
+  });
 }
 
 export function triggerAutoVoiceListening() {
