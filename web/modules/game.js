@@ -6,6 +6,7 @@ import { state, authFetch, escapeHtml, formatTimeAgo, API_BASE } from "./state.j
 import { openAuthModal, updateAuthUI, checkAuthStatus } from "./auth.js";
 import { checkLastActiveGame, loadInProgressSection, loadFeaturedLibrary, loadNarratorsSection, loadFullLibrary } from "./library.js";
 import { loadAdminDashboard } from "./admin.js";
+import { startAutoListening, stopAutoListening, parseVoiceIntent } from "./recording.js";
 
 const views = {
   home: document.getElementById("view-home"),
@@ -309,7 +310,14 @@ export function renderChoices(choices) {
 
 // --- VOICE RECOGNITION (WHISPER) ---
 
+// --- VOICE RECOGNITION (WHISPER + VAD + PARSER) ---
+
 export function initVoiceControls() {
+  const btnVoice = document.getElementById("btn-voice-record");
+  if (btnVoice) {
+    btnVoice.addEventListener("click", toggleVoiceRecording);
+  }
+
   const fileInput = document.getElementById("input-voice-file");
   if (fileInput) {
     fileInput.addEventListener("change", async (e) => {
@@ -317,59 +325,77 @@ export function initVoiceControls() {
       if (file) await uploadAndTranscribeAudio(file);
     });
   }
+
+  if (audioPlayer) {
+    audioPlayer.addEventListener("ended", () => {
+      if (state.currentGameState && state.currentGameState.choices && state.currentGameState.choices.length > 0) {
+        triggerAutoVoiceListening();
+      }
+    });
+  }
+}
+
+export function triggerAutoVoiceListening() {
+  const choices = state.currentGameState ? state.currentGameState.choices || [] : [];
+  if (choices.length === 0) return;
+
+  updateVoiceUI(true, "🎙️ Escuchando respuesta por voz...");
+
+  startAutoListening({
+    onSpeechStart: () => {
+      updateVoiceUI(true, "🗣️ Hablando...");
+    },
+    onSilenceDetected: () => {
+      updateVoiceUI(true, "⏳ Procesando con Whisper...");
+    },
+    onTranscribed: async (transcriptText) => {
+      updateVoiceUI(false);
+      if (!transcriptText) return;
+
+      const toast = document.getElementById("transcription-toast");
+      const textEl = document.getElementById("transcription-text");
+      if (toast) toast.classList.remove("hidden");
+      if (textEl) textEl.textContent = `Voz reconocida: "${transcriptText}"`;
+      setTimeout(() => { if (toast) toast.classList.add("hidden"); }, 3500);
+
+      // Parse intent (matches choices directly, via fuzzy keywords, or LLM hook)
+      const intent = await parseVoiceIntent(transcriptText, choices);
+      if (intent.matched && intent.choice) {
+        console.log(`Voice intent matched choice [${intent.choice.choice_id}] via ${intent.method}: "${transcriptText}"`);
+        await submitChoice(intent.choice.choice_id, intent.choice.target_node, transcriptText);
+      } else {
+        await submitChoice(null, null, transcriptText);
+      }
+    },
+    onError: (err) => {
+      updateVoiceUI(false);
+      console.warn("Auto-listening skipped/stopped:", err);
+    }
+  });
 }
 
 export async function toggleVoiceRecording() {
   if (state.isRecording) {
-    stopRecording();
-  } else {
-    await startRecording();
-  }
-}
-
-export async function startRecording() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    state.audioChunks = [];
-    state.mediaRecorder = new MediaRecorder(stream);
-
-    state.mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) state.audioChunks.push(event.data);
-    };
-
-    state.mediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(state.audioChunks, { type: "audio/webm" });
-      const file = new File([audioBlob], "voice_input.webm", { type: "audio/webm" });
-      await uploadAndTranscribeAudio(file);
-      stream.getTracks().forEach(t => t.stop());
-    };
-
-    state.mediaRecorder.start();
-    state.isRecording = true;
-    updateVoiceUI(true);
-  } catch (err) {
-    console.warn("Microphone API unavailable, opening native audio picker:", err);
-    const fileInput = document.getElementById("input-voice-file");
-    if (fileInput) fileInput.click();
-  }
-}
-
-export function stopRecording() {
-  if (state.mediaRecorder && state.isRecording) {
-    state.mediaRecorder.stop();
+    stopAutoListening();
     state.isRecording = false;
     updateVoiceUI(false);
+  } else {
+    triggerAutoVoiceListening();
+    state.isRecording = true;
   }
 }
 
-export function updateVoiceUI(recording) {
+export function updateVoiceUI(recording, statusMsg = null) {
   const btn = document.getElementById("btn-voice-record");
   const status = document.getElementById("voice-status");
   const label = document.getElementById("voice-label");
 
   if (recording) {
     if (btn) btn.classList.add("recording");
-    if (status) status.classList.remove("hidden");
+    if (status) {
+      status.classList.remove("hidden");
+      if (statusMsg) status.textContent = statusMsg;
+    }
     if (label) label.textContent = "Detener Grabación";
   } else {
     if (btn) btn.classList.remove("recording");
