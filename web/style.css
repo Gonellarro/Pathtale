@@ -2080,10 +2080,10 @@ body {
   margin-right: 0.5rem;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px), (orientation: landscape) and (max-height: 600px) {
   .td-progress {
-    min-width: auto;
-    white-space: nowrap;
+    min-width: auto !important;
+    white-space: nowrap !important;
   }
   .table-progress-bar-wrap {
     display: none !important;
