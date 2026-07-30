@@ -2070,7 +2070,9 @@ body {
   white-space: nowrap;
 }
 
-.table-progress-bar-wrap {
+.table-progress-bar-wrap,
+.continue-progress-bar-wrap,
+.progress-bar-wrap {
   display: none !important;
 }
 

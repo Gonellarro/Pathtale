@@ -58,9 +58,6 @@ export async function loadInProgressSection(startGameFn) {
           <p class="continue-genre">${escapeHtml(b.genre || "Ficción Interactiva")}</p>
           <h3 class="continue-book-title">${escapeHtml(b.title)}</h3>
           <div class="continue-progress-row">
-            <div class="continue-progress-bar-wrap">
-              <div class="continue-progress-bar-fill" style="width: ${b.progress_percent || 0}%"></div>
-            </div>
             <span class="continue-pct-lbl">${b.progress_percent || 0}%</span>
           </div>
           <div class="continue-meta-row">
@@ -381,9 +378,6 @@ export function renderFullLibrary(books, startGameFn) {
                 <td class="td-author">${escapeHtml(b.author || "Desconocido")}</td>
                 <td class="td-genre">${escapeHtml(seriesText)}</td>
                 <td class="td-progress">
-                  <div class="table-progress-bar-wrap">
-                    <div class="table-progress-bar-fill" style="width: ${b.progress_percent || 0}%"></div>
-                  </div>
                   <span class="table-progress-pct">${b.progress_percent || 0}%</span>
                 </td>
                 <td class="td-actions">
@@ -444,9 +438,6 @@ export function renderFullLibrary(books, startGameFn) {
               <div class="book-progress-info">
                 <span>Progreso</span>
                 <span>${b.progress_percent || 0}%</span>
-              </div>
-              <div class="progress-bar-wrap">
-                <div class="progress-bar-fill" style="width: ${b.progress_percent || 0}%"></div>
               </div>
             </div>
           </div>
