@@ -2080,6 +2080,16 @@ body {
   margin-right: 0.5rem;
 }
 
+@media (max-width: 900px) {
+  .td-progress {
+    min-width: auto;
+    white-space: nowrap;
+  }
+  .table-progress-bar-wrap {
+    display: none !important;
+  }
+}
+
 .table-progress-bar-fill {
   height: 100%;
   background: var(--accent-gold);
