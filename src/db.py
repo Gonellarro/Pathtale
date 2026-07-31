@@ -3,9 +3,9 @@ import json
 import hashlib
 import os
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
-from config import DB_PATH
+from config import DB_PATH, SESSION_EXPIRE_DAYS
 
 class Database:
     def __init__(self, db_path=DB_PATH):
@@ -362,7 +362,8 @@ class Database:
             )
             user_id = cursor.lastrowid
             token = secrets.token_hex(32)
-            cursor.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user_id))
+            expires_at = (datetime.now(timezone.utc) + timedelta(days=SESSION_EXPIRE_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)", (token, user_id, expires_at))
             conn.commit()
 
             return {
@@ -393,7 +394,8 @@ class Database:
                 raise ValueError("Usuario o contraseña incorrectos.")
 
             token = secrets.token_hex(32)
-            cursor.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user["user_id"]))
+            expires_at = (datetime.now(timezone.utc) + timedelta(days=SESSION_EXPIRE_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)", (token, user["user_id"], expires_at))
             conn.commit()
 
             role_val = user["role_name"] or "user"
@@ -412,7 +414,7 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT u.user_id, u.username, u.first_name, u.settings, u.created_at, r.name as role_name
+                SELECT u.user_id, u.username, u.first_name, u.settings, u.created_at, r.name as role_name, s.expires_at
                 FROM sessions s
                 JOIN users u ON s.user_id = u.user_id
                 LEFT JOIN roles r ON u.role_id = r.role_id
@@ -421,6 +423,19 @@ class Database:
             row = cursor.fetchone()
             if not row:
                 return None
+
+            # Check expiration date if set
+            if row["expires_at"]:
+                try:
+                    exp_dt = datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                    if datetime.now(timezone.utc) > exp_dt:
+                        # Session expired: clean up token and reject
+                        cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
+                        conn.commit()
+                        return None
+                except Exception:
+                    pass
+
             role_val = row["role_name"] or "user"
             return {
                 "user_id": row["user_id"],

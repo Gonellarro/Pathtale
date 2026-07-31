@@ -35,3 +35,6 @@ if ALLOWED_ORIGINS_RAW.strip() == "*":
     ALLOWED_ORIGINS = ["*"]
 else:
     ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_RAW.split(",") if origin.strip()]
+
+# Duración de validez de las sesiones de usuario activas en días (por defecto: 7 días)
+SESSION_EXPIRE_DAYS = int(os.getenv("SESSION_EXPIRE_DAYS", "7"))
