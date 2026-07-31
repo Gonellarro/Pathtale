@@ -362,6 +362,11 @@ def regenerate_book_audios(book_id: str):
 
 # --- Admin Dashboard Endpoints ---
 
+@app.get("/api/admin/roles")
+def admin_list_roles(authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    return {"roles": engine.db.get_all_roles()}
+
 @app.get("/api/admin/users")
 def admin_list_users(authorization: Optional[str] = Header(None)):
     require_admin(authorization)

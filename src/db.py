@@ -564,6 +564,13 @@ class Database:
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
 
+    def get_all_roles(self) -> List[Dict[str, Any]]:
+        """Returns all system roles from the database."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT role_id, name, description FROM roles ORDER BY role_id ASC")
+            return [dict(r) for r in cursor.fetchall()]
+
     def create_user_admin(self, username: str, password: str, first_name: Optional[str] = None, role: str = "user") -> Dict[str, Any]:
         username_clean = username.strip().lower()
         if not username_clean or len(password) < 4:

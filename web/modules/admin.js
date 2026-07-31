@@ -126,9 +126,31 @@ export async function loadAdminUsers() {
   }
 }
 
-function openAdminUserModal(user = null) {
+export async function loadAdminRoles(selectedRole = 'user') {
+  const roleSelect = document.getElementById("admin-user-role");
+  if (!roleSelect) return;
+
+  try {
+    const res = await authFetch(`${API_BASE}/api/admin/roles`);
+    if (!res.ok) throw new Error("Error obteniendo roles");
+    const data = await res.json();
+    const roles = data.roles || [];
+
+    if (roles.length > 0) {
+      roleSelect.innerHTML = roles.map(r => {
+        const isSel = r.name.toLowerCase() === (selectedRole || 'user').toLowerCase();
+        const desc = r.description ? ` (${r.description})` : '';
+        return `<option value="${escapeHtml(r.name)}" ${isSel ? 'selected' : ''}>${escapeHtml(r.name.toUpperCase())}${escapeHtml(desc)}</option>`;
+      }).join('');
+    }
+  } catch (err) {
+    console.error("Error loading DB roles:", err);
+  }
+}
+
+async function openAdminUserModal(user = null) {
   const modal = document.getElementById("modal-admin-user");
-  const title = document.getElementById("modal-admin-user-title");
+  const titleText = document.getElementById("modal-admin-user-title-text");
   const userIdInput = document.getElementById("admin-user-id");
   const usernameInput = document.getElementById("admin-user-username");
   const nameInput = document.getElementById("admin-user-name");
@@ -145,25 +167,26 @@ function openAdminUserModal(user = null) {
     errDiv.textContent = "";
   }
 
+  const activeRole = user ? (user.role || user.role_name || "user") : "user";
+  await loadAdminRoles(activeRole);
+
   if (user) {
-    // EDIT MODE
-    title.textContent = `✏️ Editar Usuario @${user.username}`;
+    if (titleText) titleText.textContent = `Editar Usuario @${user.username}`;
     userIdInput.value = user.user_id;
     usernameInput.value = user.username;
     usernameInput.disabled = true;
     nameInput.value = user.first_name || "";
-    roleSelect.value = user.role || "user";
+    if (roleSelect) roleSelect.value = activeRole;
     tierSelect.value = user.tier_id || "1";
     durationSelect.value = "0";
     passInput.value = "";
   } else {
-    // CREATE NEW MODE
-    title.textContent = "👤 Nuevo Usuario";
+    if (titleText) titleText.textContent = "Nuevo Usuario";
     userIdInput.value = "";
     usernameInput.value = "";
     usernameInput.disabled = false;
     nameInput.value = "";
-    roleSelect.value = "user";
+    if (roleSelect) roleSelect.value = "user";
     tierSelect.value = "1";
     durationSelect.value = "0";
     passInput.value = "";
