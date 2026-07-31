@@ -99,20 +99,20 @@ class AdminUserSubscriptionRequest(BaseModel):
     tier_id: int
     duration_days: Optional[int] = None
 
-# Helper to resolve user_id from Authorization Bearer header or fallback
-def resolve_user_id(authorization: Optional[str] = Header(None), query_user_id: Any = None) -> int:
+# Helper to resolve user_id from Authorization Bearer header
+def resolve_user_id(authorization: Optional[str] = Header(None), allow_guest: bool = False) -> Optional[int]:
+    """Resolves and validates authenticated user_id from Authorization Bearer header.
+    If allow_guest is True, returns None for unauthenticated requests.
+    Otherwise, raises HTTP 401 Unauthorized.
+    """
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
         user = engine.db.get_user_by_token(token)
         if user:
             return user["user_id"]
-    if query_user_id is not None:
-        try:
-            clean_str = str(query_user_id).split(":")[0].split("?")[0]
-            return int(clean_str)
-        except Exception:
-            pass
-    return 1
+    if allow_guest:
+        return None
+    raise HTTPException(status_code=401, detail="No autenticado. Inicia sesión para continuar.")
 
 # Helper to enforce Admin Role for backend endpoints
 def require_admin(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
@@ -177,7 +177,7 @@ def get_me(authorization: Optional[str] = Header(None)):
             }
     return {
         "authenticated": False,
-        "user": {"user_id": 1, "username": "invitado", "first_name": "Invitado", "settings": {}},
+        "user": None,
         "tier": {"tier_id": 1, "code": "demo", "name": "Demo Gratuita", "level": 0},
         "stats": {"books_started": 0, "decisions_made": 0}
     }
@@ -212,8 +212,8 @@ def list_books(
     narrator: Optional[str] = Query(None)
 ):
     """Returns a list of imported books with rich metadata and user progress status."""
-    current_uid = resolve_user_id(authorization, user_id)
-    user_tier = engine.db.get_user_active_tier(current_uid)
+    current_uid = resolve_user_id(authorization, allow_guest=True)
+    user_tier = engine.db.get_user_active_tier(current_uid) if current_uid else {"tier_id": 1, "level": 0, "name": "Demo Gratuita", "code": "demo"}
     books = engine.list_books()
 
     is_en_curso_filter = tag and tag.lower() == "en curso"
@@ -492,7 +492,7 @@ def get_book_asset(book_id: str, subpath: str):
 
 @app.post("/api/games")
 def start_game(req: StartGameRequest, authorization: Optional[str] = Header(None)):
-    uid = resolve_user_id(authorization, req.user_id)
+    uid = resolve_user_id(authorization)
     user_tier = engine.db.get_user_active_tier(uid)
     book_tier = engine.db.get_book_tier(req.book_id)
 
@@ -527,7 +527,7 @@ def get_favicon():
 @app.get("/api/games/{user_id}/last_active")
 def get_last_active_game(user_id: int, authorization: Optional[str] = Header(None)):
     """Returns the most recently played game session for the user."""
-    uid = resolve_user_id(authorization, user_id)
+    uid = resolve_user_id(authorization)
     last_game = engine.db.get_last_active_game(uid)
     if not last_game:
         return {"has_active_game": False}
@@ -545,7 +545,7 @@ def get_last_active_game(user_id: int, authorization: Optional[str] = Header(Non
 @app.get("/api/games/{user_id}/in_progress")
 def get_in_progress_games(user_id: int, limit: int = 3, authorization: Optional[str] = Header(None)):
     """Returns top in-progress game sessions for the user."""
-    uid = resolve_user_id(authorization, user_id)
+    uid = resolve_user_id(authorization)
     saves = engine.db.get_in_progress_games(uid, limit=limit)
     result = []
     for s in saves:
@@ -571,7 +571,7 @@ def get_in_progress_games(user_id: int, limit: int = 3, authorization: Optional[
 @app.get("/api/games/{user_id}/{book_id}")
 def get_game_state(user_id: int, book_id: str, authorization: Optional[str] = Header(None)):
     """Retrieves current game state for active user session."""
-    uid = resolve_user_id(authorization, user_id)
+    uid = resolve_user_id(authorization)
     state = engine.get_current_state(uid, book_id)
     if not state:
         state = engine.start_game(uid, book_id)
@@ -580,7 +580,7 @@ def get_game_state(user_id: int, book_id: str, authorization: Optional[str] = He
 @app.get("/api/games/{user_id}/{book_id}/history")
 def get_game_history(user_id: int, book_id: str, authorization: Optional[str] = Header(None)):
     """Retrieves decision history for a user and book."""
-    uid = resolve_user_id(authorization, user_id)
+    uid = resolve_user_id(authorization)
     history = engine.db.get_history(uid, book_id)
     return history
 
@@ -593,7 +593,7 @@ class ChoiceRequest(BaseModel):
 @app.post("/api/games/{user_id}/{book_id}/choice")
 def make_choice(user_id: int, book_id: str, req: ChoiceRequest, authorization: Optional[str] = Header(None)):
     """Submits a choice to advance game state."""
-    uid = resolve_user_id(authorization, user_id)
+    uid = resolve_user_id(authorization)
     state = engine.get_current_state(uid, book_id)
     if not state:
         raise HTTPException(status_code=404, detail="Game session not found")
@@ -630,7 +630,7 @@ class JumpRequest(BaseModel):
 @app.post("/api/games/{user_id}/{book_id}/jump")
 def jump_section(user_id: int, book_id: str, req: JumpRequest, authorization: Optional[str] = Header(None)):
     """Jumps directly to a target section by number or node_id."""
-    uid = resolve_user_id(authorization, user_id)
+    uid = resolve_user_id(authorization)
     state = engine.jump_to_node(uid, book_id, req.target)
     if not state:
         raise HTTPException(status_code=404, detail=f"No se encontró la sección '{req.target}' en este libro.")
@@ -657,13 +657,13 @@ async def transcribe_voice(file: UploadFile = File(...)):
 
 @app.get("/api/users/{user_id}/settings")
 def get_settings(user_id: int, authorization: Optional[str] = Header(None)):
-    uid = resolve_user_id(authorization, user_id)
+    uid = resolve_user_id(authorization)
     settings = engine.db.get_user_settings(uid)
     return {"user_id": uid, "settings": settings}
 
 @app.put("/api/users/{user_id}/settings")
 def update_settings(user_id: int, settings: dict = Body(...), authorization: Optional[str] = Header(None)):
-    uid = resolve_user_id(authorization, user_id)
+    uid = resolve_user_id(authorization)
     new_settings = settings.get("settings", settings)
     engine.db.update_user_settings(uid, new_settings)
     return {"user_id": uid, "status": "updated", "settings": new_settings}
@@ -671,7 +671,7 @@ def update_settings(user_id: int, settings: dict = Body(...), authorization: Opt
 @app.get("/api/stats/user/{user_id}")
 def get_user_statistics(user_id: str, authorization: Optional[str] = Header(None)):
     """Returns detailed user statistics and book progress breakdown."""
-    uid = resolve_user_id(authorization, user_id)
+    uid = resolve_user_id(authorization)
     return engine.db.get_user_stats_detailed(uid)
 
 @app.get("/api/stats/global")
