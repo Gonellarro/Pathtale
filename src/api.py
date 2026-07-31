@@ -2,9 +2,9 @@ import os
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Body, Header
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Body, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -17,7 +17,7 @@ logger = logging.getLogger("API")
 
 app = FastAPI(
     title="PathTale Engine API",
-    description="REST API para alimentar PWA, Móvil, Telegram y otras interfaces de ficción interactiva.",
+    description="REST API para alimentar PWA Web y clientes de ficción interactiva.",
     version="1.0.0"
 )
 
@@ -29,6 +29,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    return JSONResponse(
+        status_code=400,
+        content={"status": "error", "detail": str(exc)}
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Error no capturado procesando {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"status": "error", "detail": "Ocurrió un error interno en el servidor. Por favor, reintenta más tarde."}
+    )
 
 engine = GameEngine()
 stt_manager = STTManager()
