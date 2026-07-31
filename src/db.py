@@ -1069,16 +1069,16 @@ class Database:
                     """, (book_id, node_id, label, is_good))
             conn.commit()
 
-    def record_ending_reached(self, user_id: int, book_id: str, node_id: str) -> Optional[Dict[str, Any]]:
+    def record_ending_reached(self, user_id: int, book_id: str, node_id: str, is_terminal: bool = False) -> Optional[Dict[str, Any]]:
         """Records when a user reaches a book ending node."""
         self.get_or_create_user(user_id)
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            # Check if this node is an ending
+            # Check if this node is an ending registered in book_endings
             cursor.execute("SELECT ending_id, label FROM book_endings WHERE book_id = ? AND node_id = ?", (book_id, node_id))
             ending = cursor.fetchone()
-            if not ending:
-                # If not registered yet, auto-register as an ending
+            if not ending and is_terminal:
+                # If node has no choices (terminal node), auto-register as an ending
                 cursor.execute("INSERT OR IGNORE INTO book_endings (book_id, node_id, label) VALUES (?, ?, ?)", 
                                (book_id, node_id, "Final de la aventura"))
                 conn.commit()

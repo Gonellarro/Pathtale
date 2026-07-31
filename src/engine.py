@@ -161,7 +161,11 @@ class GameEngine:
             variables=savegame.get("variables")
         )
         self.db.record_step(user_id, book_id, from_node_id, target_node_id, choice_dict.get("text"))
-        self.db.record_ending_reached(user_id, book_id, target_node_id)
+        
+        target_node_data = self.books.get(book_id, {}).get("nodes", {}).get(target_node_id, {})
+        choices = target_node_data.get("choices", [])
+        is_terminal = (len(choices) == 0)
+        self.db.record_ending_reached(user_id, book_id, target_node_id, is_terminal=is_terminal)
 
         logger.info(f"🔀 User {user_id} moved from '{from_node_id}' to '{target_node_id}' in book '{book_id}'")
         return self.get_current_state(user_id, book_id)
