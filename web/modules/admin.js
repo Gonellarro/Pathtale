@@ -14,10 +14,12 @@ export async function loadAdminDashboard() {
 
   initAdminTabs();
   initAdminUploadZone();
-  loadAdminUsers();
-  loadAdminBooks();
-  loadAdminNarrators();
-  loadAdminLogs();
+  await Promise.all([
+    loadAdminUsers(),
+    loadAdminBooks(),
+    loadAdminNarrators(),
+    loadAdminLogs()
+  ]);
 }
 
 function initAdminTabs() {

@@ -33,7 +33,7 @@ export function showHomeView() {
   if (audioPlayer) audioPlayer.pause();
   document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.home) { views.home.classList.add("active"); views.home.classList.remove("hidden"); }
-  if (navBtns.library) navBtns.library.classList.remove("active");
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   updateAuthUI();
 
   const authContent = document.getElementById("authenticated-home-content");
@@ -51,22 +51,19 @@ export function showHomeView() {
 
 export function showFullLibraryView() {
   if (audioPlayer) audioPlayer.pause();
-  if (views.game) { views.game.classList.remove("active"); views.game.classList.add("hidden"); }
-  if (views.home) { views.home.classList.remove("active"); views.home.classList.add("hidden"); }
-  if (views.admin) { views.admin.classList.remove("active"); views.admin.classList.add("hidden"); }
+  document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.library) { views.library.classList.add("active"); views.library.classList.remove("hidden"); }
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   if (navBtns.library) navBtns.library.classList.add("active");
   updateAuthUI();
   loadFullLibrary(startGame);
 }
 
-export async function showAdminView() {
+export function showAdminView() {
   if (!state.authToken) {
     openAuthModal();
     return;
   }
-
-  await checkAuthStatus();
 
   const role = state.currentUser ? (state.currentUser.role || state.currentUser.role_name) : null;
   if (role !== "admin") {
@@ -75,11 +72,12 @@ export async function showAdminView() {
   }
 
   if (audioPlayer) audioPlayer.pause();
-  if (views.game) { views.game.classList.remove("active"); views.game.classList.add("hidden"); }
-  if (views.home) { views.home.classList.remove("active"); views.home.classList.add("hidden"); }
-  if (views.library) { views.library.classList.remove("active"); views.library.classList.add("hidden"); }
+  document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.admin) { views.admin.classList.add("active"); views.admin.classList.remove("hidden"); }
-  if (navBtns.library) navBtns.library.classList.remove("active");
+
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  if (navBtns.admin) navBtns.admin.classList.add("active");
+
   updateAuthUI();
   loadAdminDashboard();
 }
@@ -89,11 +87,9 @@ export function showGameView() {
     openAuthModal();
     return;
   }
-  if (views.home) { views.home.classList.remove("active"); views.home.classList.add("hidden"); }
-  if (views.library) { views.library.classList.remove("active"); views.library.classList.add("hidden"); }
-  if (views.admin) { views.admin.classList.remove("active"); views.admin.classList.add("hidden"); }
+  document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.game) { views.game.classList.add("active"); views.game.classList.remove("hidden"); }
-  if (navBtns.library) navBtns.library.classList.remove("active");
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   updateAuthUI();
 }
 
