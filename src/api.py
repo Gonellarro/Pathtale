@@ -487,14 +487,16 @@ def admin_delete_book(book_id: str, hard: bool = Query(False), authorization: Op
     return {"status": "success", "message": msg}
 
 @app.post("/api/admin/books/upload")
-async def admin_upload_epub_book(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
-    """Uploads an .epub file, places it in Libros/, and runs EPUBImporter pipeline with TTS."""
+async def admin_upload_book(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
+    """Uploads an .epub or .pdf file, places it in Libros/, and runs EPUBImporter or PDFImporter pipeline with TTS."""
     require_admin(authorization)
-    if not file.filename.endswith(".epub"):
-        raise HTTPException(status_code=400, detail="El archivo debe tener extensión .epub")
+    filename_lower = file.filename.lower()
+    if not (filename_lower.endswith(".epub") or filename_lower.endswith(".pdf")):
+        raise HTTPException(status_code=400, detail="El archivo debe ser de tipo .epub o .pdf")
 
     from config import INPUT_BOOKS_DIR
     from src.importer import EPUBImporter
+    from src.pdf_importer import PDFImporter
 
     INPUT_BOOKS_DIR.mkdir(parents=True, exist_ok=True)
     target_path = INPUT_BOOKS_DIR / file.filename
@@ -503,8 +505,12 @@ async def admin_upload_epub_book(file: UploadFile = File(...), authorization: Op
         content = await file.read()
         f.write(content)
 
-    logger.info(f"📖 Web EPUB Upload received: '{file.filename}'. Starting import pipeline...")
-    importer = EPUBImporter(target_path)
+    logger.info(f"📖 Web Upload received: '{file.filename}'. Starting import pipeline...")
+    if filename_lower.endswith(".pdf"):
+        importer = PDFImporter(target_path)
+    else:
+        importer = EPUBImporter(target_path)
+
     book_folder = importer.process(generate_audios=True)
     engine._load_installed_books()
 

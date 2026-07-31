@@ -565,7 +565,7 @@
           <!-- Admin Tabs -->
           <div class="admin-tabs">
             <button class="admin-tab active" data-tab="users">👤 Usuarios</button>
-            <button class="admin-tab" data-tab="books">📚 Libros & Importación EPUB</button>
+            <button class="admin-tab" data-tab="books">📚 Libros & Importación (EPUB / PDF)</button>
             <button class="admin-tab" data-tab="narrators">🎙️ Narradores</button>
             <button class="admin-tab" data-tab="logs">📜 Historial / Auditoría</button>
           </div>
@@ -581,13 +581,13 @@
             </div>
           </div>
 
-          <!-- Panel 2: Libros & Importación EPUB -->
+          <!-- Panel 2: Libros & Importación EPUB / PDF -->
           <div id="admin-panel-books" class="admin-panel hidden">
-            <!-- Drag & Drop EPUB Upload Zone -->
+            <!-- Drag & Drop EPUB / PDF Upload Zone -->
             <div class="admin-upload-zone" id="book-upload-zone">
               <div class="upload-icon">📖</div>
-              <p>Arrastra un archivo <strong>.epub</strong> aquí o haz clic para seleccionar</p>
-              <input type="file" id="input-book-upload" accept=".epub" style="display:none">
+              <p>Arrastra un archivo <strong>.epub</strong> o <strong>.pdf</strong> aquí o haz clic para seleccionar</p>
+              <input type="file" id="input-book-upload" accept=".epub,.pdf" style="display:none">
               <p class="upload-hint">Se ejecutará la importación completa: parseo, metadatos, imagen y audios TTS con Piper</p>
             </div>
             <div id="upload-progress" class="upload-progress hidden">

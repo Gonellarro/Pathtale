@@ -526,8 +526,9 @@ function initAdminUploadZone() {
 }
 
 async function handleEpubUpload(file) {
-  if (!file.name.toLowerCase().endsWith(".epub")) {
-    alert("❌ Error: El archivo debe ser de tipo .epub");
+  const fileName = file.name.toLowerCase();
+  if (!fileName.endsWith(".epub") && !fileName.endsWith(".pdf")) {
+    alert("❌ Error: El archivo debe ser de tipo .epub o .pdf");
     return;
   }
 
