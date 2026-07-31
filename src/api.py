@@ -329,8 +329,9 @@ def get_book_details(book_id: str):
     }
 
 @app.post("/api/books/{book_id}/regenerate_audios")
-def regenerate_book_audios(book_id: str):
+def regenerate_book_audios(book_id: str, authorization: Optional[str] = Header(None)):
     """Deletes existing MP3 files for a book and regenerates TTS audio files including options."""
+    require_admin(authorization)
     book_folder = BOOKS_DIR / book_id
     if not book_folder.exists():
         raise HTTPException(status_code=404, detail="Book directory not found")
