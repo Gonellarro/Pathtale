@@ -419,20 +419,25 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT u.user_id, u.username, u.first_name, u.is_active, u.settings, u.created_at, r.name as role_name, s.expires_at
+                SELECT u.*, s.created_at as session_created_at, r.name as role_name
                 FROM sessions s
                 JOIN users u ON s.user_id = u.user_id
                 LEFT JOIN roles r ON u.role_id = r.role_id
                 WHERE s.token = ?
             """, (token,))
             row = cursor.fetchone()
-            if not row or row["is_active"] == 0:
+            if not row:
                 return None
 
-            # Check expiration date if set
-            if row["expires_at"]:
+            row_dict = dict(row)
+            if row_dict.get("is_active") == 0:
+                return None
+
+            # Check expiration date if present
+            expires_at = row_dict.get("expires_at")
+            if expires_at:
                 try:
-                    exp_dt = datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                    exp_dt = datetime.strptime(str(expires_at), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
                     if datetime.now(timezone.utc) > exp_dt:
                         # Session expired: clean up token and reject
                         cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
@@ -441,15 +446,15 @@ class Database:
                 except Exception:
                     pass
 
-            role_val = row["role_name"] or "user"
+            role_val = row_dict.get("role_name") or "user"
             return {
-                "user_id": row["user_id"],
-                "username": row["username"],
-                "first_name": row["first_name"] or row["username"],
+                "user_id": row_dict["user_id"],
+                "username": row_dict["username"],
+                "first_name": row_dict.get("first_name") or row_dict["username"],
                 "role": role_val,
                 "role_name": role_val,
-                "settings": json.loads(row["settings"] or "{}"),
-                "created_at": row["created_at"]
+                "settings": json.loads(row_dict.get("settings") or "{}"),
+                "created_at": row_dict.get("created_at")
             }
 
     def get_session(self, token: str) -> Optional[Dict[str, Any]]:
