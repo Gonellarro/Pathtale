@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -14,6 +15,27 @@ from src.stt import STTManager
 from src.voice_parser import VoiceParser
 
 logger = logging.getLogger("API")
+
+class SimpleRateLimiter:
+    """Sliding-window Rate Limiter for sensitive endpoints like login/register."""
+    def __init__(self, max_requests: int = 10, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.attempts: Dict[str, List[float]] = {}
+
+    def check_rate_limit(self, client_ip: str):
+        now = time.time()
+        # Filter attempts within the active sliding window
+        user_attempts = [t for t in self.attempts.get(client_ip, []) if now - t < self.window_seconds]
+        if len(user_attempts) >= self.max_requests:
+            raise HTTPException(
+                status_code=429,
+                detail="Demasiados intentos de inicio de sesión. Por favor, espera 1 minuto antes de reintentar."
+            )
+        user_attempts.append(now)
+        self.attempts[client_ip] = user_attempts
+
+login_rate_limiter = SimpleRateLimiter(max_requests=10, window_seconds=60)
 
 app = FastAPI(
     title="PathTale Engine API",
@@ -152,8 +174,10 @@ def register(req: RegisterRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/auth/login")
-def login(req: LoginRequest):
-    """Authenticates user and returns session token."""
+def login(req: LoginRequest, request: Request):
+    """Authenticates user and returns session token with Rate Limiting protection."""
+    client_ip = request.client.host if (request.client and request.client.host) else "unknown"
+    login_rate_limiter.check_rate_limit(client_ip)
     try:
         user_info = engine.db.login_user(req.username, req.password)
         engine.db.log_audit_event(user_info["user_id"], action_type="login", detail="Inicio de sesión")
