@@ -13,14 +13,15 @@ class GameplayRepository(BaseRepository):
             row = cursor.fetchone()
             if not row:
                 return None
+            d = dict(row)
             return {
-                "save_id": row["save_id"],
-                "user_id": row["user_id"],
-                "book_id": row["book_id"],
-                "current_node_id": row["current_node_id"],
-                "inventory": json.loads(row["inventory"] or "[]"),
-                "variables": json.loads(row["variables"] or "{}"),
-                "updated_at": row["updated_at"]
+                "save_id": d.get("save_id") or d.get("id") or 0,
+                "user_id": d["user_id"],
+                "book_id": d["book_id"],
+                "current_node_id": d["current_node_id"],
+                "inventory": json.loads(d.get("inventory") or "[]"),
+                "variables": json.loads(d.get("variables") or "{}"),
+                "updated_at": d.get("updated_at")
             }
 
     def get_last_active_game(self, user_id: int) -> Optional[Dict[str, Any]]:
