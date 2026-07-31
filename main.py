@@ -13,7 +13,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("Main")
 
-from config import INPUT_BOOKS_DIR, BOOKS_DIR, TELEGRAM_BOT_TOKEN
+from config import INPUT_BOOKS_DIR, BOOKS_DIR
 from src.importer import EPUBImporter, sanitize_book_id
 from src.engine import GameEngine
 from src.tts import TTSManager
@@ -122,16 +122,6 @@ def command_cli(args):
         else:
             print("❌ No entendí esa opción. Por favor prueba otra vez.")
 
-def command_bot(args):
-    token = getattr(args, 'token', None) or TELEGRAM_BOT_TOKEN
-    if not token:
-        print("❌ Error: Se requiere un token de Telegram. Configúralo en TELEGRAM_BOT_TOKEN o pásalo con --token")
-        sys.exit(1)
-
-    from src.bot import TelegramGameBot
-    bot = TelegramGameBot(token=token)
-    bot.run()
-
 def command_api(args):
     auto_import_if_needed()
     import uvicorn
@@ -139,24 +129,10 @@ def command_api(args):
     port = getattr(args, 'port', 8000)
     reload = getattr(args, 'reload', False)
     print(f"🚀 Iniciando Servidor API REST + PWA Web en http://{host}:{port}")
-    uvicorn.run("src.api:app", host=host, port=port, reload=reload)
-
-def command_all(args):
-    """Runs both API server and Telegram Bot concurrently."""
-    auto_import_if_needed()
-    print("🚀 Iniciando API REST + PWA Web y Bot de Telegram simultáneamente...")
-    api_thread = threading.Thread(target=command_api, args=(args,), daemon=True)
-    api_thread.start()
-
-    token = getattr(args, 'token', None) or TELEGRAM_BOT_TOKEN
-    if token:
-        command_bot(args)
-    else:
-        print("ℹ️ TELEGRAM_BOT_TOKEN no configurado. Modo PWA Web solo activo.")
-        api_thread.join()
+    uvicorn.run("src/api.py:app" if False else "src.api:app", host=host, port=port, reload=reload)
 
 def main():
-    parser = argparse.ArgumentParser(description="Motor Narrativo de Librojuegos para REST API, PWA, Telegram & CLI")
+    parser = argparse.ArgumentParser(description="Motor Narrativo de Librojuegos para REST API, PWA & CLI")
     subparsers = parser.add_subparsers(dest="command", help="Comando a ejecutar")
 
     # Import command
@@ -167,21 +143,14 @@ def main():
     # CLI runner
     subparsers.add_parser("cli", help="Jugar en la consola de comandos")
 
-    # Bot command
-    cmd_bot = subparsers.add_parser("bot", help="Iniciar el Bot de Telegram")
-    cmd_bot.add_argument("--token", type=str, help="Token del bot de Telegram")
-
     # API command
     cmd_api = subparsers.add_parser("api", help="Iniciar el Servidor API REST + PWA (FastAPI)")
     cmd_api.add_argument("--host", type=str, default="0.0.0.0", help="Host servidor (default: 0.0.0.0)")
     cmd_api.add_argument("--port", type=int, default=8000, help="Puerto servidor (default: 8000)")
     cmd_api.add_argument("--reload", action="store_true", help="Auto-reload para desarrollo")
 
-    # All command
-    cmd_all = subparsers.add_parser("all", help="Iniciar API REST/PWA y Bot de Telegram a la vez")
-    cmd_all.add_argument("--host", type=str, default="0.0.0.0")
-    cmd_all.add_argument("--port", type=int, default=8000)
-    cmd_all.add_argument("--token", type=str)
+    # Default all to api if no subcommand
+    subparsers.add_parser("all", help="Iniciar Servidor API REST + PWA")
 
     args = parser.parse_args()
 
@@ -189,14 +158,10 @@ def main():
         command_import(args)
     elif args.command == "cli":
         command_cli(args)
-    elif args.command == "bot":
-        command_bot(args)
-    elif args.command == "api":
+    elif args.command == "api" or args.command == "all":
         command_api(args)
-    elif args.command == "all":
-        command_all(args)
     else:
-        parser.print_help()
+        command_api(args)
 
 if __name__ == "__main__":
     main()

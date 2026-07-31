@@ -15,9 +15,6 @@ DATA_DIR.mkdir(exist_ok=True, parents=True)
 BOOKS_DIR.mkdir(exist_ok=True, parents=True)
 INPUT_BOOKS_DIR.mkdir(exist_ok=True, parents=True)
 
-# Telegram Bot Token (from environment variable)
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-
 # Piper TTS settings
 PIPER_BIN = os.getenv("PIPER_BIN", str(BASE_DIR / "venv" / "bin" / "piper"))
 PIPER_MODEL_ES = os.getenv("PIPER_MODEL_ES", os.getenv("PIPER_MODEL", "/app/models/piper/es_ES-davefx-medium.onnx"))
