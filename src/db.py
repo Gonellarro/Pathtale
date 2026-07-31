@@ -97,16 +97,6 @@ class Database:
                 cursor.execute("DROP TABLE sessions")
                 cursor.execute("ALTER TABLE sessions_new RENAME TO sessions")
 
-            try:
-                cursor.execute("ALTER TABLE sessions ADD COLUMN expires_at TIMESTAMP;")
-            except Exception:
-                pass
-
-            try:
-                cursor.execute("ALTER TABLE books ADD COLUMN genre TEXT DEFAULT 'Ficción Interactiva';")
-            except Exception:
-                pass
-
             # 4. Narrators table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS narrators (
