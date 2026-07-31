@@ -1783,15 +1783,21 @@ body {
 }
 
 .profile-avatar {
-  font-size: 1.8rem;
   width: 48px;
   height: 48px;
-  background: var(--bg-card);
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.25);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border-color);
+  color: var(--accent-gold);
+}
+
+.profile-svg-icon {
+  width: 24px;
+  height: 24px;
+  stroke: var(--accent-gold);
 }
 
 .profile-info h3 {
