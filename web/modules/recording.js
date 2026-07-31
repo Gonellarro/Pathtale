@@ -61,6 +61,10 @@ export async function startAutoListening(options = {}) {
   if (isListening) stopAutoListening();
 
   try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("El micrófono requiere una conexión HTTPS o localhost.");
+    }
+
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     
     // Play chime to signal listening start
