@@ -231,7 +231,7 @@ function initAdminUserModalEvents() {
       try {
         if (userId) {
           // EDIT EXISTING USER
-          const body = { first_name: name, role: role };
+          const body = { first_name: name, role: role, tier_id: tierId };
           if (pass && pass.length >= 4) body.password = pass;
 
           const resUpdate = await authFetch(`${API_BASE}/api/admin/users/${userId}`, {
@@ -245,18 +245,6 @@ function initAdminUserModalEvents() {
             throw new Error(errData.detail || "Error al actualizar datos del usuario.");
           }
 
-          // Update Subscription Tier
-          const resSub = await authFetch(`${API_BASE}/api/admin/users/${userId}/subscription`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tier_id: tierId, duration_days: durationDays })
-          });
-
-          if (!resSub.ok) {
-            const errData = await resSub.json();
-            throw new Error(errData.detail || "Error al actualizar la membresía.");
-          }
-
           closeAdminUserModal();
           loadAdminUsers();
         } else {
@@ -268,7 +256,7 @@ function initAdminUserModalEvents() {
           const resCreate = await authFetch(`${API_BASE}/api/admin/users`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: username, password: pass, first_name: name, role: role })
+            body: JSON.stringify({ username, password: pass, first_name: name, role: role, tier_id: tierId })
           });
 
           const dataCreate = await resCreate.json();

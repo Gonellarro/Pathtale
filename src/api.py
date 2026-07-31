@@ -101,10 +101,12 @@ class AdminUserCreateRequest(BaseModel):
     password: str
     first_name: Optional[str] = None
     role: Optional[str] = "user"
+    tier_id: Optional[int] = 1
 
 class AdminUserUpdateRequest(BaseModel):
     first_name: Optional[str] = None
     role: Optional[str] = None
+    tier_id: Optional[int] = None
     password: Optional[str] = None
 
 class AdminNarratorCreateRequest(BaseModel):
@@ -424,7 +426,7 @@ def admin_create_user(req: AdminUserCreateRequest, authorization: Optional[str] 
 @app.put("/api/admin/users/{user_id}")
 def admin_update_user(user_id: int, req: AdminUserUpdateRequest, authorization: Optional[str] = Header(None)):
     require_admin(authorization)
-    engine.db.update_user_admin(user_id, req.first_name, req.role, req.password)
+    engine.db.update_user_admin(user_id, first_name=req.first_name, role=req.role, password=req.password, tier_id=req.tier_id)
     return {"status": "success", "message": f"Usuario {user_id} actualizado."}
 
 @app.delete("/api/admin/users/{user_id}")

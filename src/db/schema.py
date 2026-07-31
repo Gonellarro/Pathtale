@@ -33,12 +33,20 @@ class SchemaManager(BaseRepository):
                     password_hash TEXT,
                     salt TEXT,
                     role_id INTEGER NOT NULL DEFAULT 2,
+                    tier_id INTEGER NOT NULL DEFAULT 1,
                     is_active INTEGER DEFAULT 1,
                     settings TEXT DEFAULT '{}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE RESTRICT
+                    FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE RESTRICT,
+                    FOREIGN KEY (tier_id) REFERENCES subscription_tiers(tier_id) ON DELETE RESTRICT
                 )
             """)
+
+            # Migration check for tier_id column if users table existed without it
+            try:
+                cursor.execute("ALTER TABLE users ADD COLUMN tier_id INTEGER DEFAULT 1")
+            except Exception:
+                pass
 
             # 3. Sessions table
             cursor.execute("""

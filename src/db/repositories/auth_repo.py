@@ -193,7 +193,7 @@ class AuthRepository(BaseRepository):
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT st.* FROM subscription_tiers st
-                JOIN users u ON u.role_id = st.tier_id
+                JOIN users u ON u.tier_id = st.tier_id
                 WHERE u.user_id = ?
             """, (user_id,))
             row = cursor.fetchone()
@@ -204,7 +204,7 @@ class AuthRepository(BaseRepository):
     def assign_user_subscription(self, user_id: int, tier_id: int, duration_days: Optional[int] = None):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("UPDATE users SET role_id = ? WHERE user_id = ?", (tier_id, user_id))
+            cursor.execute("UPDATE users SET tier_id = ? WHERE user_id = ?", (tier_id, user_id))
             conn.commit()
 
     def get_book_tier(self, book_id: str) -> Dict[str, Any]:
@@ -224,10 +224,10 @@ class AuthRepository(BaseRepository):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT u.user_id, u.username, u.first_name, u.created_at, r.name as role, st.name as tier_name, st.code as tier_code
+                SELECT u.user_id, u.username, u.first_name, u.created_at, u.tier_id, u.role_id, r.name as role, st.name as tier_name, st.code as tier_code
                 FROM users u
                 LEFT JOIN roles r ON u.role_id = r.role_id
-                LEFT JOIN subscription_tiers st ON u.role_id = st.tier_id
+                LEFT JOIN subscription_tiers st ON u.tier_id = st.tier_id
                 ORDER BY u.user_id ASC
             """)
             rows = cursor.fetchall()
@@ -239,7 +239,7 @@ class AuthRepository(BaseRepository):
             cursor.execute("SELECT * FROM roles ORDER BY role_id ASC")
             return [dict(r) for r in cursor.fetchall()]
 
-    def create_user_admin(self, username: str, password: str, first_name: Optional[str] = None, role: str = "user") -> Dict[str, Any]:
+    def create_user_admin(self, username: str, password: str, first_name: Optional[str] = None, role: str = "user", tier_id: int = 1) -> Dict[str, Any]:
         username_clean = username.strip().lower()
         display_name = first_name.strip() if first_name else username_clean
         if len(username_clean) < 3:
@@ -261,9 +261,9 @@ class AuthRepository(BaseRepository):
             pwd_hash = self._hash_password(password, salt_hex)
 
             cursor.execute("""
-                INSERT INTO users (username, first_name, password_hash, salt, role_id)
-                VALUES (?, ?, ?, ?, ?)
-            """, (username_clean, display_name, pwd_hash, salt_hex, role_id))
+                INSERT INTO users (username, first_name, password_hash, salt, role_id, tier_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (username_clean, display_name, pwd_hash, salt_hex, role_id, tier_id))
             user_id = cursor.lastrowid
             conn.commit()
 
@@ -271,10 +271,11 @@ class AuthRepository(BaseRepository):
                 "user_id": user_id,
                 "username": username_clean,
                 "first_name": display_name,
-                "role": role
+                "role": role,
+                "tier_id": tier_id
             }
 
-    def update_user_admin(self, user_id: int, first_name: Optional[str] = None, role: Optional[str] = None, password: Optional[str] = None):
+    def update_user_admin(self, user_id: int, first_name: Optional[str] = None, role: Optional[str] = None, password: Optional[str] = None, tier_id: Optional[int] = None):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             if first_name is not None:
@@ -284,6 +285,8 @@ class AuthRepository(BaseRepository):
                 role_row = cursor.fetchone()
                 if role_row:
                     cursor.execute("UPDATE users SET role_id = ? WHERE user_id = ?", (role_row["role_id"], user_id))
+            if tier_id is not None:
+                cursor.execute("UPDATE users SET tier_id = ? WHERE user_id = ?", (tier_id, user_id))
             if password and len(password) >= 4:
                 salt_hex = os.urandom(16).hex()
                 pwd_hash = self._hash_password(password, salt_hex)
