@@ -551,8 +551,10 @@ async function handleEpubUpload(file) {
     const data = await res.json();
 
     if (res.ok) {
-      alert(`✅ ¡Éxito! ${data.message}`);
       loadAdminBooks();
+      if (data.book) {
+        openPostUploadModal(data.book);
+      }
     } else {
       alert(`❌ Error al importar: ${data.detail}`);
     }
@@ -561,6 +563,80 @@ async function handleEpubUpload(file) {
   } finally {
     if (zone) zone.classList.remove("hidden");
     if (progress) progress.classList.add("hidden");
+  }
+}
+
+export function openPostUploadModal(book) {
+  const modal = document.getElementById("modal-post-upload");
+  if (!modal) return;
+
+  document.getElementById("post-upload-book-id").value = book.book_id || "";
+  document.getElementById("post-upload-title").value = book.title || "";
+  document.getElementById("post-upload-author").value = book.author || "";
+  document.getElementById("post-upload-language").value = book.language || "es";
+  document.getElementById("post-upload-start-node").value = book.start_node || "sec_001";
+  document.getElementById("post-upload-narrator").value = book.narrator_id || (book.language === "en" ? "2" : "1");
+  document.getElementById("post-upload-tier").value = book.tier_id || "1";
+
+  const btnClose = document.getElementById("btn-close-modal-post-upload");
+  const btnCancel = document.getElementById("btn-cancel-post-upload");
+  const form = document.getElementById("form-post-upload");
+
+  const closeModal = () => modal.classList.remove("open");
+  if (btnClose) btnClose.onclick = closeModal;
+  if (btnCancel) btnCancel.onclick = async () => {
+    await savePostUploadMetadata(false);
+    closeModal();
+  };
+
+  if (form) {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      await savePostUploadMetadata(true);
+      closeModal();
+    };
+  }
+
+  modal.classList.add("open");
+}
+
+async function savePostUploadMetadata(synthesizeAudios = false) {
+  const bookId = document.getElementById("post-upload-book-id").value;
+  const title = document.getElementById("post-upload-title").value.trim();
+  const author = document.getElementById("post-upload-author").value.trim();
+  const language = document.getElementById("post-upload-language").value;
+  const startNode = document.getElementById("post-upload-start-node").value.trim();
+  const narratorId = parseInt(document.getElementById("post-upload-narrator").value);
+  const tierId = parseInt(document.getElementById("post-upload-tier").value);
+  const errDiv = document.getElementById("post-upload-error");
+
+  try {
+    const res = await authFetch(`${API_BASE}/api/admin/books/${bookId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        author,
+        language,
+        start_node: startNode,
+        narrator_id: narratorId,
+        tier_id: tierId
+      })
+    });
+    if (!res.ok) throw new Error("Error al guardar cambios de metadatos.");
+
+    if (synthesizeAudios) {
+      alert(`🎙️ Iniciando sintetización de audios para '${title}' (${language})...`);
+      authFetch(`${API_BASE}/api/books/${bookId}/regenerate_audios`, { method: "POST" });
+    } else {
+      alert("✅ Metadatos guardados correctamente.");
+    }
+    loadAdminBooks();
+  } catch (err) {
+    if (errDiv) {
+      errDiv.classList.remove("hidden");
+      errDiv.textContent = err.message;
+    }
   }
 }
 

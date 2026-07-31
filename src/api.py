@@ -513,11 +513,22 @@ async def admin_upload_book(file: UploadFile = File(...), authorization: Optiona
 
     book_folder = importer.process(generate_audios=True)
     engine._load_installed_books()
+    book_data = engine.books.get(book_folder.name, {})
 
     return {
         "status": "success",
-        "message": f"Libro '{file.filename}' importado y sintetizado correctamente.",
-        "book_folder": str(book_folder.name)
+        "message": f"Libro '{file.filename}' importado correctamente.",
+        "book_folder": str(book_folder.name),
+        "book": {
+            "book_id": book_folder.name,
+            "title": book_data.get("title", file.filename),
+            "author": book_data.get("author", "Desconocido"),
+            "language": book_data.get("language", "es"),
+            "start_node": book_data.get("start_node", "sec_001"),
+            "total_sections": book_data.get("total_sections", 1),
+            "narrator_id": book_data.get("narrator_id", 1),
+            "tier_id": book_data.get("tier_id", 1)
+        }
     }
 
 @app.post("/api/admin/users/{user_id}/subscription")

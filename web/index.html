@@ -1040,6 +1040,73 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal: Configuración Tras Importación (Post-Upload) -->
+    <div id="modal-post-upload" class="modal">
+      <div class="modal-content" style="max-width: 520px;">
+        <div class="modal-header">
+          <h2 id="modal-post-upload-title">📖 Configuración del Libro Importado</h2>
+          <button id="btn-close-modal-post-upload" class="btn-icon">✕</button>
+        </div>
+        <div class="modal-body">
+          <form id="form-post-upload" onsubmit="return false;">
+            <input type="hidden" id="post-upload-book-id" value="">
+
+            <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1.25rem;">
+              Revisa y ajusta las propiedades del librojuego recién importado:
+            </p>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="post-upload-title" style="font-weight:600;">Título del Libro</label>
+              <input type="text" id="post-upload-title" class="text-input" style="width:100%;" placeholder="Título del libro">
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="post-upload-author" style="font-weight:600;">Autor</label>
+              <input type="text" id="post-upload-author" class="text-input" style="width:100%;" placeholder="Autor">
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="post-upload-language" style="font-weight:600;">Idioma del Contenido</label>
+              <select id="post-upload-language" class="select-input" style="width: 100%;">
+                <option value="es">Español (es)</option>
+                <option value="en">Inglés / English (en)</option>
+              </select>
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="post-upload-start-node" style="font-weight:600;">Sección Inicial (Nodo de Inicio)</label>
+              <input type="text" id="post-upload-start-node" class="text-input" style="width:100%;" placeholder="sec_001">
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="post-upload-narrator" style="font-weight:600;">Narrador TTS</label>
+              <select id="post-upload-narrator" class="select-input" style="width: 100%;">
+                <option value="1">DaveFX (Español)</option>
+                <option value="2">Lessac (Inglés)</option>
+              </select>
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="post-upload-tier" style="font-weight:600;">Nivel de Membresía (Tier)</label>
+              <select id="post-upload-tier" class="select-input" style="width: 100%;">
+                <option value="1">Demo Gratuita (Acceso libre)</option>
+                <option value="2">Tier 1 - Bronce</option>
+                <option value="3">Tier 2 - Plata</option>
+                <option value="4">Tier 3 - Oro (Acceso total)</option>
+              </select>
+            </div>
+
+            <div id="post-upload-error" class="auth-error hidden" style="margin-top: 1rem;"></div>
+
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem; justify-content: flex-end;">
+              <button type="button" id="btn-cancel-post-upload" class="btn-secondary" style="padding: 0.6rem 1.2rem;">Guardar Sin Audios</button>
+              <button type="submit" id="btn-save-post-upload" class="btn-primary" style="padding: 0.6rem 1.4rem;">Guardar y Sintetizar Audios 🎙️</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 
   <audio id="html-audio-player" preload="auto"></audio>

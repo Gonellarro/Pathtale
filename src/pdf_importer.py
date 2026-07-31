@@ -80,6 +80,14 @@ class PDFImporter:
         # 3. Detect Section Nodes (Heuristic Header Search)
         raw_sections, detected_endings = self._extract_sections_and_endings(pages_data)
 
+        # Detect language across sample pages
+        sample_text = " ".join([p["full_text"][:500] for p in pages_data[:15]]).lower()
+        english_indicators = ["turn to", "if you", " the ", " with ", "you are", "of the"]
+        spanish_indicators = ["pasa a", "ve a", " el ", " la ", "con el", "eres un"]
+        en_score = sum(1 for ind in english_indicators if ind in sample_text)
+        es_score = sum(1 for ind in spanish_indicators if ind in sample_text)
+        detected_lang = "en" if en_score > es_score else "es"
+
         # 4. Resolve Choices & Nodes
         nodes_dict = {}
         for sec in raw_sections:
@@ -95,12 +103,13 @@ class PDFImporter:
 
         start_node_id = f"sec_{str(raw_sections[0]['display_number']).zfill(3)}" if raw_sections else "sec_001"
         cover_image = self._extract_or_generate_cover(doc, book_dir)
+        embedded_images = self._extract_images(doc, book_dir)
 
         book_json_data = {
             "book_id": book_id,
             "title": raw_title,
             "author": raw_author,
-            "language": "en" if "turn to" in doc[0].get_text().lower() else "es",
+            "language": detected_lang,
             "description": f"Librojuego importado en PDF ({len(raw_sections)} secciones).",
             "genre": "Aventura",
             "series": "PDF Gamebooks",
@@ -109,6 +118,7 @@ class PDFImporter:
             "cover_image": cover_image,
             "total_sections": len(raw_sections),
             "start_node": start_node_id,
+            "narrator_id": 2 if detected_lang == "en" else 1,
             "nodes": nodes_dict
         }
 
@@ -123,16 +133,16 @@ class PDFImporter:
 
         # 5. Generate TTS Audios if requested
         if generate_audios:
-            logger.info(f"🎙️ Generating Piper TTS audios for '{book_id}'...")
+            logger.info(f"🎙️ Generating TTS audios for '{book_id}' ({detected_lang})...")
             for node_id, node_data in nodes_dict.items():
                 out_audio = book_dir / node_data["audio"]
                 if not out_audio.exists():
                     try:
-                        self.tts_manager.text_to_speech(node_data["text"], out_audio)
+                        self.tts_manager.generate_audio(node_data["text"], out_audio, language=detected_lang)
                     except Exception as e:
                         logger.warning(f"Failed audio synthesis for {node_id}: {e}")
 
-        logger.info(f"✅ Successfully imported PDF book '{raw_title}' ({book_id}) with {len(nodes_dict)} sections.")
+        logger.info(f"✅ Successfully imported PDF book '{raw_title}' ({book_id}) with {len(nodes_dict)} sections, {len(embedded_images)} images.")
         return json_path
 
     def _extract_sections_and_endings(self, pages_data: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -234,3 +244,32 @@ class PDFImporter:
         except Exception as e:
             logger.warning(f"Could not render PDF cover image: {e}")
             return "/assets/cover_placeholder.jpg"
+
+    def _extract_images(self, doc: fitz.Document, book_dir: Path) -> List[str]:
+        """Extracts embedded images from PDF pages and saves them to images/ folder."""
+        images_dir = book_dir / "images"
+        images_dir.mkdir(exist_ok=True)
+        saved_images = []
+        img_counter = 1
+
+        for page_idx in range(len(doc)):
+            page = doc[page_idx]
+            image_list = page.get_images(full=True)
+            for img in image_list:
+                xref = img[0]
+                try:
+                    base_image = doc.extract_image(xref)
+                    image_bytes = base_image["image"]
+                    image_ext = base_image["ext"]
+                    if len(image_bytes) > 5000:  # Skip tiny icons/logos
+                        img_name = f"img_{str(img_counter).zfill(3)}.{image_ext}"
+                        img_path = images_dir / img_name
+                        if not img_path.exists():
+                            with open(img_path, "wb") as f:
+                                f.write(image_bytes)
+                        saved_images.append(f"/api/books/{book_dir.name}/asset/images/{img_name}")
+                        img_counter += 1
+                except Exception as e:
+                    logger.warning(f"Could not extract image xref {xref}: {e}")
+
+        return saved_images
