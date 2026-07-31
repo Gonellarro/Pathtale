@@ -47,6 +47,7 @@ class Database:
                     password_hash TEXT,
                     salt TEXT,
                     role_id INTEGER NOT NULL DEFAULT 2,
+                    is_active INTEGER DEFAULT 1,
                     settings TEXT DEFAULT '{}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE RESTRICT
@@ -390,6 +391,9 @@ class Database:
             if not user or not user["password_hash"] or not user["salt"]:
                 raise ValueError("Usuario o contraseña incorrectos.")
 
+            if dict(user).get("is_active") == 0:
+                raise ValueError("Esta cuenta de usuario ha sido desactivada.")
+
             computed_hash = self._hash_password(password, user["salt"])
             if computed_hash != user["password_hash"]:
                 raise ValueError("Usuario o contraseña incorrectos.")
@@ -415,14 +419,14 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT u.user_id, u.username, u.first_name, u.settings, u.created_at, r.name as role_name, s.expires_at
+                SELECT u.user_id, u.username, u.first_name, u.is_active, u.settings, u.created_at, r.name as role_name, s.expires_at
                 FROM sessions s
                 JOIN users u ON s.user_id = u.user_id
                 LEFT JOIN roles r ON u.role_id = r.role_id
                 WHERE s.token = ?
             """, (token,))
             row = cursor.fetchone()
-            if not row:
+            if not row or row["is_active"] == 0:
                 return None
 
             # Check expiration date if set
@@ -636,12 +640,18 @@ class Database:
                 cursor.execute("UPDATE users SET password_hash = ?, salt = ? WHERE user_id = ?", (pwd_hash, salt_hex, user_id))
             conn.commit()
 
-    def delete_user_admin(self, user_id: int):
+    def delete_user_admin(self, user_id: int, hard_delete: bool = False):
         if user_id == 1:
             raise ValueError("No se puede eliminar el usuario administrador principal (ID 1).")
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+            if hard_delete:
+                # Hard Delete: permanent removal from database
+                cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+            else:
+                # Soft Delete: deactivate user account, preserving analytics history
+                cursor.execute("UPDATE users SET is_active = 0 WHERE user_id = ?", (user_id,))
+                cursor.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
             conn.commit()
 
     # --- Savegame & Gameplay Methods ---
@@ -852,12 +862,18 @@ class Database:
             cursor.execute(f"UPDATE books SET {', '.join(fields)} WHERE book_id = ?", values)
             conn.commit()
 
-    def delete_book_admin(self, book_id: str):
+    def delete_book_admin(self, book_id: str, hard_delete: bool = False):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM books WHERE book_id = ?", (book_id,))
-            cursor.execute("DELETE FROM savegames WHERE book_id = ?", (book_id,))
-            cursor.execute("DELETE FROM reading_logs WHERE book_id = ?", (book_id,))
+            if hard_delete:
+                # Hard Delete: permanent removal from DB
+                cursor.execute("DELETE FROM books WHERE book_id = ?", (book_id,))
+                cursor.execute("DELETE FROM savegames WHERE book_id = ?", (book_id,))
+                cursor.execute("DELETE FROM reading_logs WHERE book_id = ?", (book_id,))
+                cursor.execute("DELETE FROM book_endings WHERE book_id = ?", (book_id,))
+            else:
+                # Soft Delete: hide from catalog, preserving history
+                cursor.execute("UPDATE books SET is_visible = 0 WHERE book_id = ?", (book_id,))
             conn.commit()
 
     def get_top_tags(self, limit: int = 5) -> List[str]:

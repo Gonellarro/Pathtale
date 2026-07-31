@@ -389,11 +389,12 @@ def admin_update_user(user_id: int, req: AdminUserUpdateRequest, authorization: 
     return {"status": "success", "message": f"Usuario {user_id} actualizado."}
 
 @app.delete("/api/admin/users/{user_id}")
-def admin_delete_user(user_id: int, authorization: Optional[str] = Header(None)):
+def admin_delete_user(user_id: int, hard: bool = Query(False), authorization: Optional[str] = Header(None)):
     require_admin(authorization)
     try:
-        engine.db.delete_user_admin(user_id)
-        return {"status": "success", "message": f"Usuario {user_id} eliminado."}
+        engine.db.delete_user_admin(user_id, hard_delete=hard)
+        msg = f"Usuario #{user_id} eliminado permanentemente." if hard else f"Usuario #{user_id} desactivado (Soft Delete)."
+        return {"status": "success", "message": msg}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -437,11 +438,12 @@ def admin_update_book(book_id: str, req: AdminBookUpdateRequest, authorization: 
     return {"status": "success", "message": f"Libro {book_id} actualizado."}
 
 @app.delete("/api/admin/books/{book_id}")
-def admin_delete_book(book_id: str, authorization: Optional[str] = Header(None)):
+def admin_delete_book(book_id: str, hard: bool = Query(False), authorization: Optional[str] = Header(None)):
     require_admin(authorization)
-    engine.db.delete_book_admin(book_id)
+    engine.db.delete_book_admin(book_id, hard_delete=hard)
     engine._load_installed_books()
-    return {"status": "success", "message": f"Libro {book_id} eliminado."}
+    msg = f"Audiolibro '{book_id}' eliminado permanentemente." if hard else f"Audiolibro '{book_id}' ocultado (Soft Delete)."
+    return {"status": "success", "message": msg}
 
 @app.post("/api/admin/books/upload")
 async def admin_upload_epub_book(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
