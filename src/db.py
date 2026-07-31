@@ -1031,7 +1031,12 @@ class Database:
                     b.title,
                     b.cover_image,
                     b.total_sections,
-                    COALESCE(sg.progress_percent, 0) as progress_percent,
+                    COALESCE(
+                      (SELECT ROUND(CAST(COUNT(DISTINCT rl.node_id) AS FLOAT) / MAX(1, b.total_sections) * 100)
+                       FROM reading_logs rl 
+                       WHERE rl.user_id = ? AND rl.book_id = b.book_id AND rl.action_type = 'node_visit'),
+                      0
+                    ) as progress_percent,
                     (SELECT COUNT(DISTINCT be.ending_id) FROM book_endings be WHERE be.book_id = b.book_id) as total_endings,
                     (SELECT COUNT(DISTINCT ube.ending_id) 
                      FROM user_book_endings ube 
@@ -1041,7 +1046,7 @@ class Database:
                 JOIN books b ON b.book_id = sg.book_id
                 WHERE sg.user_id = ?
                 ORDER BY sg.updated_at DESC
-            """, (user_id, user_id))
+            """, (user_id, user_id, user_id))
             book_progress = [dict(r) for r in cursor.fetchall()]
 
             return {
