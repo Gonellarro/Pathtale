@@ -303,6 +303,12 @@ class Database:
                 )
             """)
 
+            # High-performance indexes for frequent FK queries and analytics
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_reading_logs_user_book ON reading_logs(user_id, book_id, action_type)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_reading_logs_action ON reading_logs(action_type, created_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_book_endings_user ON user_book_endings(user_id)")
+
             # Analytics & Statistics SQL Views
             cursor.execute("""
                 CREATE VIEW IF NOT EXISTS vw_user_book_progress AS
