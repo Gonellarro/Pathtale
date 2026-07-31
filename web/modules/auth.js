@@ -202,10 +202,17 @@ export async function handleAuthSubmit(e, onSuccess) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password })
     });
-    const data = await res.json();
+    
+    let data;
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      throw new Error(`Error de conexión con el servidor (${res.status}).`);
+    }
 
     if (!res.ok || data.status !== "success") {
-      throw new Error(data.detail || "Error de autenticación");
+      throw new Error(data.detail || "Usuario o contraseña incorrectos.");
     }
 
     state.authToken = data.user.token;

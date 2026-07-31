@@ -160,19 +160,23 @@ def logout(authorization: Optional[str] = Header(None)):
 @app.get("/api/auth/me")
 def get_me(authorization: Optional[str] = Header(None)):
     """Returns profile, subscription tier, and statistics for currently authenticated user."""
-    uid = resolve_user_id(authorization)
-    user = engine.db.get_user_by_id(uid) if hasattr(engine.db, "get_user_by_id") else None
-    if not user and authorization and authorization.startswith("Bearer "):
+    if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
         user = engine.db.get_user_by_token(token)
-
-    stats = engine.db.get_user_stats(uid)
-    active_tier = engine.db.get_user_active_tier(uid)
+        if user:
+            stats = engine.db.get_user_stats(user["user_id"])
+            active_tier = engine.db.get_user_active_tier(user["user_id"])
+            return {
+                "authenticated": True,
+                "user": user,
+                "tier": active_tier,
+                "stats": stats
+            }
     return {
-        "authenticated": True,
-        "user": user,
-        "tier": active_tier,
-        "stats": stats
+        "authenticated": False,
+        "user": None,
+        "tier": {"tier_id": 1, "code": "demo", "name": "Demo Gratuita", "level": 0},
+        "stats": {"books_started": 0, "decisions_made": 0}
     }
 
 @app.get("/api/subscription_tiers")
