@@ -309,9 +309,10 @@ class Database:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_reading_logs_action ON reading_logs(action_type, created_at)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_book_endings_user ON user_book_endings(user_id)")
 
-            # Analytics & Statistics SQL Views
+            # Analytics & Statistics SQL Views (Refresh view definitions on startup)
+            cursor.execute("DROP VIEW IF EXISTS vw_user_book_progress")
             cursor.execute("""
-                CREATE VIEW IF NOT EXISTS vw_user_book_progress AS
+                CREATE VIEW vw_user_book_progress AS
                 SELECT
                     rl.user_id,
                     rl.book_id,
@@ -328,8 +329,9 @@ class Database:
                 GROUP BY rl.user_id, rl.book_id;
             """)
 
+            cursor.execute("DROP VIEW IF EXISTS vw_book_popularity")
             cursor.execute("""
-                CREATE VIEW IF NOT EXISTS vw_book_popularity AS
+                CREATE VIEW vw_book_popularity AS
                 SELECT
                     rl.book_id,
                     b.title,
