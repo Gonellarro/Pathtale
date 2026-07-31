@@ -15,6 +15,7 @@ logger = logging.getLogger("Main")
 
 from config import INPUT_BOOKS_DIR, BOOKS_DIR
 from src.importer import EPUBImporter, sanitize_book_id
+from src.pdf_importer import PDFImporter
 from src.engine import GameEngine
 from src.tts import TTSManager
 from src.voice_parser import VoiceParser
@@ -33,18 +34,24 @@ def get_epub_book_id(epub_path: Path) -> str:
     return sanitize_book_id(epub_path.stem)
 
 def auto_import_if_needed():
-    """Checks Libros/ folder and imports/refreshes EPUBs, then generates missing audios in a background thread."""
+    """Checks Libros/ folder and imports/refreshes EPUBs and PDFs, then generates missing audios in a background thread."""
     logger.info("🔍 Checking Libros/ folder for auto-import...")
     epub_files = list(INPUT_BOOKS_DIR.glob("*.epub"))
-    if not epub_files:
-        logger.info("ℹ️ No EPUB files found in Libros/ folder.")
+    pdf_files = list(INPUT_BOOKS_DIR.glob("*.pdf"))
+    if not epub_files and not pdf_files:
+        logger.info("ℹ️ No EPUB or PDF files found in Libros/ folder.")
         return
 
     for epub_path in epub_files:
         book_id = get_epub_book_id(epub_path)
-        logger.info(f"✨ Processing '{epub_path.name}' (book_id='{book_id}')...")
+        logger.info(f"✨ Processing EPUB '{epub_path.name}' (book_id='{book_id}')...")
         importer = EPUBImporter(epub_path)
         importer.process(generate_audios=False)
+
+    for pdf_path in pdf_files:
+        logger.info(f"✨ Processing PDF '{pdf_path.name}'...")
+        pdf_imp = PDFImporter(pdf_path)
+        pdf_imp.process(generate_audios=False)
 
     def generate_missing_audios_task():
         import threading
@@ -55,6 +62,12 @@ def auto_import_if_needed():
                 importer.process(generate_audios=True)
             except Exception as e:
                 logger.error(f"Error generating audios for {epub_path.name}: {e}")
+        for pdf_path in pdf_files:
+            try:
+                pdf_imp = PDFImporter(pdf_path)
+                pdf_imp.process(generate_audios=True)
+            except Exception as e:
+                logger.error(f"Error generating audios for {pdf_path.name}: {e}")
         logger.info("✅ Background audio generation completed!")
 
     import threading
@@ -62,20 +75,27 @@ def auto_import_if_needed():
 
 def command_import(args):
     print("==================================================")
-    print("📚 IMPORTADOR DE LIBROJUEGOS (EPUB -> IR JSON + AUDIOS)")
+    print("📚 IMPORTADOR DE LIBROJUEGOS (EPUB / PDF -> IR JSON + AUDIOS)")
     print("==================================================")
     
     epub_files = list(INPUT_BOOKS_DIR.glob("*.epub"))
-    if not epub_files:
-        print(f"❌ No se encontraron archivos .epub en la carpeta: {INPUT_BOOKS_DIR.resolve()}")
+    pdf_files = list(INPUT_BOOKS_DIR.glob("*.pdf"))
+    if not epub_files and not pdf_files:
+        print(f"❌ No se encontraron archivos .epub o .pdf en la carpeta: {INPUT_BOOKS_DIR.resolve()}")
         return
 
     tts_mgr = TTSManager()
     for epub_path in epub_files:
-        print(f"\nImportando: {epub_path.name}...")
+        print(f"\nImportando EPUB: {epub_path.name}...")
         importer = EPUBImporter(epub_path, tts_manager=tts_mgr)
         book_json_path = importer.process(generate_audios=args.audios)
-        print(f"✅ ¡Éxito! Libro importado en: {book_json_path}")
+        print(f"✅ ¡Éxito! Libro EPUB importado en: {book_json_path}")
+
+    for pdf_path in pdf_files:
+        print(f"\nImportando PDF: {pdf_path.name}...")
+        pdf_imp = PDFImporter(pdf_path, tts_manager=tts_mgr)
+        book_json_path = pdf_imp.process(generate_audios=args.audios)
+        print(f"✅ ¡Éxito! Libro PDF importado en: {book_json_path}")
 
 def command_cli(args):
     engine = GameEngine()
