@@ -88,9 +88,15 @@ export async function loadUserStats() {
 }
 
 export function showStatsView() {
-  document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
+  document.querySelectorAll(".view").forEach(v => {
+    v.classList.remove("active");
+    v.classList.add("hidden");
+  });
   const viewStats = document.getElementById("view-stats");
-  if (viewStats) viewStats.classList.remove("hidden");
+  if (viewStats) {
+    viewStats.classList.add("active");
+    viewStats.classList.remove("hidden");
+  }
 
   // Highlight navbar tab
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));

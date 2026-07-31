@@ -12,6 +12,7 @@ const views = {
   home: document.getElementById("view-home"),
   library: document.getElementById("view-library"),
   admin: document.getElementById("view-admin"),
+  stats: document.getElementById("view-stats"),
   game: document.getElementById("view-game")
 };
 
@@ -30,9 +31,7 @@ export function showLandingView() {
 
 export function showHomeView() {
   if (audioPlayer) audioPlayer.pause();
-  if (views.game) { views.game.classList.remove("active"); views.game.classList.add("hidden"); }
-  if (views.library) { views.library.classList.remove("active"); views.library.classList.add("hidden"); }
-  if (views.admin) { views.admin.classList.remove("active"); views.admin.classList.add("hidden"); }
+  document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.home) { views.home.classList.add("active"); views.home.classList.remove("hidden"); }
   if (navBtns.library) navBtns.library.classList.remove("active");
   updateAuthUI();
