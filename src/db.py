@@ -242,8 +242,8 @@ class Database:
                 CREATE TABLE IF NOT EXISTS reading_logs (
                     log_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
-                    book_id TEXT NOT NULL,
-                    node_id TEXT NOT NULL,
+                    book_id TEXT,
+                    node_id TEXT,
                     choice_made TEXT,
                     action_type TEXT DEFAULT 'node_visit',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -251,6 +251,27 @@ class Database:
                     FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE
                 )
             """)
+
+            # Migration for reading_logs schema if table existed with NOT NULL book_id
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='reading_logs'")
+            rl_sql_row = cursor.fetchone()
+            if rl_sql_row and "book_id TEXT NOT NULL" in rl_sql_row["sql"]:
+                cursor.execute("""
+                    CREATE TABLE reading_logs_new (
+                        log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        book_id TEXT,
+                        node_id TEXT,
+                        choice_made TEXT,
+                        action_type TEXT DEFAULT 'node_visit',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                        FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE
+                    )
+                """)
+                cursor.execute("INSERT OR IGNORE INTO reading_logs_new (log_id, user_id, book_id, node_id, choice_made, action_type, created_at) SELECT log_id, user_id, NULLIF(book_id, ''), NULLIF(node_id, ''), choice_made, action_type, created_at FROM reading_logs")
+                cursor.execute("DROP TABLE reading_logs")
+                cursor.execute("ALTER TABLE reading_logs_new RENAME TO reading_logs")
 
             # Legacy history table kept for compatibility
             cursor.execute("""
@@ -956,15 +977,17 @@ class Database:
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
 
-    def log_audit_event(self, user_id: int, action_type: str, book_id: str = '', node_id: str = '', detail: str = ''):
+    def log_audit_event(self, user_id: int, action_type: str, book_id: Optional[str] = None, node_id: Optional[str] = None, detail: str = ''):
         """Logs specific audit events: login, book_open, ending_reached, logout."""
         self.get_or_create_user(user_id)
+        clean_book_id = str(book_id).strip() if (book_id and str(book_id).strip()) else None
+        clean_node_id = str(node_id).strip() if (node_id and str(node_id).strip()) else None
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO reading_logs (user_id, book_id, node_id, choice_made, action_type)
                 VALUES (?, ?, ?, ?, ?)
-            """, (user_id, book_id or '', node_id or '', detail or '', action_type))
+            """, (user_id, clean_book_id, clean_node_id, detail or '', action_type))
             conn.commit()
 
     def get_reading_logs_admin(self, limit: int = 100) -> List[Dict[str, Any]]:
