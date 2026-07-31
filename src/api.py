@@ -144,6 +144,7 @@ def login(req: LoginRequest):
     """Authenticates user and returns session token."""
     try:
         user_info = engine.db.login_user(req.username, req.password)
+        engine.db.log_audit_event(user_info["user_id"], action_type="login", detail="Inicio de sesión")
         return {"status": "success", "user": user_info}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -153,6 +154,9 @@ def logout(authorization: Optional[str] = Header(None)):
     """Logs out user by destroying active session token."""
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
+        user = engine.db.get_user_by_token(token)
+        if user:
+            engine.db.log_audit_event(user["user_id"], action_type="logout", detail="Cierre de sesión")
         engine.db.logout_user(token)
     return {"status": "success"}
 

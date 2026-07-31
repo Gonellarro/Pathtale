@@ -641,33 +641,55 @@ export async function loadAdminLogs() {
   if (!container) return;
 
   try {
-    const res = await authFetch(`${API_BASE}/api/admin/logs?limit=50`);
+    const res = await authFetch(`${API_BASE}/api/admin/logs?limit=100`);
     const data = await res.json();
     const logs = data.logs || [];
 
-    if (countLbl) countLbl.textContent = `Mostrando últimos ${logs.length} eventos`;
+    if (countLbl) countLbl.textContent = `Mostrando últimos ${logs.length} eventos de auditoría`;
+
+    if (logs.length === 0) {
+      container.innerHTML = `
+        <div class="stats-empty-state">
+          <p>No se registran eventos en el historial todavía.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const actionBadgeMap = {
+      login: { label: "🔑 Inicio de sesión", class: "badge-audit login" },
+      book_open: { label: "📖 Apertura de libro", class: "badge-audit book" },
+      ending_reached: { label: "🏆 Final alcanzado", class: "badge-audit ending" },
+      logout: { label: "🚪 Cierre de sesión", class: "badge-audit logout" }
+    };
 
     container.innerHTML = `
       <table class="library-table">
         <thead>
           <tr>
-            <th>Fecha</th>
+            <th>Fecha / Hora</th>
             <th>Usuario</th>
+            <th>Tipo de Evento</th>
             <th>Libro</th>
-            <th>Acción / Nodo</th>
-            <th>Decisión / Detalle</th>
+            <th>Detalle</th>
           </tr>
         </thead>
         <tbody>
-          ${logs.map(l => `
-            <tr>
-              <td>${formatTimeAgo(l.created_at)}</td>
-              <td><strong>@${escapeHtml(l.username)}</strong></td>
-              <td>${escapeHtml(l.book_title || l.book_id)}</td>
-              <td><span class="admin-badge admin-badge-user">${escapeHtml(l.action_type || 'node_visit')}</span> <code>${escapeHtml(l.node_id)}</code></td>
-              <td>${escapeHtml(l.choice_made || '-')}</td>
-            </tr>
-          `).join("")}
+          ${logs.map(l => {
+            const badge = actionBadgeMap[l.action_type] || { label: l.action_type, class: "badge-audit" };
+            const bookName = (l.book_title && l.book_title !== '-') ? l.book_title : '-';
+            const detailText = l.choice_made || '-';
+
+            return `
+              <tr>
+                <td>${formatTimeAgo(l.created_at)}</td>
+                <td><strong>@${escapeHtml(l.username)}</strong> ${l.first_name ? `(${escapeHtml(l.first_name)})` : ''}</td>
+                <td><span class="${badge.class}">${badge.label}</span></td>
+                <td>${escapeHtml(bookName)}</td>
+                <td>${escapeHtml(detailText)}</td>
+              </tr>
+            `;
+          }).join("")}
         </tbody>
       </table>
     `;

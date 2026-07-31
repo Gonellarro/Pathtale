@@ -904,15 +904,28 @@ class Database:
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
 
-    def get_reading_logs_admin(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def log_audit_event(self, user_id: int, action_type: str, book_id: str = '', node_id: str = '', detail: str = ''):
+        """Logs specific audit events: login, book_open, ending_reached, logout."""
+        self.get_or_create_user(user_id)
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT l.*, u.username, b.title as book_title
+                INSERT INTO reading_logs (user_id, book_id, node_id, choice_made, action_type)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, book_id or '', node_id or '', detail or '', action_type))
+            conn.commit()
+
+    def get_reading_logs_admin(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Returns filtered audit history logs for the admin dashboard."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT l.*, u.username, u.first_name, COALESCE(b.title, l.book_id, '-') as book_title
                 FROM reading_logs l
                 JOIN users u ON l.user_id = u.user_id
-                JOIN books b ON l.book_id = b.book_id
-                ORDER BY l.created_at DESC
+                LEFT JOIN books b ON l.book_id = b.book_id
+                WHERE l.action_type IN ('login', 'book_open', 'ending_reached', 'logout')
+                ORDER BY l.log_id DESC
                 LIMIT ?
             """, (limit,))
             rows = cursor.fetchall()
@@ -1000,6 +1013,12 @@ class Database:
                     ON CONFLICT(user_id, ending_id) DO UPDATE SET
                         times_reached = times_reached + 1
                 """, (user_id, ending_id))
+
+                end_label = ending["label"] if ending["label"] else "Final de la aventura"
+                cursor.execute("""
+                    INSERT INTO reading_logs (user_id, book_id, node_id, choice_made, action_type)
+                    VALUES (?, ?, ?, ?, 'ending_reached')
+                """, (user_id, book_id, node_id, end_label))
                 conn.commit()
                 return {"ending_id": ending_id, "label": ending["label"], "node_id": node_id}
             return None

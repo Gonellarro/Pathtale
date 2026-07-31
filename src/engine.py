@@ -93,6 +93,8 @@ class GameEngine:
         self.db.get_or_create_user(user_id)
         self.db.save_game(user_id, book_id, start_node_id, inventory={}, variables={})
         self.db.record_step(user_id, book_id, None, start_node_id, "Inicio de la aventura")
+        book_title = book_data.get("title", book_id)
+        self.db.log_audit_event(user_id, action_type="book_open", book_id=book_id, node_id=start_node_id, detail=f"Abrió libro: {book_title}")
 
         return self.get_current_state(user_id, book_id)
 
