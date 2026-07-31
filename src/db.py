@@ -5,7 +5,7 @@ import os
 import secrets
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
-from config import DB_PATH, SESSION_EXPIRE_DAYS
+from config import DB_PATH, SESSION_EXPIRE_DAYS, ADMIN_USERNAME, ADMIN_PASSWORD
 
 class Database:
     def __init__(self, db_path=DB_PATH):
@@ -53,17 +53,6 @@ class Database:
                     FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE RESTRICT
                 )
             """)
-
-            # Migration check for role_id column if users existed without it
-            try:
-                cursor.execute("ALTER TABLE users ADD COLUMN role_id INTEGER DEFAULT 2")
-            except Exception:
-                pass
-
-            try:
-                cursor.execute("UPDATE users SET role_id = 1 WHERE user_id = 1")
-            except Exception:
-                pass
 
             # 3. Sessions table
             cursor.execute("""
@@ -347,14 +336,22 @@ class Database:
                 ORDER BY readers DESC, total_visits DESC;
             """)
 
-            # Ensure default guest/admin user (user_id=1)
-            cursor.execute("SELECT * FROM users WHERE user_id = 1")
-            if not cursor.fetchone():
+            # Seed initial Admin user if no admin account exists in the database
+            cursor.execute("""
+                SELECT COUNT(*) as c FROM users u
+                JOIN roles r ON u.role_id = r.role_id
+                WHERE r.name = 'admin'
+            """)
+            admin_row = cursor.fetchone()
+            if not admin_row or admin_row["c"] == 0:
+                salt_hex = os.urandom(16).hex()
+                pwd_hash = self._hash_password(ADMIN_PASSWORD, salt_hex)
+                admin_name = ADMIN_USERNAME.strip().lower()
+                display_name = ADMIN_USERNAME.strip().capitalize()
                 cursor.execute(
-                    "INSERT INTO users (user_id, username, first_name, role_id) VALUES (1, 'marti', 'Martí', 1)"
+                    "INSERT INTO users (username, first_name, password_hash, salt, role_id) VALUES (?, ?, ?, ?, 1)",
+                    (admin_name, display_name, pwd_hash, salt_hex)
                 )
-            else:
-                cursor.execute("UPDATE users SET role_id = 1 WHERE user_id = 1")
 
             conn.commit()
 

@@ -35,3 +35,7 @@ else:
 
 # Duración de validez de las sesiones de usuario activas en días (por defecto: 7 días)
 SESSION_EXPIRE_DAYS = int(os.getenv("SESSION_EXPIRE_DAYS", "7"))
+
+# Credenciales del usuario Administrador inicial (para la primera instalación)
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")

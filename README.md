@@ -92,32 +92,28 @@ Puedes probar cualquier libro importado directamente desde la terminal:
 python3 main.py cli
 ```
 
-### 4. Ejecutar el Bot de Telegram
-
-Configura tu token de Telegram en la variable de entorno o pásalo por parámetro:
-
-```bash
-export TELEGRAM_BOT_TOKEN="tu_token_aqui"
-python3 main.py bot
-```
-
-o bien:
-
-```bash
-python3 main.py bot --token "tu_token_aqui"
-```
-
-En Telegram, inicia conversación con tu bot usando el comando `/start`.
-
 ---
 
-## ⚙️ Configuración Opcional (Piper & Ollama/LLM)
+## ⚙️ Configuración (.env & Variables de Entorno)
 
-En `config.py` o variables de entorno:
+Crea un archivo `.env` en la raíz del proyecto basándote en `.env.example`:
 
-- **Piper TTS**:
-  - `PIPER_BIN`: Ruta al binario de `piper`.
-  - `PIPER_MODEL`: Ruta al archivo `.onnx` del modelo de voz en español.
+```env
+# Credenciales del usuario Administrador inicial (para la primera instalación)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+
+# Dominios / IPs autorizadas para CORS (separados por comas, o '*' para desarrollo local)
+ALLOWED_ORIGINS=https://pathtale.martivich.es
+
+# Duración de validez de las sesiones de usuario en días (por defecto: 7 días)
+SESSION_EXPIRE_DAYS=7
+
+# Configuración de Piper TTS
+PIPER_BIN=piper
+PIPER_MODEL_ES=/app/models/piper/es_ES-davefx-medium.onnx
+PIPER_MODEL_EN=/app/models/piper/en_US-lessac-medium.onnx
+```
 - **LLM Local (Ollama)**:
   - `LLM_API_URL`: `http://localhost:11434/api/generate` (Predeterminado).
   - `LLM_MODEL_NAME`: `qwen2.5:3b` o similar.
