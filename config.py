@@ -28,3 +28,10 @@ PIPER_MODEL = PIPER_MODEL_ES
 LLM_API_URL = os.getenv("LLM_API_URL", "http://localhost:11434/api/generate") # Default Ollama
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "qwen2.5:3b")
 USE_LLM_FALLBACK = os.getenv("USE_LLM_FALLBACK", "true").lower() in ("true", "1", "yes")
+
+# CORS allowed origins (comma-separated list, or '*' for all origins in development)
+ALLOWED_ORIGINS_RAW = os.getenv("ALLOWED_ORIGINS", "*")
+if ALLOWED_ORIGINS_RAW.strip() == "*":
+    ALLOWED_ORIGINS = ["*"]
+else:
+    ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_RAW.split(",") if origin.strip()]

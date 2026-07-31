@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from config import BOOKS_DIR, BASE_DIR
+from config import BOOKS_DIR, BASE_DIR, ALLOWED_ORIGINS
 from src.engine import GameEngine
 from src.stt import STTManager
 from src.voice_parser import VoiceParser
@@ -24,8 +24,8 @@ app = FastAPI(
 # Enable CORS for PWA and Web clients
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
