@@ -30,6 +30,7 @@ export function updateAuthUI() {
   const btnLogin = document.getElementById("btn-nav-login");
   const btnNavLib = document.getElementById("btn-nav-library");
   const btnNavProf = document.getElementById("btn-nav-profile");
+  const btnNavStats = document.getElementById("btn-nav-stats");
   const btnNavAdmin = document.getElementById("btn-nav-admin");
   const profileName = document.getElementById("profile-user-name");
   const profileSub = document.getElementById("profile-user-sub");
