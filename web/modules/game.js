@@ -328,6 +328,7 @@ export function initVoiceControls() {
   }
 
   document.addEventListener("allAudioEnded", () => {
+    if (state.appSettings && state.appSettings.voiceEnabled === false) return;
     if (state.currentGameState && state.currentGameState.choices && state.currentGameState.choices.length > 0) {
       triggerAutoVoiceListening();
     }
@@ -335,6 +336,7 @@ export function initVoiceControls() {
 }
 
 export function triggerAutoVoiceListening() {
+  if (state.appSettings && state.appSettings.voiceEnabled === false) return;
   const choices = state.currentGameState ? state.currentGameState.choices || [] : [];
   if (choices.length === 0) return;
 

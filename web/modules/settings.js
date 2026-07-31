@@ -60,9 +60,26 @@ export function applySettingsToUI() {
   if (autoEl) autoEl.checked = !!state.appSettings.autoplay;
   if (voiceEl) voiceEl.checked = state.appSettings.voiceEnabled !== false;
 
+  const speed = parseFloat(state.appSettings.audioSpeed || "1.0");
   const audioPlayer = document.getElementById("html-audio-player");
-  if (audioPlayer && state.appSettings.audioSpeed) {
-    audioPlayer.playbackRate = state.appSettings.audioSpeed;
+  const speedBtn = document.getElementById("btn-audio-speed");
+
+  if (audioPlayer) {
+    audioPlayer.playbackRate = speed;
+  }
+  if (speedBtn) {
+    speedBtn.textContent = `${speed.toFixed(1)}x`;
+  }
+
+  // Voice recording button & box visibility toggle
+  const voiceBox = document.querySelector(".voice-input-box");
+  const voiceBtn = document.getElementById("btn-voice-record");
+  if (state.appSettings.voiceEnabled === false) {
+    if (voiceBox) voiceBox.classList.add("hidden");
+    if (voiceBtn) voiceBtn.classList.add("hidden");
+  } else {
+    if (voiceBox) voiceBox.classList.remove("hidden");
+    if (voiceBtn) voiceBtn.classList.remove("hidden");
   }
 }
 

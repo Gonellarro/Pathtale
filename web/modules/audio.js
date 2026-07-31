@@ -35,6 +35,12 @@ export function onAudioPlay() {
     label.textContent = (state.currentAudioType === "options") ? "Pausar Opciones" : "Pausar Narración";
   }
   if (btn) btn.classList.add("playing");
+
+  // Re-apply speed on every play event so changing audio src does not reset speed to 1.0
+  if (audioPlayer && state.appSettings && state.appSettings.audioSpeed) {
+    const savedSpeed = parseFloat(state.appSettings.audioSpeed) || 1.0;
+    audioPlayer.playbackRate = savedSpeed;
+  }
 }
 
 export function onAudioPause() {
@@ -91,10 +97,13 @@ export function onAudioSeek(e) {
 export function toggleAudioSpeed() {
   const btn = document.getElementById("btn-audio-speed");
   const speeds = [1.0, 1.25, 1.5, 2.0];
-  let nextIdx = (speeds.indexOf(audioPlayer.playbackRate) + 1) % speeds.length;
+  const currentSpeed = parseFloat((state.appSettings && state.appSettings.audioSpeed) ? state.appSettings.audioSpeed : "1.0");
+  let curIdx = speeds.indexOf(currentSpeed);
+  if (curIdx === -1) curIdx = 0;
+  let nextIdx = (curIdx + 1) % speeds.length;
   let newSpeed = speeds[nextIdx];
 
-  audioPlayer.playbackRate = newSpeed;
+  if (audioPlayer) audioPlayer.playbackRate = newSpeed;
   if (btn) btn.textContent = `${newSpeed.toFixed(1)}x`;
   updateSetting("audioSpeed", newSpeed);
 }
