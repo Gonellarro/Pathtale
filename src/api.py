@@ -100,18 +100,15 @@ class AdminUserSubscriptionRequest(BaseModel):
     duration_days: Optional[int] = None
 
 # Helper to resolve user_id from Authorization Bearer header
-def resolve_user_id(authorization: Optional[str] = Header(None), allow_guest: bool = False) -> Optional[int]:
+def resolve_user_id(authorization: Optional[str] = Header(None)) -> int:
     """Resolves and validates authenticated user_id from Authorization Bearer header.
-    If allow_guest is True, returns None for unauthenticated requests.
-    Otherwise, raises HTTP 401 Unauthorized.
+    Raises HTTP 401 Unauthorized if token is missing or invalid.
     """
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
         user = engine.db.get_user_by_token(token)
         if user:
             return user["user_id"]
-    if allow_guest:
-        return None
     raise HTTPException(status_code=401, detail="No autenticado. Inicia sesión para continuar.")
 
 # Helper to enforce Admin Role for backend endpoints
@@ -163,42 +160,41 @@ def logout(authorization: Optional[str] = Header(None)):
 @app.get("/api/auth/me")
 def get_me(authorization: Optional[str] = Header(None)):
     """Returns profile, subscription tier, and statistics for currently authenticated user."""
-    if authorization and authorization.startswith("Bearer "):
+    uid = resolve_user_id(authorization)
+    user = engine.db.get_user_by_id(uid) if hasattr(engine.db, "get_user_by_id") else None
+    if not user and authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
         user = engine.db.get_user_by_token(token)
-        if user:
-            stats = engine.db.get_user_stats(user["user_id"])
-            active_tier = engine.db.get_user_active_tier(user["user_id"])
-            return {
-                "authenticated": True,
-                "user": user,
-                "tier": active_tier,
-                "stats": stats
-            }
+
+    stats = engine.db.get_user_stats(uid)
+    active_tier = engine.db.get_user_active_tier(uid)
     return {
-        "authenticated": False,
-        "user": None,
-        "tier": {"tier_id": 1, "code": "demo", "name": "Demo Gratuita", "level": 0},
-        "stats": {"books_started": 0, "decisions_made": 0}
+        "authenticated": True,
+        "user": user,
+        "tier": active_tier,
+        "stats": stats
     }
 
 @app.get("/api/subscription_tiers")
-def get_subscription_tiers():
+def get_subscription_tiers(authorization: Optional[str] = Header(None)):
     """Returns list of all available subscription tiers."""
+    resolve_user_id(authorization)
     tiers = engine.db.get_all_subscription_tiers()
     return {"tiers": tiers}
 
 # --- REST API Game Endpoints ---
 
 @app.get("/api/tags")
-def get_tags():
+def get_tags(authorization: Optional[str] = Header(None)):
     """Returns top category/series tags for filtering."""
+    resolve_user_id(authorization)
     tags = engine.db.get_top_tags(limit=5)
     return {"tags": tags}
 
 @app.get("/api/narrators")
-def get_narrators():
+def get_narrators(authorization: Optional[str] = Header(None)):
     """Returns configured narrators with story count stats."""
+    resolve_user_id(authorization)
     narrators = engine.db.get_narrators_stats()
     return {"narrators": narrators}
 
@@ -212,8 +208,8 @@ def list_books(
     narrator: Optional[str] = Query(None)
 ):
     """Returns a list of imported books with rich metadata and user progress status."""
-    current_uid = resolve_user_id(authorization, allow_guest=True)
-    user_tier = engine.db.get_user_active_tier(current_uid) if current_uid else {"tier_id": 1, "level": 0, "name": "Demo Gratuita", "code": "demo"}
+    current_uid = resolve_user_id(authorization)
+    user_tier = engine.db.get_user_active_tier(current_uid)
     books = engine.list_books()
 
     is_en_curso_filter = tag and tag.lower() == "en curso"
