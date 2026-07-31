@@ -264,6 +264,66 @@ class Database:
                 )
             """)
 
+            # 10. Book Endings table (3FN Endings Model)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS book_endings (
+                    ending_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    book_id TEXT NOT NULL,
+                    node_id TEXT NOT NULL,
+                    label TEXT,
+                    is_good_ending INTEGER DEFAULT NULL,
+                    FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE,
+                    UNIQUE (book_id, node_id)
+                )
+            """)
+
+            # 11. User Book Endings Reached table (N:M User-Ending Discovery)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_book_endings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    ending_id INTEGER NOT NULL,
+                    first_reached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    times_reached INTEGER NOT NULL DEFAULT 1,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                    FOREIGN KEY (ending_id) REFERENCES book_endings(ending_id) ON DELETE CASCADE,
+                    UNIQUE (user_id, ending_id)
+                )
+            """)
+
+            # Analytics & Statistics SQL Views
+            cursor.execute("""
+                CREATE VIEW IF NOT EXISTS vw_user_book_progress AS
+                SELECT
+                    rl.user_id,
+                    rl.book_id,
+                    COUNT(DISTINCT rl.node_id) AS sections_read,
+                    b.total_sections,
+                    EXISTS (
+                        SELECT 1 FROM user_book_endings ube
+                        JOIN book_endings be ON be.ending_id = ube.ending_id
+                        WHERE be.book_id = rl.book_id AND ube.user_id = rl.user_id
+                    ) AS completed
+                FROM reading_logs rl
+                JOIN books b ON b.book_id = rl.book_id
+                WHERE rl.action_type = 'node_visit'
+                GROUP BY rl.user_id, rl.book_id;
+            """)
+
+            cursor.execute("""
+                CREATE VIEW IF NOT EXISTS vw_book_popularity AS
+                SELECT
+                    rl.book_id,
+                    b.title,
+                    COUNT(DISTINCT rl.user_id) AS readers,
+                    COUNT(*) AS total_visits
+                FROM reading_logs rl
+                JOIN books b ON b.book_id = rl.book_id
+                WHERE rl.action_type = 'node_visit'
+                GROUP BY rl.book_id
+                ORDER BY readers DESC, total_visits DESC;
+            """)
+
             # Ensure default guest/admin user (user_id=1)
             cursor.execute("SELECT * FROM users WHERE user_id = 1")
             if not cursor.fetchone():
@@ -885,8 +945,141 @@ class Database:
             
             cursor.execute("SELECT COUNT(*) as decisions_made FROM history WHERE user_id = ?", (user_id,))
             decisions_count = cursor.fetchone()["decisions_made"]
+
+            cursor.execute("SELECT COUNT(DISTINCT ending_id) as endings_reached FROM user_book_endings WHERE user_id = ?", (user_id,))
+            endings_row = cursor.fetchone()
+            endings_count = endings_row["endings_reached"] if endings_row else 0
             
             return {
                 "books_started": books_count,
-                "decisions_made": decisions_count
+                "decisions_made": decisions_count,
+                "endings_reached": endings_count
+            }
+
+    # --- Endings & Comprehensive Analytics ---
+
+    def register_book_endings(self, book_id: str, endings: List[Dict[str, Any]]):
+        """Inserts or updates ending nodes for a book."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            for end in endings:
+                node_id = end.get("node_id")
+                label = end.get("label", "Final de la aventura")
+                is_good = end.get("is_good_ending", None)
+                if node_id:
+                    cursor.execute("""
+                        INSERT INTO book_endings (book_id, node_id, label, is_good_ending)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(book_id, node_id) DO UPDATE SET
+                            label = excluded.label,
+                            is_good_ending = excluded.is_good_ending
+                    """, (book_id, node_id, label, is_good))
+            conn.commit()
+
+    def record_ending_reached(self, user_id: int, book_id: str, node_id: str) -> Optional[Dict[str, Any]]:
+        """Records when a user reaches a book ending node."""
+        self.get_or_create_user(user_id)
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            # Check if this node is an ending
+            cursor.execute("SELECT ending_id, label FROM book_endings WHERE book_id = ? AND node_id = ?", (book_id, node_id))
+            ending = cursor.fetchone()
+            if not ending:
+                # If not registered yet, auto-register as an ending
+                cursor.execute("INSERT OR IGNORE INTO book_endings (book_id, node_id, label) VALUES (?, ?, ?)", 
+                               (book_id, node_id, "Final de la aventura"))
+                conn.commit()
+                cursor.execute("SELECT ending_id, label FROM book_endings WHERE book_id = ? AND node_id = ?", (book_id, node_id))
+                ending = cursor.fetchone()
+
+            if ending:
+                ending_id = ending["ending_id"]
+                cursor.execute("""
+                    INSERT INTO user_book_endings (user_id, ending_id, times_reached)
+                    VALUES (?, ?, 1)
+                    ON CONFLICT(user_id, ending_id) DO UPDATE SET
+                        times_reached = times_reached + 1
+                """, (user_id, ending_id))
+                conn.commit()
+                return {"ending_id": ending_id, "label": ending["label"], "node_id": node_id}
+            return None
+
+    def get_user_stats_detailed(self, user_id: int) -> Dict[str, Any]:
+        """Returns comprehensive stats for a user."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Summary stats
+            cursor.execute("SELECT COUNT(DISTINCT book_id) as total FROM savegames WHERE user_id = ?", (user_id,))
+            books_started = cursor.fetchone()["total"]
+
+            cursor.execute("SELECT COUNT(*) as total FROM history WHERE user_id = ?", (user_id,))
+            decisions_made = cursor.fetchone()["total"]
+
+            cursor.execute("""
+                SELECT COUNT(DISTINCT be.book_id) as completed
+                FROM user_book_endings ube
+                JOIN book_endings be ON be.ending_id = ube.ending_id
+                WHERE ube.user_id = ?
+            """, (user_id,))
+            books_completed = cursor.fetchone()["completed"]
+
+            # Per-book progress breakdown
+            cursor.execute("""
+                SELECT 
+                    b.book_id,
+                    b.title,
+                    b.cover_image,
+                    b.total_sections,
+                    COALESCE(sg.progress_percent, 0) as progress_percent,
+                    (SELECT COUNT(DISTINCT be.ending_id) FROM book_endings be WHERE be.book_id = b.book_id) as total_endings,
+                    (SELECT COUNT(DISTINCT ube.ending_id) 
+                     FROM user_book_endings ube 
+                     JOIN book_endings be ON be.ending_id = ube.ending_id 
+                     WHERE be.book_id = b.book_id AND ube.user_id = ?) as endings_reached
+                FROM savegames sg
+                JOIN books b ON b.book_id = sg.book_id
+                WHERE sg.user_id = ?
+                ORDER BY sg.updated_at DESC
+            """, (user_id, user_id))
+            book_progress = [dict(r) for r in cursor.fetchall()]
+
+            return {
+                "user_id": user_id,
+                "books_started": books_started,
+                "books_completed": books_completed,
+                "decisions_made": decisions_made,
+                "books_progress": book_progress
+            }
+
+    def get_global_stats(self) -> Dict[str, Any]:
+        """Returns platform-wide statistics for Admin view."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT COUNT(*) as c FROM users")
+            total_users = cursor.fetchone()["c"]
+
+            cursor.execute("SELECT COUNT(*) as c FROM books WHERE is_visible = 1")
+            total_books = cursor.fetchone()["c"]
+
+            cursor.execute("SELECT COUNT(*) as c FROM reading_logs WHERE action_type = 'node_visit'")
+            total_reads = cursor.fetchone()["c"]
+
+            cursor.execute("SELECT COUNT(*) as c FROM history")
+            total_decisions = cursor.fetchone()["c"]
+
+            cursor.execute("""
+                SELECT book_id, title, readers, total_visits
+                FROM vw_book_popularity
+                LIMIT 5
+            """)
+            top_books = [dict(r) for r in cursor.fetchall()]
+
+            return {
+                "total_users": total_users,
+                "total_books": total_books,
+                "total_reads": total_reads,
+                "total_decisions": total_decisions,
+                "top_books": top_books
             }

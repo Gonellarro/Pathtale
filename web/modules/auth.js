@@ -47,6 +47,7 @@ export function updateAuthUI() {
   if (state.currentUser && state.authToken) {
     if (btnNavLib) btnNavLib.classList.remove("hidden");
     if (btnNavProf) btnNavProf.classList.remove("hidden");
+    if (btnNavStats) btnNavStats.classList.remove("hidden");
     if (btnNavAdmin) {
       if (isAdmin) btnNavAdmin.classList.remove("hidden");
       else btnNavAdmin.classList.add("hidden");
@@ -65,6 +66,7 @@ export function updateAuthUI() {
   } else {
     if (btnNavLib) btnNavLib.classList.add("hidden");
     if (btnNavProf) btnNavProf.classList.add("hidden");
+    if (btnNavStats) btnNavStats.classList.add("hidden");
     if (btnNavAdmin) btnNavAdmin.classList.add("hidden");
     if (btnLogin) btnLogin.classList.remove("hidden");
 

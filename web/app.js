@@ -15,11 +15,13 @@ import {
   jumpToSection, goBackHistory, initVoiceControls, toggleVoiceRecording, 
   toggleHistoryDrawer 
 } from "./modules/game.js";
+import { showStatsView } from "./modules/stats.js";
 
 const audioPlayer = document.getElementById("html-audio-player");
 const navBtns = {
   library: document.getElementById("btn-nav-library"),
   admin: document.getElementById("btn-nav-admin"),
+  stats: document.getElementById("btn-nav-stats"),
   history: document.getElementById("btn-nav-history")
 };
 
@@ -37,6 +39,7 @@ function initEventListeners() {
   const navBrand = document.getElementById("nav-brand");
   if (navBrand) navBrand.addEventListener("click", showHomeView);
   if (navBtns.library) navBtns.library.addEventListener("click", showFullLibraryView);
+  if (navBtns.stats) navBtns.stats.addEventListener("click", showStatsView);
   if (navBtns.admin) navBtns.admin.addEventListener("click", showAdminView);
   const btnProfile = document.getElementById("btn-nav-profile");
   if (btnProfile) btnProfile.addEventListener("click", toggleSettingsModal);

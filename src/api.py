@@ -653,6 +653,18 @@ def update_settings(user_id: int, settings: dict = Body(...), authorization: Opt
     engine.db.update_user_settings(uid, new_settings)
     return {"user_id": uid, "status": "updated", "settings": new_settings}
 
+@app.get("/api/stats/user/{user_id}")
+def get_user_statistics(user_id: int, authorization: Optional[str] = Header(None)):
+    """Returns detailed user statistics and book progress breakdown."""
+    uid = resolve_user_id(authorization, user_id)
+    return engine.db.get_user_stats_detailed(uid)
+
+@app.get("/api/stats/global")
+def get_global_statistics(authorization: Optional[str] = Header(None)):
+    """Returns platform-wide statistics for admins."""
+    require_admin(authorization)
+    return engine.db.get_global_stats()
+
 def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict:
     node = state["current_node"]
     book_dir_url = f"/api/books/{book_id}/asset"

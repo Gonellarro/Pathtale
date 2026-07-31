@@ -305,16 +305,45 @@ class EPUBImporter:
             total_words = sum(len(n.get('text', '').split()) for n in nodes.values())
             est_duration_minutes = max(5, round(total_words / 180)) if total_words > 0 else (total_sections * 2)
 
+            # Detect Ending Nodes using combined criteria (FIN keyword, zero choices, restart links)
+            endings_detected = []
+            for n_id, n_data in nodes.items():
+                text_upper = (n_data.get("text") or "").upper()
+                title_upper = (n_data.get("title") or "").upper()
+                n_choices = n_data.get("choices") or []
+
+                has_fin_keyword = bool(re.search(r'\b(FIN|EL FIN|FIN DE LA AVENTURA)\b', text_upper) or re.search(r'\b(FIN|EL FIN)\b', title_upper))
+                has_zero_choices = len(n_choices) == 0
+                has_restart_choice = False
+
+                if len(n_choices) == 1:
+                    target = n_choices[0].get("target_node")
+                    c_text = (n_choices[0].get("text") or "").lower()
+                    if target in (start_node_id, "sec_001", "sec001") and any(kw in c_text for kw in ("retorna", "principio", "volver", "inicio", "reiniciar", "comenzar")):
+                        has_restart_choice = True
+
+                if has_fin_keyword or has_zero_choices or has_restart_choice:
+                    label = "Final de la aventura"
+                    if "VICTORIA" in text_upper or "CONSIGUES" in text_upper or "VICTORIOSO" in text_upper:
+                        label = "Final Victorioso"
+                    elif "MUERTE" in text_upper or "CAES" in text_upper or "PERDISTE" in text_upper or "TRÁGICO" in text_upper:
+                        label = "Final Trágico"
+
+                    endings_detected.append({
+                        "node_id": n_id,
+                        "label": label
+                    })
+
             book_json_data = {
                 "book_id": book_id,
                 "title": title,
-                "author": author,
+                "author": author or "Desconocido",
                 "publisher": publisher,
                 "year": year,
                 "language": language,
-                "description": description,
+                "description": description or f"Aventura interactiva basada en {title}.",
                 "isbn": isbn,
-                "genre": genre,
+                "genre": genre or "Ficción Interactiva",
                 "series": series,
                 "volume": volume,
                 "estimated_duration": f"{est_duration_minutes} minutos",
@@ -335,6 +364,16 @@ class EPUBImporter:
                 json.dump(book_json_data, f, ensure_ascii=False, indent=2)
 
             logger.info(f"Imported {total_sections} nodes with extended metadata to {book_json_path}")
+
+            # Register book endings in Database
+            if endings_detected:
+                try:
+                    from src.db import Database
+                    db = Database()
+                    db.register_book_endings(book_id, endings_detected)
+                    logger.info(f"Registered {len(endings_detected)} ending nodes in database for '{book_id}'.")
+                except Exception as e:
+                    logger.warning(f"Could not register book endings in database: {e}")
 
             if generate_audios:
                 logger.info(f"Generating TTS audio for {total_sections} nodes (narrative & options)...")

@@ -35,8 +35,31 @@ class GameEngine:
                             self.books[b_id] = data
                             try:
                                 self.db.upsert_book(data)
+                                # Detect and register book endings in SQLite
+                                endings = []
+                                import re
+                                start_node_id = data.get("start_node", "sec_001")
+                                for n_id, n_data in data.get("nodes", {}).items():
+                                    t_up = (n_data.get("text") or "").upper()
+                                    tit_up = (n_data.get("title") or "").upper()
+                                    n_choices = n_data.get("choices") or []
+                                    has_fin = bool(re.search(r'\b(FIN|EL FIN|FIN DE LA AVENTURA)\b', t_up) or re.search(r'\b(FIN|EL FIN)\b', tit_up))
+                                    has_zero = len(n_choices) == 0
+                                    has_restart = False
+                                    if len(n_choices) == 1:
+                                        target = n_choices[0].get("target_node")
+                                        c_txt = (n_choices[0].get("text") or "").lower()
+                                        if target in (start_node_id, "sec_001", "sec001") and any(kw in c_txt for kw in ("retorna", "principio", "volver", "inicio", "reiniciar", "comenzar")):
+                                            has_restart = True
+                                    if has_fin or has_zero or has_restart:
+                                        label = "Final de la aventura"
+                                        if "VICTORIA" in t_up or "CONSIGUES" in t_up: label = "Final Victorioso"
+                                        elif "MUERTE" in t_up or "CAES" in t_up: label = "Final Trágico"
+                                        endings.append({"node_id": n_id, "label": label})
+                                if endings:
+                                    self.db.register_book_endings(b_id, endings)
                             except Exception as dbe:
-                                logger.warning(f"Could not upsert book '{b_id}' to DB: {dbe}")
+                                logger.warning(f"Could not upsert book/endings '{b_id}' to DB: {dbe}")
                             logger.info(f"📖 Loaded book '{data.get('title')}' ({b_id}) -> start_node = '{data.get('start_node')}' ({len(data.get('nodes', {}))} nodes)")
                     except Exception as e:
                         logger.error(f"Error loading book JSON {book_json}: {e}")
@@ -136,6 +159,7 @@ class GameEngine:
             variables=savegame.get("variables")
         )
         self.db.record_step(user_id, book_id, from_node_id, target_node_id, choice_dict.get("text"))
+        self.db.record_ending_reached(user_id, book_id, target_node_id)
 
         logger.info(f"🔀 User {user_id} moved from '{from_node_id}' to '{target_node_id}' in book '{book_id}'")
         return self.get_current_state(user_id, book_id)
