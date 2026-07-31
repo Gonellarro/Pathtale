@@ -113,7 +113,7 @@ class BooksRepository(BaseRepository):
                 is_good = e.get("is_good_ending", None)
                 if node_id:
                     cursor.execute("""
-                        INSERT INTO book_endings (book_id, node_id, label, is_good_ending)
+                        INSERT OR IGNORE INTO book_endings (book_id, node_id, label, is_good_ending)
                         VALUES (?, ?, ?, ?)
                     """, (book_id, node_id, label, is_good))
             conn.commit()

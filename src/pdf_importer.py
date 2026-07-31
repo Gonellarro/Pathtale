@@ -167,10 +167,12 @@ class PDFImporter:
         if current_num is not None:
             sections.append(self._build_section_object(current_num, current_lines))
 
-        # Detect terminal ending nodes and choices
+        # Detect terminal ending nodes and choices (deduplicated)
         endings = []
+        seen_ending_nodes = set()
         for sec in sections:
-            if len(sec["choices"]) == 0:
+            if len(sec["choices"]) == 0 and sec["id"] not in seen_ending_nodes:
+                seen_ending_nodes.add(sec["id"])
                 endings.append({
                     "node_id": sec["id"],
                     "label": f"Final de la aventura (Sección {sec['display_number']})",
