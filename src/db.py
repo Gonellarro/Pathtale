@@ -1058,7 +1058,7 @@ class Database:
             }
 
     def get_global_stats(self) -> Dict[str, Any]:
-        """Returns platform-wide statistics for Admin view."""
+        """Returns platform-wide statistics for public and user view."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
@@ -1074,6 +1074,48 @@ class Database:
             cursor.execute("SELECT COUNT(*) as c FROM history")
             total_decisions = cursor.fetchone()["c"]
 
+            cursor.execute("SELECT COUNT(*) as c FROM user_book_endings")
+            total_endings_unlocked = cursor.fetchone()["c"]
+
+            # 2.1 Most read book by community
+            cursor.execute("""
+                SELECT b.book_id, b.title, b.cover_image, COUNT(rl.log_id) as total_visits
+                FROM books b
+                LEFT JOIN reading_logs rl ON b.book_id = rl.book_id AND rl.action_type = 'node_visit'
+                WHERE b.is_visible = 1
+                GROUP BY b.book_id
+                ORDER BY total_visits DESC, b.created_at DESC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            most_read_book = dict(row) if row else None
+
+            # 2.2 Highest rated book
+            cursor.execute("""
+                SELECT book_id, title, cover_image, rating
+                FROM books
+                WHERE is_visible = 1
+                ORDER BY rating DESC, title ASC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            highest_rated_book = dict(row) if row else None
+
+            # 2.3 Book with most endings unlocked by community
+            cursor.execute("""
+                SELECT b.book_id, b.title, b.cover_image, COUNT(DISTINCT ube.ending_id) as endings_count
+                FROM books b
+                LEFT JOIN book_endings be ON be.book_id = b.book_id
+                LEFT JOIN user_book_endings ube ON be.ending_id = ube.ending_id
+                WHERE b.is_visible = 1
+                GROUP BY b.book_id
+                ORDER BY endings_count DESC, b.created_at DESC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            most_endings_book = dict(row) if row else None
+
+            # Popularity ranking
             cursor.execute("""
                 SELECT book_id, title, readers, total_visits
                 FROM vw_book_popularity
@@ -1086,5 +1128,9 @@ class Database:
                 "total_books": total_books,
                 "total_reads": total_reads,
                 "total_decisions": total_decisions,
+                "total_endings_unlocked": total_endings_unlocked,
+                "most_read_book": most_read_book,
+                "highest_rated_book": highest_rated_book,
+                "most_endings_book": most_endings_book,
                 "top_books": top_books
             }

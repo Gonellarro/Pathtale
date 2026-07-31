@@ -654,35 +654,61 @@
       <section id="view-stats" class="view hidden">
         <div class="stats-view-container">
           <div class="stats-header">
-            <h1 class="stats-title">📊 Estadísticas de Lectura</h1>
+            <h1 class="stats-title">Estadísticas de Lectura</h1>
             <p class="stats-subtitle">Tu progreso personal, decisiones y finales descubiertos en PathTale</p>
           </div>
 
-          <!-- Summary Metric Cards -->
+          <!-- User Summary Metric Cards (Monochrome SVG Icons) -->
           <div class="stats-cards-grid">
             <div class="stats-metric-card">
-              <div class="stats-icon-wrap gold">📚</div>
+              <div class="stats-icon-wrap">
+                <svg class="stats-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+              </div>
               <div class="stats-metric-info">
                 <span class="stats-metric-val" id="user-stats-books-started">0</span>
                 <span class="stats-metric-lbl">Libros Iniciados</span>
               </div>
             </div>
             <div class="stats-metric-card">
-              <div class="stats-icon-wrap green">🏆</div>
+              <div class="stats-icon-wrap">
+                <svg class="stats-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                  <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                  <path d="M4 22h16"></path>
+                  <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+                  <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+                  <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path>
+                </svg>
+              </div>
               <div class="stats-metric-info">
                 <span class="stats-metric-val" id="user-stats-books-completed">0</span>
                 <span class="stats-metric-lbl">Libros Finalizados</span>
               </div>
             </div>
             <div class="stats-metric-card">
-              <div class="stats-icon-wrap blue">🚩</div>
+              <div class="stats-icon-wrap">
+                <svg class="stats-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                  <line x1="4" y1="22" x2="4" y2="15"></line>
+                </svg>
+              </div>
               <div class="stats-metric-info">
                 <span class="stats-metric-val" id="user-stats-endings-reached">0</span>
                 <span class="stats-metric-lbl">Finales Descubiertos</span>
               </div>
             </div>
             <div class="stats-metric-card">
-              <div class="stats-icon-wrap purple">🔀</div>
+              <div class="stats-icon-wrap">
+                <svg class="stats-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="6" y1="3" x2="6" y2="15"></line>
+                  <circle cx="18" cy="6" r="3"></circle>
+                  <circle cx="6" cy="18" r="3"></circle>
+                  <path d="M18 9a9 9 0 0 1-9 9"></path>
+                </svg>
+              </div>
               <div class="stats-metric-info">
                 <span class="stats-metric-val" id="user-stats-decisions">0</span>
                 <span class="stats-metric-lbl">Decisiones Tomadas</span>
@@ -692,8 +718,16 @@
 
           <!-- Detailed Book Progress & Endings Section -->
           <div class="stats-section-block">
-            <h2 class="stats-block-title">📖 Progreso y Finales por Libro</h2>
+            <h2 class="stats-block-title">Progreso y Finales por Libro</h2>
             <div id="stats-book-list" class="stats-book-list">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Global Platform Statistics Section -->
+          <div class="stats-section-block global-stats-section">
+            <h2 class="stats-block-title">Estadísticas Generales de la Comunidad</h2>
+            <div id="global-stats-highlights" class="global-highlights-grid">
               <!-- Rendered via JS -->
             </div>
           </div>

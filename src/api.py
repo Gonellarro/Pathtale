@@ -667,8 +667,7 @@ def get_user_statistics(user_id: str, authorization: Optional[str] = Header(None
 
 @app.get("/api/stats/global")
 def get_global_statistics(authorization: Optional[str] = Header(None)):
-    """Returns platform-wide statistics for admins."""
-    require_admin(authorization)
+    """Returns platform-wide statistics for the community."""
     return engine.db.get_global_stats()
 
 def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict:
