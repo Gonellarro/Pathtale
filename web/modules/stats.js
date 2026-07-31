@@ -6,7 +6,8 @@
 import { state, authFetch, API_BASE, escapeHtml } from "./state.js";
 
 export async function loadUserStats() {
-  const uid = (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
+  const rawUid = (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
+  const uid = parseInt(String(rawUid).split(":")[0], 10) || 1;
   const startedEl = document.getElementById("user-stats-books-started");
   const completedEl = document.getElementById("user-stats-books-completed");
   const endingsEl = document.getElementById("user-stats-endings-reached");

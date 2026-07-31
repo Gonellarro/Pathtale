@@ -100,13 +100,19 @@ class AdminUserSubscriptionRequest(BaseModel):
     duration_days: Optional[int] = None
 
 # Helper to resolve user_id from Authorization Bearer header or fallback
-def resolve_user_id(authorization: Optional[str] = Header(None), query_user_id: Optional[int] = None) -> int:
+def resolve_user_id(authorization: Optional[str] = Header(None), query_user_id: Any = None) -> int:
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
         user = engine.db.get_user_by_token(token)
         if user:
             return user["user_id"]
-    return query_user_id or 1
+    if query_user_id is not None:
+        try:
+            clean_str = str(query_user_id).split(":")[0].split("?")[0]
+            return int(clean_str)
+        except Exception:
+            pass
+    return 1
 
 # Helper to enforce Admin Role for backend endpoints
 def require_admin(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
@@ -654,7 +660,7 @@ def update_settings(user_id: int, settings: dict = Body(...), authorization: Opt
     return {"user_id": uid, "status": "updated", "settings": new_settings}
 
 @app.get("/api/stats/user/{user_id}")
-def get_user_statistics(user_id: int, authorization: Optional[str] = Header(None)):
+def get_user_statistics(user_id: str, authorization: Optional[str] = Header(None)):
     """Returns detailed user statistics and book progress breakdown."""
     uid = resolve_user_id(authorization, user_id)
     return engine.db.get_user_stats_detailed(uid)
