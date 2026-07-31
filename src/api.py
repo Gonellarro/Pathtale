@@ -480,8 +480,14 @@ def admin_list_logs(limit: int = Query(50), authorization: Optional[str] = Heade
 
 @app.get("/api/books/{book_id}/asset/{subpath:path}")
 def get_book_asset(book_id: str, subpath: str):
-    """Serves static assets (images and audio files) for a given book."""
-    asset_path = BOOKS_DIR / book_id / subpath
+    """Serves static assets (images and audio files) for a given book safely."""
+    target_dir = (BOOKS_DIR / book_id).resolve()
+    asset_path = (target_dir / subpath).resolve()
+
+    # Security check: ensure asset_path remains strictly inside target_dir
+    if not str(asset_path).startswith(str(target_dir)):
+        raise HTTPException(status_code=403, detail="Acceso denegado. Ruta no permitida.")
+
     if not asset_path.exists() or not asset_path.is_file():
         raise HTTPException(status_code=404, detail="Asset file not found")
     return FileResponse(asset_path)
