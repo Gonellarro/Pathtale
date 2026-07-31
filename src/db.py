@@ -365,7 +365,11 @@ class Database:
             user_id = cursor.lastrowid
             token = secrets.token_hex(32)
             expires_at = (datetime.now(timezone.utc) + timedelta(days=SESSION_EXPIRE_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)", (token, user_id, expires_at))
+            session_cols = [c["name"] for c in cursor.execute("PRAGMA table_info(sessions)").fetchall()]
+            if "expires_at" in session_cols:
+                cursor.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)", (token, user_id, expires_at))
+            else:
+                cursor.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user_id))
             conn.commit()
 
             return {
@@ -400,7 +404,11 @@ class Database:
 
             token = secrets.token_hex(32)
             expires_at = (datetime.now(timezone.utc) + timedelta(days=SESSION_EXPIRE_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)", (token, user["user_id"], expires_at))
+            session_cols = [c["name"] for c in cursor.execute("PRAGMA table_info(sessions)").fetchall()]
+            if "expires_at" in session_cols:
+                cursor.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)", (token, user["user_id"], expires_at))
+            else:
+                cursor.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user["user_id"]))
             conn.commit()
 
             role_val = user["role_name"] or "user"
