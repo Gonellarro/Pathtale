@@ -34,7 +34,7 @@ def get_epub_book_id(epub_path: Path) -> str:
     return sanitize_book_id(epub_path.stem)
 
 def auto_import_if_needed():
-    """Checks Libros/ folder and imports/refreshes EPUBs and PDFs, then generates missing audios in a background thread."""
+    """Checks Libros/ folder and imports/refreshes EPUBs and PDFs structure without forced audio generation on boot."""
     logger.info("🔍 Checking Libros/ folder for auto-import...")
     epub_files = list(INPUT_BOOKS_DIR.glob("*.epub"))
     pdf_files = list(INPUT_BOOKS_DIR.glob("*.pdf"))
@@ -52,26 +52,7 @@ def auto_import_if_needed():
         logger.info(f"✨ Processing PDF '{pdf_path.name}'...")
         pdf_imp = PDFImporter(pdf_path)
         pdf_imp.process(generate_audios=False)
-
-    def generate_missing_audios_task():
-        import threading
-        logger.info("🎙️ Background audio generation thread started...")
-        for epub_path in epub_files:
-            try:
-                importer = EPUBImporter(epub_path)
-                importer.process(generate_audios=True)
-            except Exception as e:
-                logger.error(f"Error generating audios for {epub_path.name}: {e}")
-        for pdf_path in pdf_files:
-            try:
-                pdf_imp = PDFImporter(pdf_path)
-                pdf_imp.process(generate_audios=True)
-            except Exception as e:
-                logger.error(f"Error generating audios for {pdf_path.name}: {e}")
-        logger.info("✅ Background audio generation completed!")
-
-    import threading
-    threading.Thread(target=generate_missing_audios_task, daemon=True).start()
+    logger.info("✅ Libros/ folder metadata import complete.")
 
 def command_import(args):
     print("==================================================")
