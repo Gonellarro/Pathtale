@@ -341,7 +341,7 @@ export async function loadAdminBooks() {
                   : `📜`}
               </td>
               <td class="td-title">
-                <a href="#" class="admin-book-title-link" data-id="${b.book_id}" style="color:var(--accent-gold); text-decoration:none; font-weight:bold;">${escapeHtml(b.title)} ✏️</a>
+                <a href="#" class="admin-book-title-link" data-id="${b.book_id}" style="color:var(--accent-gold); text-decoration:none; font-weight:bold;">${escapeHtml(b.title)}</a>
                 <br><small style="color:var(--text-muted)">ID: ${b.book_id}</small>
               </td>
               <td class="td-author">${escapeHtml(b.author || 'Desconocido')}</td>
@@ -359,7 +359,6 @@ export async function loadAdminBooks() {
               <td class="td-genre">${escapeHtml(b.genre || b.series || '-')}</td>
               <td>${b.total_sections || 0} caps.</td>
               <td class="td-actions">
-                <button class="btn-secondary btn-sm btn-edit-book" data-id="${b.book_id}">✏️ Editar</button>
                 <button class="btn-secondary btn-sm btn-tier-book" data-id="${b.book_id}" data-title="${escapeHtml(b.title)}" data-tier="${b.tier_id || 1}">🏷️ Tier</button>
                 <button class="btn-secondary btn-sm btn-delete-book" data-id="${b.book_id}" style="color: #ff6b6b">🗑️</button>
               </td>
