@@ -125,6 +125,9 @@ class TTSManager:
         lang_code = language.lower()[:2] if language else "es"
 
         # Explicit Google Cloud TTS request OR auto with API key available
+        if tts_engine == "google" and not self.google_api_key:
+            logger.warning("⚠️ Google Cloud TTS requested, but GOOGLE_TTS_API_KEY is not set in environment or container. Falling back to Piper...")
+
         if (tts_engine == "google" or (tts_engine == "auto" and self.google_api_key)) and self.google_api_key:
             if self._generate_google_cloud_tts(text, output_file, language, voice_name=voice_name):
                 return True

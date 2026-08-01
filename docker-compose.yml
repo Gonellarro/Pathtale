@@ -13,6 +13,9 @@ services:
       - PIPER_BIN=${PIPER_BIN:-piper}
       - PIPER_MODEL_ES=${PIPER_MODEL_ES:-/app/models/piper/es_ES-davefx-medium.onnx}
       - PIPER_MODEL_EN=${PIPER_MODEL_EN:-/app/models/piper/en_US-lessac-medium.onnx}
+      - GOOGLE_TTS_API_KEY=${GOOGLE_TTS_API_KEY}
+      - GOOGLE_VOICE_ES=${GOOGLE_VOICE_ES:-es-ES-Neural2-B}
+      - GOOGLE_VOICE_EN=${GOOGLE_VOICE_EN:-en-US-Neural2-F}
       - USE_LLM_FALLBACK=false
     volumes:
       - ./:/app
