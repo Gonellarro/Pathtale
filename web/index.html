@@ -1051,6 +1051,7 @@
         <div class="modal-body">
           <form id="form-pre-import" onsubmit="return false;">
             <input type="hidden" id="pre-import-temp-id" value="">
+            <input type="hidden" id="pre-import-edit-book-id" value="">
 
             <p id="pre-import-subtitle" style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1.25rem;">
               Archivo analizado correctamente. Revisa y ajusta los metadatos y la voz antes de iniciar la sintetización:
@@ -1096,6 +1097,13 @@
                 <option value="3">Tier 2 - Plata</option>
                 <option value="4">Tier 3 - Oro (Acceso total)</option>
               </select>
+            </div>
+
+            <div id="pre-import-regenerate-container" class="hidden" style="margin-top: 0.75rem;">
+              <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; background:rgba(217,119,6,0.12); border:1px solid rgba(217,119,6,0.4); padding:0.6rem 0.8rem; border-radius:6px; font-size:0.9rem;">
+                <input type="checkbox" id="pre-import-regenerate-check" style="width:1.1rem; height:1.1rem; accent-color:var(--accent-gold);">
+                <span>🎙️ <strong>Regenerar todos los audios TTS</strong> con la voz e idioma seleccionados</span>
+              </label>
             </div>
 
             <div id="pre-import-error" class="auth-error hidden" style="margin-top: 1rem;"></div>

@@ -309,6 +309,7 @@ export async function loadAdminBooks() {
     const res = await authFetch(`${API_BASE}/api/admin/books`);
     const data = await res.json();
     const books = data.books || [];
+    currentAdminBooks = books;
 
     if (countLbl) countLbl.textContent = `Total: ${books.length} libro${books.length === 1 ? '' : 's'}`;
 
@@ -337,7 +338,10 @@ export async function loadAdminBooks() {
                   ? `<img src="/api/books/${b.book_id}/asset/${b.cover_image}?v=${Date.now()}" alt="${escapeHtml(b.title)}" class="table-thumb-img">`
                   : `📜`}
               </td>
-              <td class="td-title"><strong>${escapeHtml(b.title)}</strong><br><small style="color:var(--text-muted)">ID: ${b.book_id}</small></td>
+              <td class="td-title">
+                <a href="#" class="admin-book-title-link" data-id="${b.book_id}" style="color:var(--accent-gold); text-decoration:none; font-weight:bold;">${escapeHtml(b.title)} ✏️</a>
+                <br><small style="color:var(--text-muted)">ID: ${b.book_id}</small>
+              </td>
               <td class="td-author">${escapeHtml(b.author || 'Desconocido')}</td>
               <td><span class="admin-badge admin-badge-narrator">🎙️ ${escapeHtml(b.narrator_name || 'DaveFX')}</span></td>
               <td>
@@ -353,6 +357,7 @@ export async function loadAdminBooks() {
               <td class="td-genre">${escapeHtml(b.genre || b.series || '-')}</td>
               <td>${b.total_sections || 0} caps.</td>
               <td class="td-actions">
+                <button class="btn-secondary btn-sm btn-edit-book" data-id="${b.book_id}">✏️ Editar</button>
                 <button class="btn-secondary btn-sm btn-tier-book" data-id="${b.book_id}" data-title="${escapeHtml(b.title)}" data-tier="${b.tier_id || 1}">🏷️ Tier</button>
                 <button class="btn-secondary btn-sm btn-delete-book" data-id="${b.book_id}" style="color: #ff6b6b">🗑️</button>
               </td>
@@ -362,6 +367,24 @@ export async function loadAdminBooks() {
         </tbody>
       </table>
     `;
+
+    const openEditForBookId = (bid) => {
+      const bObj = currentAdminBooks.find(item => item.book_id === bid);
+      if (bObj) {
+        openEditExistingBookModal(bObj);
+      }
+    };
+
+    container.querySelectorAll(".admin-book-title-link").forEach(link => {
+      link.onclick = (e) => {
+        e.preventDefault();
+        openEditForBookId(link.getAttribute("data-id"));
+      };
+    });
+
+    container.querySelectorAll(".btn-edit-book").forEach(btn => {
+      btn.onclick = () => openEditForBookId(btn.getAttribute("data-id"));
+    });
 
     container.querySelectorAll(".btn-toggle-visible-book").forEach(btn => {
       btn.onclick = async () => {
@@ -567,7 +590,18 @@ export function openPreImportModal(tempFileId, filename, inspection) {
   const modal = document.getElementById("modal-pre-import");
   if (!modal) return;
 
+  const modalTitle = document.getElementById("modal-pre-import-title");
+  const modalSubtitle = document.getElementById("pre-import-subtitle");
+  const confirmBtn = document.getElementById("btn-confirm-pre-import");
+  const regenContainer = document.getElementById("pre-import-regenerate-container");
+
+  if (modalTitle) modalTitle.textContent = `✨ Configuración de Importación del Librojuego`;
+  if (modalSubtitle) modalSubtitle.textContent = `Archivo analizado correctamente. Revisa y ajusta los metadatos y la voz antes de iniciar la sintetización:`;
+  if (confirmBtn) confirmBtn.textContent = `Confirmar e Importar Libro 🚀`;
+  if (regenContainer) regenContainer.classList.add("hidden");
+
   document.getElementById("pre-import-temp-id").value = tempFileId || "";
+  document.getElementById("pre-import-edit-book-id").value = "";
   document.getElementById("pre-import-title").value = inspection.suggested_title || filename;
   document.getElementById("pre-import-author").value = inspection.suggested_author || "Desconocido";
   document.getElementById("pre-import-language").value = inspection.suggested_language || "es";
@@ -610,7 +644,7 @@ export function openPreImportModal(tempFileId, filename, inspection) {
   if (form) {
     form.onsubmit = async (e) => {
       e.preventDefault();
-      await confirmAndImportBook();
+      await submitBookConfigForm();
       closeModal();
     };
   }
@@ -618,7 +652,76 @@ export function openPreImportModal(tempFileId, filename, inspection) {
   modal.classList.add("open");
 }
 
-async function confirmAndImportBook() {
+export function openEditExistingBookModal(book) {
+  const modal = document.getElementById("modal-pre-import");
+  if (!modal) return;
+
+  const modalTitle = document.getElementById("modal-pre-import-title");
+  const modalSubtitle = document.getElementById("pre-import-subtitle");
+  const confirmBtn = document.getElementById("btn-confirm-pre-import");
+  const regenContainer = document.getElementById("pre-import-regenerate-container");
+  const regenCheck = document.getElementById("pre-import-regenerate-check");
+
+  if (modalTitle) modalTitle.textContent = `✏️ Editar Librojuego: ${book.title}`;
+  if (modalSubtitle) modalSubtitle.textContent = `Edita los metadatos del libro o regenera sus audios con la voz seleccionada:`;
+  if (confirmBtn) confirmBtn.textContent = `Guardar Cambios 💾`;
+  if (regenContainer) regenContainer.classList.remove("hidden");
+  if (regenCheck) regenCheck.checked = false;
+
+  document.getElementById("pre-import-temp-id").value = "";
+  document.getElementById("pre-import-edit-book-id").value = book.book_id || "";
+  document.getElementById("pre-import-title").value = book.title || "";
+  document.getElementById("pre-import-author").value = book.author || "";
+  document.getElementById("pre-import-language").value = book.language || "es";
+  document.getElementById("pre-import-start-node").value = book.start_node || "sec_001";
+  document.getElementById("pre-import-tier").value = book.tier_id || "1";
+
+  const updateVoiceOptions = () => {
+    const lang = document.getElementById("pre-import-language").value;
+    const voiceSelect = document.getElementById("pre-import-voice-select");
+    if (!voiceSelect) return;
+
+    if (lang === "en") {
+      voiceSelect.innerHTML = `
+        <option value="google:en-US-Neural2-F">Google Cloud Neural2 (Femenina - en-US-Neural2-F)</option>
+        <option value="google:en-US-Neural2-D">Google Cloud Neural2 (Masculina - en-US-Neural2-D)</option>
+        <option value="google:en-US-Wavenet-D">Google Cloud Wavenet (Masculina - en-US-Wavenet-D)</option>
+        <option value="piper:en_US-lessac-medium.onnx">Piper Local C++ (Lessac - en_US)</option>
+      `;
+    } else {
+      voiceSelect.innerHTML = `
+        <option value="google:es-ES-Neural2-B">Google Cloud Neural2 (Masculina - es-ES-Neural2-B)</option>
+        <option value="google:es-ES-Neural2-A">Google Cloud Neural2 (Femenina - es-ES-Neural2-A)</option>
+        <option value="google:es-ES-Wavenet-C">Google Cloud Wavenet (Masculina - es-ES-Wavenet-C)</option>
+        <option value="piper:es_ES-davefx-medium.onnx">Piper Local C++ (DaveFX - es_ES)</option>
+      `;
+    }
+  };
+
+  updateVoiceOptions();
+  document.getElementById("pre-import-language").onchange = updateVoiceOptions;
+
+  const btnClose = document.getElementById("btn-close-modal-pre-import");
+  const btnCancel = document.getElementById("btn-cancel-pre-import");
+  const form = document.getElementById("form-pre-import");
+
+  const closeModal = () => modal.classList.remove("open");
+  if (btnClose) btnClose.onclick = closeModal;
+  if (btnCancel) btnCancel.onclick = closeModal;
+
+  if (form) {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      await submitBookConfigForm();
+      closeModal();
+    };
+  }
+
+  modal.classList.add("open");
+}
+
+async function submitBookConfigForm() {
+  const editBookId = document.getElementById("pre-import-edit-book-id").value;
   const tempFileId = document.getElementById("pre-import-temp-id").value;
   const title = document.getElementById("pre-import-title").value.trim();
   const author = document.getElementById("pre-import-author").value.trim();
@@ -626,6 +729,7 @@ async function confirmAndImportBook() {
   const startNode = document.getElementById("pre-import-start-node").value.trim();
   const voiceSelection = document.getElementById("pre-import-voice-select").value;
   const tierId = parseInt(document.getElementById("pre-import-tier").value);
+  const regenCheck = document.getElementById("pre-import-regenerate-check")?.checked || false;
   const errDiv = document.getElementById("pre-import-error");
 
   let ttsEngine = "auto";
@@ -642,44 +746,91 @@ async function confirmAndImportBook() {
   const progress = document.getElementById("upload-progress");
   const progressMsg = document.getElementById("upload-progress-msg");
 
-  if (zone) zone.classList.add("hidden");
-  if (progress) progress.classList.remove("hidden");
-  if (progressMsg) progressMsg.textContent = `Importando y sintetizando audios TTS para '${title}' con voz '${voiceName}'... Por favor espera unos minutos.`;
-
-  try {
-    const res = await authFetch(`${API_BASE}/api/admin/books/confirm_import`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        temp_file_id: tempFileId,
-        title,
-        author,
-        language,
-        tts_engine: ttsEngine,
-        voice_name: voiceName,
-        start_node: startNode,
-        tier_id: tierId,
-        generate_audios: true
-      })
-    });
-    const data = await res.json();
-
-    if (res.ok) {
-      alert(`✅ ¡Éxito! ${data.message}`);
-      loadAdminBooks();
-    } else {
-      throw new Error(data.detail || "Error al importar libro");
+  if (editBookId) {
+    // Mode: EDIT EXISTING BOOK
+    if (zone) zone.classList.add("hidden");
+    if (progress) progress.classList.remove("hidden");
+    if (progressMsg) {
+      progressMsg.textContent = regenCheck
+        ? `Actualizando metadatos y regenerando audios TTS para '${title}' con voz '${voiceName}'... Por favor espera unos minutos.`
+        : `Guardando cambios para '${title}'...`;
     }
-  } catch (err) {
-    if (errDiv) {
-      errDiv.classList.remove("hidden");
-      errDiv.textContent = err.message;
-    } else {
-      alert(`❌ Error al importar: ${err.message}`);
+
+    try {
+      const res = await authFetch(`${API_BASE}/api/admin/books/${editBookId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          author,
+          language,
+          start_node: startNode,
+          tier_id: tierId,
+          tts_engine: ttsEngine,
+          voice_name: voiceName,
+          regenerate_audios: regenCheck
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert(`✅ ¡Éxito! ${data.message || "Libro actualizado correctamente."}`);
+        loadAdminBooks();
+      } else {
+        throw new Error(data.detail || "Error al actualizar libro.");
+      }
+    } catch (err) {
+      if (errDiv) {
+        errDiv.classList.remove("hidden");
+        errDiv.textContent = err.message;
+      } else {
+        alert(`❌ Error al actualizar: ${err.message}`);
+      }
+    } finally {
+      if (zone) zone.classList.remove("hidden");
+      if (progress) progress.classList.add("hidden");
     }
-  } finally {
-    if (zone) zone.classList.remove("hidden");
-    if (progress) progress.classList.add("hidden");
+  } else {
+    // Mode: IMPORT NEW FILE
+    if (zone) zone.classList.add("hidden");
+    if (progress) progress.classList.remove("hidden");
+    if (progressMsg) progressMsg.textContent = `Importando y sintetizando audios TTS para '${title}' con voz '${voiceName}'... Por favor espera unos minutos.`;
+
+    try {
+      const res = await authFetch(`${API_BASE}/api/admin/books/confirm_import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          temp_file_id: tempFileId,
+          title,
+          author,
+          language,
+          tts_engine: ttsEngine,
+          voice_name: voiceName,
+          start_node: startNode,
+          tier_id: tierId,
+          generate_audios: true
+        })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`✅ ¡Éxito! ${data.message}`);
+        loadAdminBooks();
+      } else {
+        throw new Error(data.detail || "Error al importar libro");
+      }
+    } catch (err) {
+      if (errDiv) {
+        errDiv.classList.remove("hidden");
+        errDiv.textContent = err.message;
+      } else {
+        alert(`❌ Error al importar: ${err.message}`);
+      }
+    } finally {
+      if (zone) zone.classList.remove("hidden");
+      if (progress) progress.classList.add("hidden");
+    }
   }
 }
 

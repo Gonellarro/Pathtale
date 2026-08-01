@@ -144,6 +144,15 @@ class AdminBookUpdateRequest(BaseModel):
     volume: Optional[int] = None
     description: Optional[str] = None
     language: Optional[str] = None
+    start_node: Optional[str] = None
+    tts_engine: Optional[str] = None
+    voice_name: Optional[str] = None
+    regenerate_audios: Optional[bool] = False
+
+class AdminRegenerateAudiosRequest(BaseModel):
+    tts_engine: Optional[str] = "auto"
+    voice_name: Optional[str] = None
+    language: Optional[str] = None
 
 class AdminUserSubscriptionRequest(BaseModel):
     tier_id: int
@@ -378,116 +387,98 @@ def get_book_details(book_id: str):
         "publisher": b_data.get("publisher"),
         "year": b_data.get("year"),
         "description": b_data.get("description"),
-        "cover_image_url": f"/api/books/{book_id}/asset/{b_data.get('cover_image')}" if b_data.get("cover_image") else None,
+        "cover_image_url": f"/api/books/{book_id}/asset/{b_data.get('cover_image')}" if b_data.get('cover_image') else None,
         "total_sections": b_data.get("total_sections"),
         "start_node": b_data.get("start_node"),
         "features": b_data.get("features", {})
     }
 
-@app.post("/api/books/{book_id}/regenerate_audios")
-def regenerate_book_audios(book_id: str, authorization: Optional[str] = Header(None)):
-    """Deletes existing MP3 files for a book and regenerates TTS audio files including options."""
-    require_admin(authorization)
+def _internal_regenerate_audios(book_id: str, tts_engine: str = "auto", voice_name: Optional[str] = None, language: Optional[str] = None):
     book_folder = BOOKS_DIR / book_id
-    if not book_folder.exists():
-        raise HTTPException(status_code=404, detail="Book directory not found")
+    json_path = book_folder / "book.json"
+    if not json_path.exists():
+        raise HTTPException(status_code=404, detail=f"No se encontró book.json para el libro '{book_id}'.")
+
+    with open(json_path, "r", encoding="utf-8") as f:
+        b_data = json.load(f)
+
+    final_lang = (language or b_data.get("language") or "es").lower()[:2]
+    nodes = b_data.get("nodes", {})
+    from src.tts import TTSManager
+    tts_mgr = TTSManager()
 
     audios_dir = book_folder / "audios"
-    if audios_dir.exists():
-        for f in audios_dir.glob("*.mp3"):
-            try:
-                f.unlink()
-            except Exception as e:
-                logger.warning(f"Could not remove audio file {f}: {e}")
+    audios_dir.mkdir(exist_ok=True)
+    for mp3_file in audios_dir.glob("*.mp3"):
+        try: mp3_file.unlink()
+        except Exception: pass
 
-    from main import get_epub_book_id
-    from config import INPUT_BOOKS_DIR
-    from src.importer import EPUBImporter
-    
-    epub_match = next((p for p in INPUT_BOOKS_DIR.glob("*.epub") if get_epub_book_id(p) == book_id), None)
-    if not epub_match:
-        raise HTTPException(status_code=404, detail="Original EPUB file not found in Libros/ folder")
+    logger.info(f"🎙️ Regenerating audios for '{book_id}' ({len(nodes)} nodes, engine='{tts_engine}', voice='{voice_name}', lang='{final_lang}')...")
+    for n_id, n_data in nodes.items():
+        audio_path = book_folder / n_data["audio"]
+        tts_parts = []
+        if n_data.get('title'):
+            tts_parts.append(n_data['title'])
+        if n_data.get('text'):
+            tts_parts.append(n_data['text'])
+        if tts_parts:
+            tts_text = "\n\n".join(tts_parts)
+            tts_mgr.generate_audio(tts_text, audio_path, language=final_lang, tts_engine=tts_engine, voice_name=voice_name)
 
-    importer = EPUBImporter(epub_match)
-    importer.process(generate_audios=True)
+        if n_data.get("audio_options"):
+            audio_opt_path = book_folder / n_data["audio_options"]
+            choices = n_data.get('choices', [])
+            if choices:
+                opt_parts = ["¿Qué deseas hacer?" if final_lang == "es" else "What do you want to do?"]
+                for c in choices:
+                    prefix = "Opción" if final_lang == "es" else "Option"
+                    opt_parts.append(f"{prefix} {c['choice_id']}: {c['text']}.")
+                opt_text = "\n\n".join(opt_parts)
+                tts_mgr.generate_audio(opt_text, audio_opt_path, language=final_lang, tts_engine=tts_engine, voice_name=voice_name)
+
+@app.post("/api/books/{book_id}/regenerate_audios")
+def regenerate_book_audios(book_id: str, req: Optional[AdminRegenerateAudiosRequest] = None, authorization: Optional[str] = Header(None)):
+    """Deletes existing MP3 files for a book and regenerates TTS audio files including options."""
+    require_admin(authorization)
+    engine_name = req.tts_engine if req else "auto"
+    voice = req.voice_name if req else None
+    lang = req.language if req else None
+    _internal_regenerate_audios(book_id, tts_engine=engine_name, voice_name=voice, language=lang)
     engine._load_installed_books()
-    return {"status": "success", "message": f"Regenerated TTS audios for '{book_id}' with options."}
-
-# --- Admin Dashboard Endpoints ---
-
-@app.get("/api/admin/roles")
-def admin_list_roles(authorization: Optional[str] = Header(None)):
-    require_admin(authorization)
-    return {"roles": engine.db.get_all_roles()}
-
-@app.get("/api/admin/users")
-def admin_list_users(authorization: Optional[str] = Header(None)):
-    require_admin(authorization)
-    return {"users": engine.db.get_all_users_admin()}
-
-@app.post("/api/admin/users")
-def admin_create_user(req: AdminUserCreateRequest, authorization: Optional[str] = Header(None)):
-    require_admin(authorization)
-    try:
-        user_info = engine.db.create_user_admin(req.username, req.password, req.first_name, req.role or "user")
-        return {"status": "success", "user": user_info}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.put("/api/admin/users/{user_id}")
-def admin_update_user(user_id: int, req: AdminUserUpdateRequest, authorization: Optional[str] = Header(None)):
-    require_admin(authorization)
-    engine.db.update_user_admin(user_id, first_name=req.first_name, role=req.role, password=req.password, tier_id=req.tier_id)
-    return {"status": "success", "message": f"Usuario {user_id} actualizado."}
-
-@app.delete("/api/admin/users/{user_id}")
-def admin_delete_user(user_id: int, hard: bool = Query(False), authorization: Optional[str] = Header(None)):
-    require_admin(authorization)
-    try:
-        engine.db.delete_user_admin(user_id, hard_delete=hard)
-        msg = f"Usuario #{user_id} eliminado permanentemente." if hard else f"Usuario #{user_id} desactivado (Soft Delete)."
-        return {"status": "success", "message": msg}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.get("/api/admin/narrators")
-def admin_list_narrators(authorization: Optional[str] = Header(None)):
-    require_admin(authorization)
-    return {"narrators": engine.db.get_narrators_stats()}
-
-@app.post("/api/admin/narrators")
-def admin_create_narrator(req: AdminNarratorCreateRequest, authorization: Optional[str] = Header(None)):
-    require_admin(authorization)
-    narrator_info = engine.db.create_narrator_admin(req.name, req.display_name, req.specialty, req.avatar_url, req.bio)
-    return {"status": "success", "narrator": narrator_info}
-
-@app.put("/api/admin/narrators/{narrator_id}")
-def admin_update_narrator(narrator_id: int, req: AdminNarratorUpdateRequest, authorization: Optional[str] = Header(None)):
-    require_admin(authorization)
-    engine.db.update_narrator_admin(narrator_id, req.display_name, req.specialty, req.avatar_url, req.bio)
-    return {"status": "success", "message": f"Narrador {narrator_id} actualizado."}
-
-@app.delete("/api/admin/narrators/{narrator_id}")
-def admin_delete_narrator(narrator_id: int, authorization: Optional[str] = Header(None)):
-    require_admin(authorization)
-    try:
-        engine.db.delete_narrator_admin(narrator_id)
-        return {"status": "success", "message": f"Narrador {narrator_id} eliminado."}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.get("/api/admin/books")
-def admin_list_books(authorization: Optional[str] = Header(None)):
-    require_admin(authorization)
-    return {"books": engine.db.get_all_books_admin()}
+    return {"status": "success", "message": f"Audios del libro '{book_id}' regenerados correctamente."}
 
 @app.put("/api/admin/books/{book_id}")
 def admin_update_book(book_id: str, req: AdminBookUpdateRequest, authorization: Optional[str] = Header(None)):
     require_admin(authorization)
     updates = req.dict(exclude_unset=True)
-    engine.db.update_book_admin(book_id, updates)
+    should_regenerate = updates.pop("regenerate_audios", False)
+    tts_engine = updates.pop("tts_engine", "auto")
+    voice_name = updates.pop("voice_name", None)
+
+    # 1. Update SQLite DB & book.json
+    db_fields = {"title", "author", "narrator_id", "tier_id", "is_visible", "genre", "series", "volume", "description", "language", "start_node"}
+    db_updates = {k: v for k, v in updates.items() if k in db_fields and v is not None}
+    if db_updates:
+        engine.db.update_book_admin(book_id, db_updates)
+
+    book_folder = BOOKS_DIR / book_id
+    json_path = book_folder / "book.json"
+    if json_path.exists():
+        with open(json_path, "r", encoding="utf-8") as f:
+            b_json = json.load(f)
+        for k, v in updates.items():
+            if v is not None:
+                b_json[k] = v
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(b_json, f, ensure_ascii=False, indent=2)
+
     engine._load_installed_books()
-    return {"status": "success", "message": f"Libro {book_id} actualizado."}
+
+    # 2. Regenerate audios if requested
+    if should_regenerate:
+        _internal_regenerate_audios(book_id, tts_engine=tts_engine, voice_name=voice_name, language=updates.get("language"))
+
+    return {"status": "success", "message": f"Libro '{book_id}' actualizado correctamente."}
 
 @app.delete("/api/admin/books/{book_id}")
 def admin_delete_book(book_id: str, hard: bool = Query(False), authorization: Optional[str] = Header(None)):
