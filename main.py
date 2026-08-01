@@ -124,7 +124,8 @@ def command_cli(args):
             print("❌ No entendí esa opción. Por favor prueba otra vez.")
 
 def command_api(args):
-    auto_import_if_needed()
+    # Note: Automatic Libros/ folder scan on boot disabled for instant startup.
+    # Use the Web Admin Dashboard to upload and inspect EPUB/PDF files with full voice selection.
     import uvicorn
     host = getattr(args, 'host', '0.0.0.0')
     port = getattr(args, 'port', 8000)
