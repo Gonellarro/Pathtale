@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 from gtts import gTTS
-from config import PIPER_BIN, PIPER_MODEL_ES, PIPER_MODEL_EN, GOOGLE_TTS_API_KEY
+from config import PIPER_BIN, PIPER_MODEL_ES, PIPER_MODEL_EN, GOOGLE_TTS_API_KEY, GOOGLE_VOICE_ES, GOOGLE_VOICE_EN
 
 logger = logging.getLogger("TTS")
 
@@ -25,6 +25,8 @@ class TTSManager:
         self.piper_model_es = piper_model_es
         self.piper_model_en = piper_model_en
         self.google_api_key = google_api_key or os.getenv("GOOGLE_TTS_API_KEY", "")
+        self.google_voice_es = os.getenv("GOOGLE_VOICE_ES", GOOGLE_VOICE_ES)
+        self.google_voice_en = os.getenv("GOOGLE_VOICE_EN", GOOGLE_VOICE_EN)
         self.has_piper_bin = bool(shutil.which(piper_bin))
         if self.google_api_key:
             logger.info("TTSManager ready with Google Cloud Text-to-Speech API Key")
@@ -73,7 +75,7 @@ class TTSManager:
             return False
 
         lang_code = language.lower()[:2] if language else "es"
-        voice_name = "en-US-Neural2-F" if lang_code == "en" else "es-ES-Neural2-B"
+        voice_name = self.google_voice_en if lang_code == "en" else self.google_voice_es
         voice_lang = "en-US" if lang_code == "en" else "es-ES"
 
         url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={self.google_api_key}"

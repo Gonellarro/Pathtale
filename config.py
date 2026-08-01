@@ -21,8 +21,10 @@ PIPER_MODEL_ES = os.getenv("PIPER_MODEL_ES", os.getenv("PIPER_MODEL", "/app/mode
 PIPER_MODEL_EN = os.getenv("PIPER_MODEL_EN", "/app/models/piper/en_US-lessac-medium.onnx")
 PIPER_MODEL = PIPER_MODEL_ES
 
-# Google Cloud Text-to-Speech API Key (opcional)
+# Google Cloud Text-to-Speech API Key & Voices
 GOOGLE_TTS_API_KEY = os.getenv("GOOGLE_TTS_API_KEY", "")
+GOOGLE_VOICE_ES = os.getenv("GOOGLE_VOICE_ES", "es-ES-Neural2-B")
+GOOGLE_VOICE_EN = os.getenv("GOOGLE_VOICE_EN", "en-US-Neural2-F")
 
 # LLM Intent Classifier settings (optional)
 LLM_API_URL = os.getenv("LLM_API_URL", "http://localhost:11434/api/generate") # Default Ollama
