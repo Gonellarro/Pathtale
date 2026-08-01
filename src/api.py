@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from config import BOOKS_DIR, BASE_DIR, ALLOWED_ORIGINS
+from config import BOOKS_DIR, BASE_DIR, ALLOWED_ORIGINS, DATA_DIR
 from src.engine import GameEngine
 from src.stt import STTManager
 from src.voice_parser import VoiceParser
