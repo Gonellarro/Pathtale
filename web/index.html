@@ -1041,6 +1041,74 @@
       </div>
     </div>
 
+    <!-- Modal: Pre-flight Configuración de Importación (Pre-Import Modal) -->
+    <div id="modal-pre-import" class="modal">
+      <div class="modal-content" style="max-width: 540px;">
+        <div class="modal-header">
+          <h2 id="modal-pre-import-title">✨ Configuración de Importación del Librojuego</h2>
+          <button id="btn-close-modal-pre-import" class="btn-icon">✕</button>
+        </div>
+        <div class="modal-body">
+          <form id="form-pre-import" onsubmit="return false;">
+            <input type="hidden" id="pre-import-temp-id" value="">
+
+            <p id="pre-import-subtitle" style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1.25rem;">
+              Archivo analizado correctamente. Revisa y ajusta los metadatos y la voz antes de iniciar la sintetización:
+            </p>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="pre-import-title" style="font-weight:600;">Título del Librojuego</label>
+              <input type="text" id="pre-import-title" class="text-input" style="width:100%;" placeholder="Título">
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="pre-import-author" style="font-weight:600;">Autor</label>
+              <input type="text" id="pre-import-author" class="text-input" style="width:100%;" placeholder="Autor">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+                <label for="pre-import-language" style="font-weight:600;">Idioma</label>
+                <select id="pre-import-language" class="select-input" style="width: 100%;">
+                  <option value="es">Español (es)</option>
+                  <option value="en">Inglés / English (en)</option>
+                </select>
+              </div>
+
+              <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+                <label for="pre-import-start-node" style="font-weight:600;">Sección Inicial</label>
+                <input type="text" id="pre-import-start-node" class="text-input" style="width:100%;" placeholder="sec_001">
+              </div>
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem; margin-top:0.5rem;">
+              <label for="pre-import-voice-select" style="font-weight:600;">Motor TTS y Voz Narradora 🎙️</label>
+              <select id="pre-import-voice-select" class="select-input" style="width: 100%;">
+                <!-- Dynamic options rendered via JS depending on chosen language -->
+              </select>
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="pre-import-tier" style="font-weight:600;">Nivel de Membresía Requerido</label>
+              <select id="pre-import-tier" class="select-input" style="width: 100%;">
+                <option value="1">Demo Gratuita (Acceso libre)</option>
+                <option value="2">Tier 1 - Bronce</option>
+                <option value="3">Tier 2 - Plata</option>
+                <option value="4">Tier 3 - Oro (Acceso total)</option>
+              </select>
+            </div>
+
+            <div id="pre-import-error" class="auth-error hidden" style="margin-top: 1rem;"></div>
+
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem; justify-content: flex-end;">
+              <button type="button" id="btn-cancel-pre-import" class="btn-secondary" style="padding: 0.6rem 1.2rem;">Cancelar</button>
+              <button type="submit" id="btn-confirm-pre-import" class="btn-primary" style="padding: 0.6rem 1.4rem;">Confirmar e Importar Libro 🚀</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal: Configuración Tras Importación (Post-Upload) -->
     <div id="modal-post-upload" class="modal">
       <div class="modal-content" style="max-width: 520px;">

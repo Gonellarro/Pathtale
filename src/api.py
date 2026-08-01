@@ -109,6 +109,17 @@ class AdminUserUpdateRequest(BaseModel):
     tier_id: Optional[int] = None
     password: Optional[str] = None
 
+class AdminConfirmBookImportRequest(BaseModel):
+    temp_file_id: str
+    title: str
+    author: str
+    language: str = "es"
+    tts_engine: str = "auto"
+    voice_name: str = "default"
+    start_node: str = "sec_001"
+    tier_id: int = 1
+    generate_audios: bool = True
+
 class AdminNarratorCreateRequest(BaseModel):
     name: str
     display_name: str
@@ -485,6 +496,85 @@ def admin_delete_book(book_id: str, hard: bool = Query(False), authorization: Op
     engine._load_installed_books()
     msg = f"Audiolibro '{book_id}' eliminado permanentemente." if hard else f"Audiolibro '{book_id}' ocultado (Soft Delete)."
     return {"status": "success", "message": msg}
+
+@app.post("/api/admin/books/inspect")
+async def admin_inspect_book(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
+    """Uploads file to temp folder and parses preliminary metadata without generating audios or seeding DB."""
+    require_admin(authorization)
+    filename_lower = file.filename.lower()
+    if not (filename_lower.endswith(".epub") or filename_lower.endswith(".pdf")):
+        raise HTTPException(status_code=400, detail="El archivo debe ser de tipo .epub o .pdf")
+
+    temp_uploads_dir = DATA_DIR / "temp" / "uploads"
+    temp_uploads_dir.mkdir(parents=True, exist_ok=True)
+    temp_file_id = f"{int(time.time())}_{file.filename}"
+    temp_path = temp_uploads_dir / temp_file_id
+
+    with open(temp_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    logger.info(f"🔍 Inspecting uploaded file '{file.filename}' (temp_id='{temp_file_id}')...")
+    if filename_lower.endswith(".pdf"):
+        from src.pdf_importer import PDFImporter
+        importer = PDFImporter(temp_path)
+        meta = importer.inspect()
+    else:
+        from src.importer import EPUBImporter
+        importer = EPUBImporter(temp_path)
+        meta = importer.inspect()
+
+    return {
+        "status": "success",
+        "temp_file_id": temp_file_id,
+        "filename": file.filename,
+        "inspection": meta
+    }
+
+@app.post("/api/admin/books/confirm_import")
+def admin_confirm_book_import(req: AdminConfirmBookImportRequest, authorization: Optional[str] = Header(None)):
+    """Finalizes book import with user-edited metadata and triggers TTS audio synthesis."""
+    require_admin(authorization)
+    temp_path = DATA_DIR / "temp" / "uploads" / req.temp_file_id
+    if not temp_path.exists():
+        raise HTTPException(status_code=404, detail="El archivo temporal ha expirado. Por favor, sube el archivo de nuevo.")
+
+    import shutil
+    from config import INPUT_BOOKS_DIR
+    target_filename = req.temp_file_id.split("_", 1)[-1]
+    target_path = INPUT_BOOKS_DIR / target_filename
+    shutil.copy(temp_path, target_path)
+
+    filename_lower = target_path.name.lower()
+    if filename_lower.endswith(".pdf"):
+        from src.pdf_importer import PDFImporter
+        importer = PDFImporter(target_path)
+    else:
+        from src.importer import EPUBImporter
+        importer = EPUBImporter(target_path)
+
+    book_folder = importer.process(
+        generate_audios=req.generate_audios,
+        title=req.title,
+        author=req.author,
+        language=req.language,
+        start_node=req.start_node,
+        tts_engine=req.tts_engine,
+        voice_name=req.voice_name,
+        tier_id=req.tier_id
+    )
+
+    engine._load_installed_books()
+
+    # Clean up temp file
+    try: temp_path.unlink()
+    except Exception: pass
+
+    return {
+        "status": "success",
+        "message": f"Libro '{req.title}' importado correctamente.",
+        "book_id": book_folder.name
+    }
 
 @app.post("/api/admin/books/upload")
 async def admin_upload_book(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):

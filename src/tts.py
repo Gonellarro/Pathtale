@@ -69,14 +69,17 @@ class TTSManager:
                 except Exception: pass
             return False
 
-    def _generate_google_cloud_tts(self, text: str, output_file: Path, language: str) -> bool:
+    def _generate_google_cloud_tts(self, text: str, output_file: Path, language: str, voice_name: Optional[str] = None) -> bool:
         """Synthesizes text using Google Cloud Text-to-Speech official REST API with Neural2/WaveNet voices."""
         if not self.google_api_key:
             return False
 
         lang_code = language.lower()[:2] if language else "es"
-        voice_name = self.google_voice_en if lang_code == "en" else self.google_voice_es
-        voice_lang = "en-US" if lang_code == "en" else "es-ES"
+        if not voice_name or voice_name in ("default", "auto"):
+            voice_name = self.google_voice_en if lang_code == "en" else self.google_voice_es
+
+        parts = voice_name.split("-")
+        voice_lang = f"{parts[0]}-{parts[1]}" if len(parts) >= 2 else ("en-US" if lang_code == "en" else "es-ES")
 
         url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={self.google_api_key}"
         payload = {
@@ -110,7 +113,7 @@ class TTSManager:
             logger.error(f"Google Cloud TTS API failed: {e}")
         return False
 
-    def generate_audio(self, text: str, output_file: Path, language: str = "es") -> bool:
+    def generate_audio(self, text: str, output_file: Path, language: str = "es", tts_engine: str = "auto", voice_name: Optional[str] = None) -> bool:
         """Generates audio for text and saves it to output_file (.mp3)."""
         output_file = Path(output_file)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -121,12 +124,12 @@ class TTSManager:
 
         lang_code = language.lower()[:2] if language else "es"
 
-        # Priority 1: Google Cloud Text-to-Speech Official API (Neural2 / WaveNet) if API key is present
-        if self.google_api_key:
-            if self._generate_google_cloud_tts(text, output_file, language):
+        # Explicit Google Cloud TTS request OR auto with API key available
+        if (tts_engine == "google" or (tts_engine == "auto" and self.google_api_key)) and self.google_api_key:
+            if self._generate_google_cloud_tts(text, output_file, language, voice_name=voice_name):
                 return True
 
-        # Priority 2: Piper TTS (Local ONNX)
+        # Piper TTS request OR auto fallback
         target_model_str = self.piper_model_en if lang_code == "en" else self.piper_model_es
         if self.has_piper_bin and target_model_str:
             if self._ensure_model_exists(target_model_str):
@@ -148,7 +151,7 @@ class TTSManager:
                 except Exception as e:
                     logger.error(f"Piper execution failed ({lang_code}): {e}. Trying fallback TTS.")
 
-        # Priority 3: gTTS Fallback (with rate-limiting delay to prevent HTTP 429)
+        # gTTS Fallback
         try:
             tts_lang = "en" if lang_code == "en" else "es"
             tts = gTTS(text=text, lang=tts_lang, slow=False)

@@ -35,7 +35,56 @@ class EPUBImporter:
         self.epub_path = Path(epub_path)
         self.tts_manager = tts_manager or TTSManager()
 
-    def process(self, generate_audios: bool = True) -> Path:
+    def inspect(self) -> Dict[str, Any]:
+        """Fast pre-flight analysis of EPUB metadata without audio synthesis or DB seeding."""
+        with zipfile.ZipFile(self.epub_path, 'r') as z:
+            namelist = z.namelist()
+            title = self.epub_path.stem
+            author = "Desconocido"
+            language = "es"
+
+            opf_file = next((name for name in namelist if name.endswith('.opf')), None)
+            if opf_file:
+                try:
+                    soup_opf = BeautifulSoup(z.read(opf_file).decode('utf-8', errors='ignore'), 'html.parser')
+                    t_elem = soup_opf.find(['dc:title', 'title'])
+                    if t_elem and t_elem.text.strip():
+                        title = t_elem.text.strip()
+                    a_elem = soup_opf.find(['dc:creator', 'creator'])
+                    if a_elem and a_elem.text.strip():
+                        author = a_elem.text.strip()
+                    l_elem = soup_opf.find(['dc:language', 'language'])
+                    if l_elem and l_elem.text.strip():
+                        language = l_elem.text.strip().lower()[:2]
+                except Exception:
+                    pass
+
+            html_files = [f for f in namelist if f.endswith(('.html', '.xhtml'))]
+
+            return {
+                "suggested_title": title,
+                "suggested_author": author,
+                "suggested_language": language,
+                "suggested_start_node": "sec_001",
+                "total_sections": len(html_files)
+            }
+
+    def process(
+        self,
+        generate_audios: bool = True,
+        title: Optional[str] = None,
+        author: Optional[str] = None,
+        language: Optional[str] = None,
+        start_node: Optional[str] = None,
+        tts_engine: str = "auto",
+        voice_name: Optional[str] = None,
+        tier_id: int = 1
+    ) -> Path:
+        title_override = title
+        author_override = author
+        language_override = language
+        start_node_override = start_node
+
         if not self.epub_path.exists():
             raise FileNotFoundError(f"EPUB file not found: {self.epub_path}")
 
@@ -334,10 +383,16 @@ class EPUBImporter:
                         "label": label
                     })
 
+            # Apply overrides if passed
+            final_title = title_override or title
+            final_author = author_override or author or "Desconocido"
+            final_language = (language_override or language or "es").lower()[:2]
+            start_node_id = start_node_override or start_node_id
+
             book_json_data = {
                 "book_id": book_id,
-                "title": title,
-                "author": author or "Desconocido",
+                "title": final_title,
+                "author": final_author,
                 "publisher": publisher,
                 "year": year,
                 "language": language,
@@ -350,6 +405,8 @@ class EPUBImporter:
                 "cover_image": cover_image_path,
                 "total_sections": total_sections,
                 "start_node": start_node_id,
+                "tier_id": tier_id,
+                "narrator_id": 2 if language == "en" else 1,
                 "features": {
                     "inventory": False,
                     "dice": False,
@@ -365,18 +422,19 @@ class EPUBImporter:
 
             logger.info(f"Imported {total_sections} nodes with extended metadata to {book_json_path}")
 
-            # Register book endings in Database
-            if endings_detected:
-                try:
-                    from src.db import Database
-                    db = Database()
+            # Register in Database
+            try:
+                from src.db import Database
+                db = Database()
+                db.upsert_book(book_json_data)
+                if endings_detected:
                     db.register_book_endings(book_id, endings_detected)
                     logger.info(f"Registered {len(endings_detected)} ending nodes in database for '{book_id}'.")
-                except Exception as e:
-                    logger.warning(f"Could not register book endings in database: {e}")
+            except Exception as e:
+                logger.warning(f"Could not seed book in database: {e}")
 
             if generate_audios:
-                logger.info(f"Generating TTS audio for {total_sections} nodes (narrative & options)...")
+                logger.info(f"Generating TTS audio for {total_sections} nodes (engine='{tts_engine}', voice='{voice_name}')...")
                 for n_id, n_data in nodes.items():
                     # 1. Main story narrative audio
                     audio_path = output_dir / n_data["audio"]
@@ -388,7 +446,7 @@ class EPUBImporter:
                             tts_parts.append(n_data['text'])
                         if tts_parts:
                             tts_text = "\n\n".join(tts_parts)
-                            self.tts_manager.generate_audio(tts_text, audio_path, language=language)
+                            self.tts_manager.generate_audio(tts_text, audio_path, language=language, tts_engine=tts_engine, voice_name=voice_name)
 
                     # 2. Options audio (_options.mp3)
                     if n_data.get("audio_options"):
@@ -396,11 +454,12 @@ class EPUBImporter:
                         if not audio_opt_path.exists():
                             choices = n_data.get('choices', [])
                             if choices:
-                                opt_parts = ["¿Qué deseas hacer?"]
+                                opt_parts = ["¿Qué deseas hacer?" if language == "es" else "What do you want to do?"]
                                 for c in choices:
-                                    opt_parts.append(f"Opción {c['choice_id']}: {c['text']}.")
+                                    prefix = "Opción" if language == "es" else "Option"
+                                    opt_parts.append(f"{prefix} {c['choice_id']}: {c['text']}.")
                                 opt_text = "\n\n".join(opt_parts)
-                                self.tts_manager.generate_audio(opt_text, audio_opt_path, language=language)
+                                self.tts_manager.generate_audio(opt_text, audio_opt_path, language=language, tts_engine=tts_engine, voice_name=voice_name)
 
             return book_json_path
 

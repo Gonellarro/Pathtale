@@ -538,28 +538,145 @@ async function handleEpubUpload(file) {
 
   if (zone) zone.classList.add("hidden");
   if (progress) progress.classList.remove("hidden");
-  if (progressMsg) progressMsg.textContent = `Importando '${file.name}' y sintetizando audios TTS con Piper... Por favor espera.`;
+  if (progressMsg) progressMsg.textContent = `Analizando '${file.name}'... Por favor espera unos segundos.`;
 
   const formData = new FormData();
   formData.append("file", file);
 
   try {
-    const res = await authFetch(`${API_BASE}/api/admin/books/upload`, {
+    const res = await authFetch(`${API_BASE}/api/admin/books/inspect`, {
       method: "POST",
       body: formData
     });
     const data = await res.json();
 
-    if (res.ok) {
-      loadAdminBooks();
-      if (data.book) {
-        openPostUploadModal(data.book);
-      }
+    if (res.ok && data.inspection) {
+      openPreImportModal(data.temp_file_id, file.name, data.inspection);
     } else {
-      alert(`❌ Error al importar: ${data.detail}`);
+      alert(`❌ Error al analizar el libro: ${data.detail || "Respuesta inválida del servidor"}`);
     }
   } catch (err) {
     alert(`❌ Error de comunicación: ${err.message}`);
+  } finally {
+    if (zone) zone.classList.remove("hidden");
+    if (progress) progress.classList.add("hidden");
+  }
+}
+
+export function openPreImportModal(tempFileId, filename, inspection) {
+  const modal = document.getElementById("modal-pre-import");
+  if (!modal) return;
+
+  document.getElementById("pre-import-temp-id").value = tempFileId || "";
+  document.getElementById("pre-import-title").value = inspection.suggested_title || filename;
+  document.getElementById("pre-import-author").value = inspection.suggested_author || "Desconocido";
+  document.getElementById("pre-import-language").value = inspection.suggested_language || "es";
+  document.getElementById("pre-import-start-node").value = inspection.suggested_start_node || "sec_001";
+  document.getElementById("pre-import-tier").value = "1";
+
+  const updateVoiceOptions = () => {
+    const lang = document.getElementById("pre-import-language").value;
+    const voiceSelect = document.getElementById("pre-import-voice-select");
+    if (!voiceSelect) return;
+
+    if (lang === "en") {
+      voiceSelect.innerHTML = `
+        <option value="google:en-US-Neural2-F">Google Cloud Neural2 (Femenina - en-US-Neural2-F)</option>
+        <option value="google:en-US-Neural2-D">Google Cloud Neural2 (Masculina - en-US-Neural2-D)</option>
+        <option value="google:en-US-Wavenet-D">Google Cloud Wavenet (Masculina - en-US-Wavenet-D)</option>
+        <option value="piper:en_US-lessac-medium.onnx">Piper Local C++ (Lessac - en_US)</option>
+      `;
+    } else {
+      voiceSelect.innerHTML = `
+        <option value="google:es-ES-Neural2-B">Google Cloud Neural2 (Masculina - es-ES-Neural2-B)</option>
+        <option value="google:es-ES-Neural2-A">Google Cloud Neural2 (Femenina - es-ES-Neural2-A)</option>
+        <option value="google:es-ES-Wavenet-C">Google Cloud Wavenet (Masculina - es-ES-Wavenet-C)</option>
+        <option value="piper:es_ES-davefx-medium.onnx">Piper Local C++ (DaveFX - es_ES)</option>
+      `;
+    }
+  };
+
+  updateVoiceOptions();
+  document.getElementById("pre-import-language").onchange = updateVoiceOptions;
+
+  const btnClose = document.getElementById("btn-close-modal-pre-import");
+  const btnCancel = document.getElementById("btn-cancel-pre-import");
+  const form = document.getElementById("form-pre-import");
+
+  const closeModal = () => modal.classList.remove("open");
+  if (btnClose) btnClose.onclick = closeModal;
+  if (btnCancel) btnCancel.onclick = closeModal;
+
+  if (form) {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      await confirmAndImportBook();
+      closeModal();
+    };
+  }
+
+  modal.classList.add("open");
+}
+
+async function confirmAndImportBook() {
+  const tempFileId = document.getElementById("pre-import-temp-id").value;
+  const title = document.getElementById("pre-import-title").value.trim();
+  const author = document.getElementById("pre-import-author").value.trim();
+  const language = document.getElementById("pre-import-language").value;
+  const startNode = document.getElementById("pre-import-start-node").value.trim();
+  const voiceSelection = document.getElementById("pre-import-voice-select").value;
+  const tierId = parseInt(document.getElementById("pre-import-tier").value);
+  const errDiv = document.getElementById("pre-import-error");
+
+  let ttsEngine = "auto";
+  let voiceName = "default";
+  if (voiceSelection.startsWith("google:")) {
+    ttsEngine = "google";
+    voiceName = voiceSelection.replace("google:", "");
+  } else if (voiceSelection.startsWith("piper:")) {
+    ttsEngine = "piper";
+    voiceName = voiceSelection.replace("piper:", "");
+  }
+
+  const zone = document.getElementById("book-upload-zone");
+  const progress = document.getElementById("upload-progress");
+  const progressMsg = document.getElementById("upload-progress-msg");
+
+  if (zone) zone.classList.add("hidden");
+  if (progress) progress.classList.remove("hidden");
+  if (progressMsg) progressMsg.textContent = `Importando y sintetizando audios TTS para '${title}' con voz '${voiceName}'... Por favor espera unos minutos.`;
+
+  try {
+    const res = await authFetch(`${API_BASE}/api/admin/books/confirm_import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        temp_file_id: tempFileId,
+        title,
+        author,
+        language,
+        tts_engine: ttsEngine,
+        voice_name: voiceName,
+        start_node: startNode,
+        tier_id: tierId,
+        generate_audios: true
+      })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      alert(`✅ ¡Éxito! ${data.message}`);
+      loadAdminBooks();
+    } else {
+      throw new Error(data.detail || "Error al importar libro");
+    }
+  } catch (err) {
+    if (errDiv) {
+      errDiv.classList.remove("hidden");
+      errDiv.textContent = err.message;
+    } else {
+      alert(`❌ Error al importar: ${err.message}`);
+    }
   } finally {
     if (zone) zone.classList.remove("hidden");
     if (progress) progress.classList.add("hidden");

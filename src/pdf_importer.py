@@ -27,14 +27,64 @@ class PDFImporter:
         self.tts_manager = tts_manager or TTSManager()
         self.db = Database()
 
-    def process(self, generate_audios: bool = False) -> Path:
+    def inspect(self) -> Dict[str, Any]:
+        """Fast pre-flight analysis of PDF metadata and section structure without audio synthesis or DB seeding."""
+        doc = fitz.open(self.pdf_path)
+        meta = doc.metadata or {}
+        raw_title = meta.get("title") or self.pdf_path.stem.replace('_', ' ').replace('-', ' ').title()
+        raw_author = meta.get("author") or "Desconocido"
+
+        sample_pages = []
+        for page_num in range(min(15, len(doc))):
+            sample_pages.append(doc[page_num].get_text("text"))
+
+        sample_text = " ".join([p[:500] for p in sample_pages]).lower()
+        english_indicators = ["turn to", "if you", " the ", " with ", "you are", "of the"]
+        spanish_indicators = ["pasa a", "ve a", " el ", " la ", "con el", "eres un"]
+        en_score = sum(1 for ind in english_indicators if ind in sample_text)
+        es_score = sum(1 for ind in spanish_indicators if ind in sample_text)
+        detected_lang = "en" if en_score > es_score else "es"
+
+        full_doc_text = "\n".join([page.get_text("text") for page in doc])
+        lines = [line.strip() for line in full_doc_text.splitlines() if line.strip()]
+        header_regex = re.compile(r"^\s*(\d{1,4})\s*$")
+
+        section_nums = []
+        for line in lines:
+            m = header_regex.match(line)
+            if m:
+                val = int(m.group(1))
+                if 0 < val <= 2000 and val not in section_nums:
+                    section_nums.append(val)
+
+        suggested_start = f"sec_{str(section_nums[0]).zfill(3)}" if section_nums else "sec_001"
+
+        return {
+            "suggested_title": raw_title,
+            "suggested_author": raw_author,
+            "suggested_language": detected_lang,
+            "suggested_start_node": suggested_start,
+            "total_sections": len(section_nums) or len(doc)
+        }
+
+    def process(
+        self,
+        generate_audios: bool = False,
+        title: Optional[str] = None,
+        author: Optional[str] = None,
+        language: Optional[str] = None,
+        start_node: Optional[str] = None,
+        tts_engine: str = "auto",
+        voice_name: Optional[str] = None,
+        tier_id: int = 1
+    ) -> Path:
         logger.info(f"📖 Starting PDF Gamebook import for: {self.pdf_path.name}")
         doc = fitz.open(self.pdf_path)
 
         # 1. Extract Metadata
         meta = doc.metadata or {}
-        raw_title = meta.get("title") or self.pdf_path.stem.replace('_', ' ').replace('-', ' ').title()
-        raw_author = meta.get("author") or "Desconocido"
+        raw_title = title or meta.get("title") or self.pdf_path.stem.replace('_', ' ').replace('-', ' ').title()
+        raw_author = author or meta.get("author") or "Desconocido"
         book_id = sanitize_book_id(raw_title)
 
         # Output directory for the imported book
@@ -43,14 +93,14 @@ class PDFImporter:
         audios_dir = book_dir / "audios"
         audios_dir.mkdir(exist_ok=True)
 
-        # 2. Extract Document Pages & Text Blocks with font metrics
+        # 2. Extract Document Pages & Text Blocks
         pages_data = []
         for page_num in range(len(doc)):
             page = doc[page_num]
             text_instances = []
             blocks = page.get_text("dict")["blocks"]
             for b in blocks:
-                if b.get("type") == 0:  # text block
+                if b.get("type") == 0:
                     for line in b["lines"]:
                         for span in line["spans"]:
                             text_instances.append({
@@ -60,8 +110,7 @@ class PDFImporter:
                                 "flags": span["flags"],
                                 "bbox": span["bbox"]
                             })
-            
-            # Extract PDF link annotations
+
             links = []
             for link in page.get_links():
                 if link.get("kind") == fitz.LINK_GOTO:
@@ -77,16 +126,19 @@ class PDFImporter:
                 "links": links
             })
 
-        # 3. Detect Section Nodes (Heuristic Header Search)
+        # 3. Detect Section Nodes
         raw_sections, detected_endings = self._extract_sections_and_endings(pages_data)
 
-        # Detect language across sample pages
-        sample_text = " ".join([p["full_text"][:500] for p in pages_data[:15]]).lower()
-        english_indicators = ["turn to", "if you", " the ", " with ", "you are", "of the"]
-        spanish_indicators = ["pasa a", "ve a", " el ", " la ", "con el", "eres un"]
-        en_score = sum(1 for ind in english_indicators if ind in sample_text)
-        es_score = sum(1 for ind in spanish_indicators if ind in sample_text)
-        detected_lang = "en" if en_score > es_score else "es"
+        # Detect language if not explicitly provided
+        if not language:
+            sample_text = " ".join([p["full_text"][:500] for p in pages_data[:15]]).lower()
+            english_indicators = ["turn to", "if you", " the ", " with ", "you are", "of the"]
+            spanish_indicators = ["pasa a", "ve a", " el ", " la ", "con el", "eres un"]
+            en_score = sum(1 for ind in english_indicators if ind in sample_text)
+            es_score = sum(1 for ind in spanish_indicators if ind in sample_text)
+            final_lang = "en" if en_score > es_score else "es"
+        else:
+            final_lang = language.lower()[:2]
 
         # 4. Resolve Choices & Nodes
         nodes_dict = {}
@@ -101,7 +153,7 @@ class PDFImporter:
                 "choices": sec["choices"]
             }
 
-        start_node_id = f"sec_{str(raw_sections[0]['display_number']).zfill(3)}" if raw_sections else "sec_001"
+        start_node_id = start_node or (f"sec_{str(raw_sections[0]['display_number']).zfill(3)}" if raw_sections else "sec_001")
         cover_image = self._extract_or_generate_cover(doc, book_dir)
         embedded_images = self._extract_images(doc, book_dir)
 
@@ -109,7 +161,7 @@ class PDFImporter:
             "book_id": book_id,
             "title": raw_title,
             "author": raw_author,
-            "language": detected_lang,
+            "language": final_lang,
             "description": f"Librojuego importado en PDF ({len(raw_sections)} secciones).",
             "genre": "Aventura",
             "series": "PDF Gamebooks",
@@ -118,7 +170,8 @@ class PDFImporter:
             "cover_image": cover_image,
             "total_sections": len(raw_sections),
             "start_node": start_node_id,
-            "narrator_id": 2 if detected_lang == "en" else 1,
+            "tier_id": tier_id,
+            "narrator_id": 2 if final_lang == "en" else 1,
             "nodes": nodes_dict
         }
 
@@ -133,12 +186,18 @@ class PDFImporter:
 
         # 5. Generate TTS Audios if requested
         if generate_audios:
-            logger.info(f"🎙️ Generating TTS audios for '{book_id}' ({detected_lang})...")
+            logger.info(f"🎙️ Generating TTS audios for '{book_id}' ({final_lang}, engine='{tts_engine}', voice='{voice_name}')...")
             for node_id, node_data in nodes_dict.items():
                 out_audio = book_dir / node_data["audio"]
                 if not out_audio.exists():
                     try:
-                        self.tts_manager.generate_audio(node_data["text"], out_audio, language=detected_lang)
+                        self.tts_manager.generate_audio(
+                            node_data["text"],
+                            out_audio,
+                            language=final_lang,
+                            tts_engine=tts_engine,
+                            voice_name=voice_name
+                        )
                     except Exception as e:
                         logger.warning(f"Failed audio synthesis for {node_id}: {e}")
 
