@@ -225,6 +225,8 @@ export function openPreImportModal(tempFileId, filename, inspection) {
   document.getElementById("pre-import-language").value = inspection.suggested_language || "es";
   document.getElementById("pre-import-start-node").value = inspection.suggested_start_node || "sec_001";
   document.getElementById("pre-import-tier").value = "1";
+  const coverInput = document.getElementById("pre-import-cover-file");
+  if (coverInput) coverInput.value = "";
 
   const updateVoiceOptions = () => {
     const lang = document.getElementById("pre-import-language").value;
@@ -293,6 +295,8 @@ export function openEditExistingBookModal(book) {
   document.getElementById("pre-import-language").value = book.language || "es";
   document.getElementById("pre-import-start-node").value = book.start_node || "sec_001";
   document.getElementById("pre-import-tier").value = book.tier_id || "1";
+  const coverInput = document.getElementById("pre-import-cover-file");
+  if (coverInput) coverInput.value = "";
 
   const updateVoiceOptions = () => {
     const lang = document.getElementById("pre-import-language").value;
@@ -348,6 +352,8 @@ async function submitBookConfigForm() {
   const voiceSelection = document.getElementById("pre-import-voice-select").value;
   const tierId = parseInt(document.getElementById("pre-import-tier").value);
   const regenCheck = document.getElementById("pre-import-regenerate-check")?.checked || false;
+  const coverInput = document.getElementById("pre-import-cover-file");
+  const coverFile = (coverInput && coverInput.files && coverInput.files[0]) ? coverInput.files[0] : null;
   const errDiv = document.getElementById("pre-import-error");
 
   let ttsEngine = "auto";
@@ -390,12 +396,24 @@ async function submitBookConfigForm() {
       });
 
       const data = await res.json();
-      if (res.ok) {
-        alert(`✅ ¡Éxito! ${data.message || "Libro actualizado correctamente."}`);
-        loadAdminBooks();
-      } else {
-        throw new Error(data.detail || "Error al actualizar libro.");
+      if (!res.ok) throw new Error(data.detail || "Error al actualizar libro.");
+
+      if (coverFile) {
+        if (progressMsg) progressMsg.textContent = `Subiendo nueva portada para '${title}'...`;
+        const formData = new FormData();
+        formData.append("file", coverFile);
+        const resCover = await authFetch(`${API_BASE}/api/admin/books/${editBookId}/cover`, {
+          method: "POST",
+          body: formData
+        });
+        if (!resCover.ok) {
+          const errCover = await resCover.json();
+          alert(`⚠️ Libro actualizado pero hubo un problema al subir la portada: ${errCover.detail}`);
+        }
       }
+
+      alert(`✅ ¡Éxito! ${data.message || "Libro actualizado correctamente."}`);
+      loadAdminBooks();
     } catch (err) {
       if (errDiv) {
         errDiv.classList.remove("hidden");
@@ -430,12 +448,25 @@ async function submitBookConfigForm() {
       });
       const data = await res.json();
 
-      if (res.ok) {
-        alert(`✅ ¡Éxito! ${data.message}`);
-        loadAdminBooks();
-      } else {
-        throw new Error(data.detail || "Error al importar libro");
+      if (!res.ok) throw new Error(data.detail || "Error al importar libro");
+
+      const createdBookId = data.book_id;
+      if (createdBookId && coverFile) {
+        if (progressMsg) progressMsg.textContent = `Subiendo portada personalizada para '${title}'...`;
+        const formData = new FormData();
+        formData.append("file", coverFile);
+        const resCover = await authFetch(`${API_BASE}/api/admin/books/${createdBookId}/cover`, {
+          method: "POST",
+          body: formData
+        });
+        if (!resCover.ok) {
+          const errCover = await resCover.json();
+          alert(`⚠️ Libro importado pero hubo un problema al subir la portada: ${errCover.detail}`);
+        }
       }
+
+      alert(`✅ ¡Éxito! ${data.message}`);
+      loadAdminBooks();
     } catch (err) {
       if (errDiv) {
         errDiv.classList.remove("hidden");

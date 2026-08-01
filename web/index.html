@@ -1099,6 +1099,12 @@
               </select>
             </div>
 
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
+              <label for="pre-import-cover-file" style="font-weight:600;">Portada del Libro 🖼️ (Opcional)</label>
+              <input type="file" id="pre-import-cover-file" accept="image/*" class="text-input" style="width:100%; padding: 0.4rem;">
+              <small style="color:var(--text-muted);">Formatos aceptados: .jpg, .png, .webp. Si se selecciona, reemplazará la portada actual.</small>
+            </div>
+
             <div id="pre-import-regenerate-container" class="hidden" style="margin-top: 0.75rem;">
               <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; background:rgba(217,119,6,0.12); border:1px solid rgba(217,119,6,0.4); padding:0.6rem 0.8rem; border-radius:6px; font-size:0.9rem;">
                 <input type="checkbox" id="pre-import-regenerate-check" style="width:1.1rem; height:1.1rem; accent-color:var(--accent-gold);">

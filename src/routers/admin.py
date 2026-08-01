@@ -160,6 +160,49 @@ def admin_update_book(book_id: str, req: AdminBookUpdateRequest, authorization: 
 
     return {"status": "success", "message": f"Libro '{book_id}' actualizado correctamente."}
 
+@router.post("/books/{book_id}/cover")
+async def admin_upload_book_cover(book_id: str, file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    filename_lower = file.filename.lower()
+    if not filename_lower.endswith((".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg")):
+        raise HTTPException(status_code=400, detail="El archivo de portada debe ser una imagen (.jpg, .png, .webp, .gif, .svg)")
+
+    book_folder = BOOKS_DIR / book_id
+    if not book_folder.exists():
+        raise HTTPException(status_code=404, detail=f"No se encontró la carpeta del libro '{book_id}'.")
+
+    images_dir = book_folder / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    ext = Path(file.filename).suffix.lower() or ".jpg"
+    cover_filename = f"custom_cover_{int(time.time())}{ext}"
+    target_cover_path = images_dir / cover_filename
+
+    content = await file.read()
+    with open(target_cover_path, "wb") as f:
+        f.write(content)
+
+    rel_cover_path = f"images/{cover_filename}"
+
+    # Update book.json
+    json_path = book_folder / "book.json"
+    if json_path.exists():
+        with open(json_path, "r", encoding="utf-8") as f:
+            b_json = json.load(f)
+        b_json["cover_image"] = rel_cover_path
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(b_json, f, ensure_ascii=False, indent=2)
+
+    # Update SQLite DB
+    engine.db.update_book_admin(book_id, {"cover_image": rel_cover_path})
+    engine._load_installed_books()
+
+    return {
+        "status": "success",
+        "message": f"Portada del libro '{book_id}' actualizada correctamente.",
+        "cover_image": rel_cover_path
+    }
+
 @router.delete("/books/{book_id}")
 def admin_delete_book(book_id: str, hard: bool = Query(False), authorization: Optional[str] = Header(None)):
     require_admin(authorization)
