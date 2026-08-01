@@ -41,7 +41,7 @@ export async function loadUserStats() {
 
           return `
             <div class="stats-book-card ${isCompleted ? 'completed' : ''}">
-              <img src="${escapeHtml(coverUrl)}" alt="${escapeHtml(b.title)}" class="stats-book-cover" onerror="this.src='/assets/covers/default_cover.jpg'">
+              <img src="${escapeHtml(coverUrl)}" alt="${escapeHtml(b.title)}" class="stats-book-cover" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'><rect width=\'100%\' height=\'100%\' fill=\'%231a1a24\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23d97706\' font-size=\'30\'>📜</text></svg>';">
               <div class="stats-book-content">
                 <div class="stats-book-header">
                   <h3 class="stats-book-title">${escapeHtml(b.title)}</h3>
@@ -108,7 +108,7 @@ export async function loadGlobalStats() {
       <div class="global-stat-card">
         <div class="global-card-badge">Más Leído</div>
         <div class="global-card-body">
-          <img src="${escapeHtml(getCover(mostRead))}" alt="${escapeHtml(mostRead ? mostRead.title : 'Libro')}" class="global-book-cover" onerror="this.src='/assets/covers/default_cover.jpg'">
+          <img src="${escapeHtml(getCover(mostRead))}" alt="${escapeHtml(mostRead ? mostRead.title : 'Libro')}" class="global-book-cover" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'><rect width=\'100%\' height=\'100%\' fill=\'%231a1a24\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23d97706\' font-size=\'30\'>📜</text></svg>';">
           <div class="global-card-info">
             <h4 class="global-card-title">${escapeHtml(mostRead ? mostRead.title : 'No disponible')}</h4>
             <p class="global-card-sub">${mostRead ? (mostRead.total_visits || 0) + ' secciones leídas' : 'Comunidad activa'}</p>
@@ -120,7 +120,7 @@ export async function loadGlobalStats() {
       <div class="global-stat-card">
         <div class="global-card-badge">Mejor Valorado</div>
         <div class="global-card-body">
-          <img src="${escapeHtml(getCover(highestRated))}" alt="${escapeHtml(highestRated ? highestRated.title : 'Libro')}" class="global-book-cover" onerror="this.src='/assets/covers/default_cover.jpg'">
+          <img src="${escapeHtml(getCover(highestRated))}" alt="${escapeHtml(highestRated ? highestRated.title : 'Libro')}" class="global-book-cover" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'><rect width=\'100%\' height=\'100%\' fill=\'%231a1a24\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23d97706\' font-size=\'30\'>📜</text></svg>';">
           <div class="global-card-info">
             <h4 class="global-card-title">${escapeHtml(highestRated ? highestRated.title : 'No disponible')}</h4>
             <p class="global-card-sub">Valoración: ${highestRated ? (highestRated.rating || 4.8) + ' / 5.0' : '5.0 ★'}</p>
@@ -132,7 +132,7 @@ export async function loadGlobalStats() {
       <div class="global-stat-card">
         <div class="global-card-badge">Mayor Rejugabilidad</div>
         <div class="global-card-body">
-          <img src="${escapeHtml(getCover(mostEndings))}" alt="${escapeHtml(mostEndings ? mostEndings.title : 'Libro')}" class="global-book-cover" onerror="this.src='/assets/covers/default_cover.jpg'">
+          <img src="${escapeHtml(getCover(mostEndings))}" alt="${escapeHtml(mostEndings ? mostEndings.title : 'Libro')}" class="global-book-cover" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'><rect width=\'100%\' height=\'100%\' fill=\'%231a1a24\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23d97706\' font-size=\'30\'>📜</text></svg>';">
           <div class="global-card-info">
             <h4 class="global-card-title">${escapeHtml(mostEndings ? mostEndings.title : 'No disponible')}</h4>
             <p class="global-card-sub">${mostEndings ? (mostEndings.endings_count || 0) + ' finales alcanzados' : 'Múltiples finales'}</p>

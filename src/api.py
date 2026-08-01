@@ -447,6 +447,74 @@ def regenerate_book_audios(book_id: str, req: Optional[AdminRegenerateAudiosRequ
     engine._load_installed_books()
     return {"status": "success", "message": f"Audios del libro '{book_id}' regenerados correctamente."}
 
+# --- Admin Dashboard Endpoints ---
+
+@app.get("/api/admin/roles")
+def admin_list_roles(authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    return {"roles": engine.db.get_all_roles()}
+
+@app.get("/api/admin/users")
+def admin_list_users(authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    return {"users": engine.db.get_all_users_admin()}
+
+@app.post("/api/admin/users")
+def admin_create_user(req: AdminUserCreateRequest, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    try:
+        user_info = engine.db.create_user_admin(req.username, req.password, req.first_name, req.role or "user")
+        return {"status": "success", "user": user_info}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.put("/api/admin/users/{user_id}")
+def admin_update_user(user_id: int, req: AdminUserUpdateRequest, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    engine.db.update_user_admin(user_id, first_name=req.first_name, role=req.role, password=req.password, tier_id=req.tier_id)
+    return {"status": "success", "message": f"Usuario {user_id} actualizado."}
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_delete_user(user_id: int, hard: bool = Query(False), authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    try:
+        engine.db.delete_user_admin(user_id, hard_delete=hard)
+        msg = f"Usuario #{user_id} eliminado permanentemente." if hard else f"Usuario #{user_id} desactivado (Soft Delete)."
+        return {"status": "success", "message": msg}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/admin/narrators")
+def admin_list_narrators(authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    return {"narrators": engine.db.get_narrators_stats()}
+
+@app.post("/api/admin/narrators")
+def admin_create_narrator(req: AdminNarratorCreateRequest, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    narrator_info = engine.db.create_narrator_admin(req.name, req.display_name, req.specialty, req.avatar_url, req.bio)
+    return {"status": "success", "narrator": narrator_info}
+
+@app.put("/api/admin/narrators/{narrator_id}")
+def admin_update_narrator(narrator_id: int, req: AdminNarratorUpdateRequest, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    engine.db.update_narrator_admin(narrator_id, req.display_name, req.specialty, req.avatar_url, req.bio)
+    return {"status": "success", "message": f"Narrador {narrator_id} actualizado."}
+
+@app.delete("/api/admin/narrators/{narrator_id}")
+def admin_delete_narrator(narrator_id: int, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    try:
+        engine.db.delete_narrator_admin(narrator_id)
+        return {"status": "success", "message": f"Narrador {narrator_id} eliminado."}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/admin/books")
+def admin_list_books(authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    return {"books": engine.db.get_all_books_admin()}
+
 @app.put("/api/admin/books/{book_id}")
 def admin_update_book(book_id: str, req: AdminBookUpdateRequest, authorization: Optional[str] = Header(None)):
     require_admin(authorization)
