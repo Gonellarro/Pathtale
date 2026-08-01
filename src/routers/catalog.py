@@ -74,7 +74,8 @@ def list_books(
         savegame = engine.db.get_savegame(current_uid, b_id)
         visited_count = 0
         if savegame:
-            visited_count = engine.db.get_visited_nodes_count(current_uid, b_id)
+            history = engine.db.get_history(current_uid, b_id, limit=500)
+            visited_count = len(set(h["to_node_id"] for h in history))
         
         total_sections = full_data.get("total_sections", 1)
         progress_pct = min(100, int((visited_count / max(1, total_sections)) * 100))
