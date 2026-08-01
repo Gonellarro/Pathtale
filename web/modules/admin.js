@@ -5,6 +5,8 @@
 
 import { state, authFetch, escapeHtml, formatTimeAgo, API_BASE } from "./state.js";
 
+let currentAdminBooks = [];
+
 export async function loadAdminDashboard() {
   const role = state.currentUser ? (state.currentUser.role || state.currentUser.role_name) : null;
   if (!state.currentUser || role !== "admin") {
