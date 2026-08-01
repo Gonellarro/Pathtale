@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: alj_narrator_engine
+    user: "${UID:-1000}:${GID:-1000}"
     restart: unless-stopped
     ports:
       - "8000:8000"
