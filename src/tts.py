@@ -1,5 +1,7 @@
 import os
 import time
+import json
+import base64
 import urllib.request
 import shutil
 import subprocess
@@ -7,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 from gtts import gTTS
-from config import PIPER_BIN, PIPER_MODEL_ES, PIPER_MODEL_EN
+from config import PIPER_BIN, PIPER_MODEL_ES, PIPER_MODEL_EN, GOOGLE_TTS_API_KEY
 
 logger = logging.getLogger("TTS")
 
@@ -18,12 +20,15 @@ PIPER_MODEL_DOWNLOAD_URLS = {
 }
 
 class TTSManager:
-    def __init__(self, piper_bin: str = PIPER_BIN, piper_model_es: str = PIPER_MODEL_ES, piper_model_en: str = PIPER_MODEL_EN):
+    def __init__(self, piper_bin: str = PIPER_BIN, piper_model_es: str = PIPER_MODEL_ES, piper_model_en: str = PIPER_MODEL_EN, google_api_key: str = GOOGLE_TTS_API_KEY):
         self.piper_bin = piper_bin
         self.piper_model_es = piper_model_es
         self.piper_model_en = piper_model_en
+        self.google_api_key = google_api_key or os.getenv("GOOGLE_TTS_API_KEY", "")
         self.has_piper_bin = bool(shutil.which(piper_bin))
-        if self.has_piper_bin:
+        if self.google_api_key:
+            logger.info("TTSManager ready with Google Cloud Text-to-Speech API Key")
+        elif self.has_piper_bin:
             logger.info(f"TTSManager ready with Piper binary '{piper_bin}'")
 
     def _ensure_model_exists(self, model_path_str: str) -> bool:
@@ -62,8 +67,49 @@ class TTSManager:
                 except Exception: pass
             return False
 
+    def _generate_google_cloud_tts(self, text: str, output_file: Path, language: str) -> bool:
+        """Synthesizes text using Google Cloud Text-to-Speech official REST API with Neural2/WaveNet voices."""
+        if not self.google_api_key:
+            return False
+
+        lang_code = language.lower()[:2] if language else "es"
+        voice_name = "en-US-Neural2-F" if lang_code == "en" else "es-ES-Neural2-B"
+        voice_lang = "en-US" if lang_code == "en" else "es-ES"
+
+        url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={self.google_api_key}"
+        payload = {
+            "input": {"text": text},
+            "voice": {
+                "languageCode": voice_lang,
+                "name": voice_name
+            },
+            "audioConfig": {
+                "audioEncoding": "MP3"
+            }
+        }
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+
+        try:
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                audio_base64 = result.get("audioContent")
+                if audio_base64:
+                    mp3_path = output_file.with_suffix(".mp3")
+                    with open(mp3_path, "wb") as f:
+                        f.write(base64.b64decode(audio_base64))
+                    logger.info(f"Generated Google Cloud TTS audio ({voice_name}): {mp3_path.name}")
+                    return True
+        except Exception as e:
+            logger.error(f"Google Cloud TTS API failed: {e}")
+        return False
+
     def generate_audio(self, text: str, output_file: Path, language: str = "es") -> bool:
-        """Generates audio for text and saves it to output_file (.mp3). Supports Spanish ('es') and English ('en')."""
+        """Generates audio for text and saves it to output_file (.mp3)."""
         output_file = Path(output_file)
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -72,9 +118,14 @@ class TTSManager:
             return False
 
         lang_code = language.lower()[:2] if language else "es"
-        target_model_str = self.piper_model_en if lang_code == "en" else self.piper_model_es
 
-        # Attempt 1: Piper TTS (with auto-download of missing voice model)
+        # Priority 1: Google Cloud Text-to-Speech Official API (Neural2 / WaveNet) if API key is present
+        if self.google_api_key:
+            if self._generate_google_cloud_tts(text, output_file, language):
+                return True
+
+        # Priority 2: Piper TTS (Local ONNX)
+        target_model_str = self.piper_model_en if lang_code == "en" else self.piper_model_es
         if self.has_piper_bin and target_model_str:
             if self._ensure_model_exists(target_model_str):
                 try:
@@ -95,16 +146,16 @@ class TTSManager:
                 except Exception as e:
                     logger.error(f"Piper execution failed ({lang_code}): {e}. Trying fallback TTS.")
 
-        # Attempt 2: gTTS Fallback (with rate-limiting delay to prevent HTTP 429)
+        # Priority 3: gTTS Fallback (with rate-limiting delay to prevent HTTP 429)
         try:
             tts_lang = "en" if lang_code == "en" else "es"
             tts = gTTS(text=text, lang=tts_lang, slow=False)
             mp3_path = output_file.with_suffix(".mp3")
             tts.save(str(mp3_path))
             logger.info(f"Generated gTTS audio ({tts_lang}): {mp3_path.name}")
-            time.sleep(0.3)  # Throttle requests to avoid Google 429 rate limits
+            time.sleep(0.3)
             return True
         except Exception as e:
             logger.error(f"gTTS generation failed ({lang_code}): {e}")
-            time.sleep(1.0)  # Backoff delay when rate limited
+            time.sleep(1.0)
             return False
