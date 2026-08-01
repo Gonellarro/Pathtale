@@ -74,14 +74,32 @@ class TTSManager:
         if not self.google_api_key or not text or not text.strip():
             return False
 
-        # Clean HTML tags and limit length to 4900 chars to avoid Google API 400 errors
         import re
         clean_text = re.sub(r'<[^>]+>', ' ', text)
         clean_text = re.sub(r'\s+', ' ', clean_text).strip()
         if not clean_text:
             return False
-        if len(clean_text) > 4900:
-            clean_text = clean_text[:4900]
+
+        # Split long text into sentence-aware chunks of max 4200 bytes UTF-8 (Google limit is 5000 bytes)
+        encoded_bytes = clean_text.encode("utf-8")
+        MAX_BYTES = 4200
+
+        if len(encoded_bytes) <= MAX_BYTES:
+            chunks = [clean_text]
+        else:
+            sentences = re.split(r'(?<=[.!?])\s+', clean_text)
+            chunks = []
+            current_chunk = ""
+            for s in sentences:
+                test_chunk = f"{current_chunk} {s}".strip() if current_chunk else s
+                if len(test_chunk.encode("utf-8")) <= MAX_BYTES:
+                    current_chunk = test_chunk
+                else:
+                    if current_chunk:
+                        chunks.append(current_chunk)
+                    current_chunk = s
+            if current_chunk:
+                chunks.append(current_chunk)
 
         lang_code = language.lower()[:2] if language else "es"
         if not voice_name or voice_name in ("default", "auto"):
@@ -91,41 +109,51 @@ class TTSManager:
         voice_lang = f"{parts[0]}-{parts[1]}" if len(parts) >= 2 else ("en-US" if lang_code == "en" else "es-ES")
 
         url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={self.google_api_key}"
-        payload = {
-            "input": {"text": clean_text},
-            "voice": {
-                "languageCode": voice_lang,
-                "name": voice_name
-            },
-            "audioConfig": {
-                "audioEncoding": "MP3"
+
+        audio_segments = []
+        for chunk in chunks:
+            payload = {
+                "input": {"text": chunk},
+                "voice": {
+                    "languageCode": voice_lang,
+                    "name": voice_name
+                },
+                "audioConfig": {
+                    "audioEncoding": "MP3"
+                }
             }
-        }
 
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
-        )
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
 
-        try:
-            with urllib.request.urlopen(req) as response:
-                result = json.loads(response.read().decode("utf-8"))
-                audio_base64 = result.get("audioContent")
-                if audio_base64:
-                    mp3_path = output_file.with_suffix(".mp3")
-                    with open(mp3_path, "wb") as f:
-                        f.write(base64.b64decode(audio_base64))
-                    logger.info(f"Generated Google Cloud TTS audio ({voice_name}): {mp3_path.name}")
-                    return True
-        except urllib.error.HTTPError as e:
             try:
-                err_body = e.read().decode("utf-8", errors="ignore")
-                logger.error(f"Google Cloud TTS API HTTP {e.code} error: {err_body}")
-            except Exception:
-                logger.error(f"Google Cloud TTS API HTTP {e.code} error: {e}")
-        except Exception as e:
-            logger.error(f"Google Cloud TTS API failed: {e}")
+                with urllib.request.urlopen(req) as response:
+                    result = json.loads(response.read().decode("utf-8"))
+                    audio_base64 = result.get("audioContent")
+                    if audio_base64:
+                        audio_segments.append(base64.b64decode(audio_base64))
+            except urllib.error.HTTPError as e:
+                try:
+                    err_body = e.read().decode("utf-8", errors="ignore")
+                    logger.error(f"Google Cloud TTS API HTTP {e.code} error: {err_body}")
+                except Exception:
+                    logger.error(f"Google Cloud TTS API HTTP {e.code} error: {e}")
+                return False
+            except Exception as e:
+                logger.error(f"Google Cloud TTS API failed: {e}")
+                return False
+
+        if audio_segments:
+            mp3_path = output_file.with_suffix(".mp3")
+            with open(mp3_path, "wb") as f:
+                for seg in audio_segments:
+                    f.write(seg)
+            logger.info(f"Generated Google Cloud TTS audio ({voice_name}, {len(chunks)} chunks): {mp3_path.name}")
+            return True
+
         return False
 
     def generate_audio(self, text: str, output_file: Path, language: str = "es", tts_engine: str = "auto", voice_name: Optional[str] = None) -> bool:
