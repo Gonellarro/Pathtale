@@ -71,8 +71,17 @@ class TTSManager:
 
     def _generate_google_cloud_tts(self, text: str, output_file: Path, language: str, voice_name: Optional[str] = None) -> bool:
         """Synthesizes text using Google Cloud Text-to-Speech official REST API with Neural2/WaveNet voices."""
-        if not self.google_api_key:
+        if not self.google_api_key or not text or not text.strip():
             return False
+
+        # Clean HTML tags and limit length to 4900 chars to avoid Google API 400 errors
+        import re
+        clean_text = re.sub(r'<[^>]+>', ' ', text)
+        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+        if not clean_text:
+            return False
+        if len(clean_text) > 4900:
+            clean_text = clean_text[:4900]
 
         lang_code = language.lower()[:2] if language else "es"
         if not voice_name or voice_name in ("default", "auto"):
@@ -83,7 +92,7 @@ class TTSManager:
 
         url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={self.google_api_key}"
         payload = {
-            "input": {"text": text},
+            "input": {"text": clean_text},
             "voice": {
                 "languageCode": voice_lang,
                 "name": voice_name
@@ -109,6 +118,12 @@ class TTSManager:
                         f.write(base64.b64decode(audio_base64))
                     logger.info(f"Generated Google Cloud TTS audio ({voice_name}): {mp3_path.name}")
                     return True
+        except urllib.error.HTTPError as e:
+            try:
+                err_body = e.read().decode("utf-8", errors="ignore")
+                logger.error(f"Google Cloud TTS API HTTP {e.code} error: {err_body}")
+            except Exception:
+                logger.error(f"Google Cloud TTS API HTTP {e.code} error: {e}")
         except Exception as e:
             logger.error(f"Google Cloud TTS API failed: {e}")
         return False
