@@ -69,7 +69,8 @@ class EPUBImporter:
         start_node: Optional[str] = None,
         tts_engine: str = "auto",
         voice_name: Optional[str] = None,
-        tier_id: int = 1
+        tier_id: int = 1,
+        narrator_id: Optional[int] = None
     ) -> Path:
         title_override = title
         author_override = author
@@ -282,6 +283,8 @@ class EPUBImporter:
             final_language = (language_override or language or "es").lower()[:2]
             start_node_id = start_node_override or start_node_id
 
+            final_narrator_id = narrator_id or (2 if final_language == "en" else 1)
+
             book_json_data = {
                 "book_id": book_id,
                 "title": final_title,
@@ -299,7 +302,7 @@ class EPUBImporter:
                 "total_sections": total_sections,
                 "start_node": start_node_id,
                 "tier_id": tier_id,
-                "narrator_id": 2 if final_language == "en" else 1,
+                "narrator_id": final_narrator_id,
                 "features": {
                     "inventory": False,
                     "dice": False,
@@ -326,6 +329,6 @@ class EPUBImporter:
                 logger.warning(f"Could not seed book in database: {e}")
 
             if generate_audios:
-                generate_nodes_audio(self.tts_manager, nodes, output_dir, language=final_language, tts_engine=tts_engine, voice_name=voice_name)
+                generate_nodes_audio(self.tts_manager, nodes, output_dir, language=final_language, tts_engine=tts_engine, voice_name=voice_name, narrator_id=final_narrator_id)
 
             return book_json_path

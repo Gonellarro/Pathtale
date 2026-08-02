@@ -134,44 +134,47 @@ class PDFImporter:
             sample_text = " ".join([p["full_text"][:500] for p in pages_data[:15]]).lower()
             english_indicators = ["turn to", "if you", " the ", " with ", "you are", "of the"]
             spanish_indicators = ["pasa a", "ve a", " el ", " la ", "con el", "eres un"]
-            en_score = sum(1 for ind in english_indicators if ind in sample_text)
-            es_score = sum(1 for ind in spanish_indicators if ind in sample_text)
-            final_lang = "en" if en_score > es_score else "es"
-        else:
-            final_lang = language.lower()[:2]
+        if not raw_sections:
+            logger.warning("No section numbers detected in PDF. Creating single default section.")
+            raw_sections = [{
+                "id": "sec_001",
+                "display_number": 1,
+                "text": "\n".join([p["full_text"] for p in pages_data]),
+                "choices": []
+            }]
 
-        # 4. Resolve Choices & Nodes
         nodes_dict = {}
         for sec in raw_sections:
-            node_id = sec["id"]
-            nodes_dict[node_id] = {
-                "id": node_id,
+            sec_id = sec["id"]
+            nodes_dict[sec_id] = {
+                "id": sec_id,
                 "display_number": sec["display_number"],
                 "title": f"Sección {sec['display_number']}",
-                "text": sec["text"].strip(),
-                "audio": f"audios/{node_id}.mp3",
+                "text": sec["text"],
+                "audio": f"audios/{sec_id}.mp3",
                 "choices": sec["choices"]
             }
 
+        # Determine start node
         start_node_id = start_node or (f"sec_{str(raw_sections[0]['display_number']).zfill(3)}" if raw_sections else "sec_001")
-        cover_image = self._extract_or_generate_cover(doc, book_dir)
+
+        # 4. Extract Images & Cover
         embedded_images = self._extract_images(doc, book_dir)
+        cover_image = self._extract_or_generate_cover(doc, book_dir)
+
+        final_lang = (language or self.inspect().get("suggested_language") or "es").lower()[:2]
+        final_narrator_id = narrator_id or (2 if final_lang == "en" else 1)
 
         book_json_data = {
             "book_id": book_id,
             "title": raw_title,
             "author": raw_author,
             "language": final_lang,
-            "description": f"Librojuego importado en PDF ({len(raw_sections)} secciones).",
-            "genre": "Aventura",
-            "series": "PDF Gamebooks",
-            "volume": 1,
-            "estimated_duration": f"{max(15, len(raw_sections) * 2)} min",
             "cover_image": cover_image,
             "total_sections": len(raw_sections),
             "start_node": start_node_id,
             "tier_id": tier_id,
-            "narrator_id": 2 if final_lang == "en" else 1,
+            "narrator_id": final_narrator_id,
             "nodes": nodes_dict
         }
 
@@ -186,18 +189,23 @@ class PDFImporter:
 
         # 5. Generate TTS Audios if requested
         if generate_audios:
-            logger.info(f"🎙️ Generating TTS audios for '{book_id}' ({final_lang}, engine='{tts_engine}', voice='{voice_name}')...")
+            narrator_info = self.db.get_narrator_by_id(final_narrator_id) if final_narrator_id else None
+            narrator_name = narrator_info.get("display_name") if narrator_info else (voice_name or tts_engine)
+            logger.info(f"🎙️ Generating TTS audios for '{book_id}' ({final_lang}, narrator='{narrator_name}')...")
             for node_id, node_data in nodes_dict.items():
                 out_audio = book_dir / node_data["audio"]
                 if not out_audio.exists():
                     try:
-                        self.tts_manager.generate_audio(
-                            node_data["text"],
-                            out_audio,
-                            language=final_lang,
-                            tts_engine=tts_engine,
-                            voice_name=voice_name
-                        )
+                        if narrator_info:
+                            self.tts_manager.generate_audio_by_narrator(node_data["text"], out_audio, narrator_info, language=final_lang)
+                        else:
+                            self.tts_manager.generate_audio(
+                                node_data["text"],
+                                out_audio,
+                                language=final_lang,
+                                tts_engine=tts_engine,
+                                voice_name=voice_name
+                            )
                     except Exception as e:
                         logger.warning(f"Failed audio synthesis for {node_id}: {e}")
 

@@ -15,7 +15,7 @@ from src.dependencies import (
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
-def _internal_regenerate_audios(book_id: str, tts_engine: str = "auto", voice_name: Optional[str] = None, language: Optional[str] = None):
+def _internal_regenerate_audios(book_id: str, tts_engine: str = "auto", voice_name: Optional[str] = None, language: Optional[str] = None, narrator_id: Optional[int] = None):
     book_folder = BOOKS_DIR / book_id
     json_path = book_folder / "book.json"
     if not json_path.exists():
@@ -36,8 +36,8 @@ def _internal_regenerate_audios(book_id: str, tts_engine: str = "auto", voice_na
         except Exception: pass
 
     b_db = engine.db.get_book_by_id(book_id)
-    narrator_id = b_db.get("narrator_id") if b_db else None
-    narrator_info = engine.db.get_narrator_by_id(narrator_id) if narrator_id else None
+    n_id = narrator_id or (b_db.get("narrator_id") if b_db else None) or b_data.get("narrator_id")
+    narrator_info = engine.db.get_narrator_by_id(n_id) if n_id else None
 
     logger.info(f"🎙️ Regenerating audios for '{book_id}' ({len(nodes)} nodes, narrator='{narrator_info.get('display_name') if narrator_info else tts_engine}', lang='{final_lang}')...")
     for n_id, n_data in nodes.items():
@@ -216,7 +216,7 @@ def admin_update_book(book_id: str, req: AdminBookUpdateRequest, authorization: 
     engine._load_installed_books()
 
     if should_regenerate:
-        _internal_regenerate_audios(book_id, tts_engine=tts_engine, voice_name=voice_name, language=updates.get("language"))
+        _internal_regenerate_audios(book_id, tts_engine=tts_engine, voice_name=voice_name, language=updates.get("language"), narrator_id=updates.get("narrator_id"))
 
     return {"status": "success", "message": f"Libro '{book_id}' actualizado correctamente."}
 
@@ -331,7 +331,8 @@ def admin_confirm_book_import(req: AdminConfirmBookImportRequest, authorization:
         start_node=req.start_node,
         tts_engine=req.tts_engine,
         voice_name=req.voice_name,
-        tier_id=req.tier_id
+        tier_id=req.tier_id,
+        narrator_id=req.narrator_id
     )
 
     if req.narrator_id:
