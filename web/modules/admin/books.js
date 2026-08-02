@@ -351,6 +351,12 @@ async function submitBookConfigForm() {
   const author = document.getElementById("pre-import-author").value.trim();
   const language = document.getElementById("pre-import-language").value;
   const startNode = document.getElementById("pre-import-start-node").value.trim();
+  const tierId = parseInt(document.getElementById("pre-import-tier").value || "1");
+  const regenCheckEl = document.getElementById("pre-import-regenerate-check");
+  const regenCheck = regenCheckEl ? Boolean(regenCheckEl.checked) : false;
+  const coverFileInput = document.getElementById("pre-import-cover-file");
+  const coverFile = (coverFileInput && coverFileInput.files && coverFileInput.files[0]) ? coverFileInput.files[0] : null;
+  const errDiv = document.getElementById("pre-import-error");
   const voiceSelectEl = document.getElementById("pre-import-voice-select");
   const selectedOpt = voiceSelectEl ? voiceSelectEl.selectedOptions[0] : null;
   const narratorId = selectedOpt ? parseInt(selectedOpt.getAttribute("data-narrator-id") || "1") : 1;
