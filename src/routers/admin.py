@@ -35,7 +35,11 @@ def _internal_regenerate_audios(book_id: str, tts_engine: str = "auto", voice_na
         try: mp3_file.unlink()
         except Exception: pass
 
-    logger.info(f"🎙️ Regenerating audios for '{book_id}' ({len(nodes)} nodes, engine='{tts_engine}', voice='{voice_name}', lang='{final_lang}')...")
+    b_db = engine.db.get_book_by_id(book_id)
+    narrator_id = b_db.get("narrator_id") if b_db else None
+    narrator_info = engine.db.get_narrator_by_id(narrator_id) if narrator_id else None
+
+    logger.info(f"🎙️ Regenerating audios for '{book_id}' ({len(nodes)} nodes, narrator='{narrator_info.get('display_name') if narrator_info else tts_engine}', lang='{final_lang}')...")
     for n_id, n_data in nodes.items():
         audio_path = book_folder / n_data["audio"]
         tts_parts = []
@@ -45,7 +49,10 @@ def _internal_regenerate_audios(book_id: str, tts_engine: str = "auto", voice_na
             tts_parts.append(n_data['text'])
         if tts_parts:
             tts_text = "\n\n".join(tts_parts)
-            tts_mgr.generate_audio(tts_text, audio_path, language=final_lang, tts_engine=tts_engine, voice_name=voice_name)
+            if narrator_info:
+                tts_mgr.generate_audio_by_narrator(tts_text, audio_path, narrator_info, language=final_lang)
+            else:
+                tts_mgr.generate_audio(tts_text, audio_path, language=final_lang, tts_engine=tts_engine, voice_name=voice_name)
 
         if n_data.get("audio_options"):
             audio_opt_path = book_folder / n_data["audio_options"]
@@ -56,7 +63,10 @@ def _internal_regenerate_audios(book_id: str, tts_engine: str = "auto", voice_na
                     prefix = "Opción" if final_lang == "es" else "Option"
                     opt_parts.append(f"{prefix} {c['choice_id']}: {c['text']}.")
                 opt_text = "\n\n".join(opt_parts)
-                tts_mgr.generate_audio(opt_text, audio_opt_path, language=final_lang, tts_engine=tts_engine, voice_name=voice_name)
+                if narrator_info:
+                    tts_mgr.generate_audio_by_narrator(opt_text, audio_opt_path, narrator_info, language=final_lang)
+                else:
+                    tts_mgr.generate_audio(opt_text, audio_opt_path, language=final_lang, tts_engine=tts_engine, voice_name=voice_name)
 
 @router.get("/roles")
 def admin_list_roles(authorization: Optional[str] = Header(None)):
@@ -99,6 +109,11 @@ def admin_assign_user_subscription(user_id: int, req: AdminUserSubscriptionReque
     engine.db.assign_user_subscription(user_id, req.tier_id, req.duration_days)
     return {"status": "success", "message": f"Suscripción del usuario #{user_id} actualizada correctamente."}
 
+@router.get("/tts_engines")
+def admin_list_tts_engines(authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    return {"engines": engine.db.get_all_tts_engines()}
+
 @router.get("/narrators")
 def admin_list_narrators(authorization: Optional[str] = Header(None)):
     require_admin(authorization)
@@ -107,22 +122,66 @@ def admin_list_narrators(authorization: Optional[str] = Header(None)):
 @router.post("/narrators")
 def admin_create_narrator(req: AdminNarratorCreateRequest, authorization: Optional[str] = Header(None)):
     require_admin(authorization)
-    narrator_info = engine.db.create_narrator_admin(req.name, req.display_name, req.specialty, req.avatar_url, req.bio)
+    narrator_info = engine.db.create_narrator_admin(
+        name=req.name,
+        display_name=req.display_name,
+        engine_id=req.engine_id or 1,
+        voice_code=req.voice_code or "default",
+        language=req.language or "es",
+        gender=req.gender or "male",
+        specialty=req.specialty,
+        avatar_url=req.avatar_url,
+        download_url=req.download_url,
+        model_filename=req.model_filename,
+        bio=req.bio
+    )
     return {"status": "success", "narrator": narrator_info}
 
 @router.put("/narrators/{narrator_id}")
 def admin_update_narrator(narrator_id: int, req: AdminNarratorUpdateRequest, authorization: Optional[str] = Header(None)):
     require_admin(authorization)
-    engine.db.update_narrator_admin(narrator_id, req.display_name, req.specialty, req.avatar_url, req.bio)
-    return {"status": "success", "message": f"Narrador {narrator_id} actualizado."}
+    engine.db.update_narrator_admin(
+        narrator_id,
+        display_name=req.display_name,
+        engine_id=req.engine_id,
+        voice_code=req.voice_code,
+        language=req.language,
+        gender=req.gender,
+        specialty=req.specialty,
+        avatar_url=req.avatar_url,
+        download_url=req.download_url,
+        model_filename=req.model_filename,
+        bio=req.bio
+    )
+    return {"status": "success", "message": f"Narrador #{narrator_id} actualizado."}
+
+@router.post("/narrators/{narrator_id}/download")
+def admin_download_narrator_model(narrator_id: int, authorization: Optional[str] = Header(None)):
+    require_admin(authorization)
+    narrator = engine.db.get_narrator_by_id(narrator_id)
+    if not narrator:
+        raise HTTPException(status_code=404, detail="Narrador no encontrado.")
+
+    if not narrator.get("download_url"):
+        raise HTTPException(status_code=400, detail="Este narrador no requiere descarga o no tiene URL configurada.")
+
+    model_filename = narrator.get("model_filename") or f"{narrator.get('voice_code')}.onnx"
+    models_dir = BOOKS_DIR.parent / "models" / "piper"
+    target_path = models_dir / model_filename
+    ok = engine.tts_manager._ensure_model_exists(str(target_path), custom_download_url=narrator.get("download_url"))
+    if not ok:
+        raise HTTPException(status_code=500, detail=f"No se pudo descargar el modelo desde {narrator.get('download_url')}.")
+
+    return {"status": "success", "message": f"Modelo '{model_filename}' descargado correctamente en disco."}
 
 @router.delete("/narrators/{narrator_id}")
 def admin_delete_narrator(narrator_id: int, authorization: Optional[str] = Header(None)):
     require_admin(authorization)
     try:
         engine.db.delete_narrator_admin(narrator_id)
-        return {"status": "success", "message": f"Narrador {narrator_id} eliminado."}
+        return {"status": "success", "message": f"Narrador #{narrator_id} eliminado."}
     except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/books")
@@ -274,6 +333,9 @@ def admin_confirm_book_import(req: AdminConfirmBookImportRequest, authorization:
         voice_name=req.voice_name,
         tier_id=req.tier_id
     )
+
+    if req.narrator_id:
+        engine.db.update_book_admin(book_folder.name, {"narrator_id": req.narrator_id})
 
     engine._load_installed_books()
 

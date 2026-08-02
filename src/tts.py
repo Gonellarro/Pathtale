@@ -33,7 +33,7 @@ class TTSManager:
         elif self.has_piper_bin:
             logger.info(f"TTSManager ready with Piper binary '{piper_bin}'")
 
-    def _ensure_model_exists(self, model_path_str: str) -> bool:
+    def _ensure_model_exists(self, model_path_str: str, custom_download_url: Optional[str] = None) -> bool:
         """Checks if a Piper ONNX model exists, and downloads it (and its .json config) automatically if missing."""
         if not model_path_str:
             return False
@@ -42,12 +42,12 @@ class TTSManager:
             return True
 
         filename = model_path.name
-        url = PIPER_MODEL_DOWNLOAD_URLS.get(filename)
+        url = custom_download_url or PIPER_MODEL_DOWNLOAD_URLS.get(filename)
         if not url:
             logger.warning(f"No download URL configured for missing Piper model: {filename}")
             return False
 
-        logger.info(f"📥 Piper voice model '{filename}' not found locally. Auto-downloading from HuggingFace...")
+        logger.info(f"📥 Piper voice model '{filename}' not found locally. Auto-downloading from {url}...")
         model_path.parent.mkdir(parents=True, exist_ok=True)
         json_path = model_path.with_suffix(".onnx.json")
         json_url = url + ".json"
@@ -55,8 +55,11 @@ class TTSManager:
         try:
             logger.info(f"Downloading {url} -> {model_path}...")
             urllib.request.urlretrieve(url, str(model_path))
-            logger.info(f"Downloading {json_url} -> {json_path}...")
-            urllib.request.urlretrieve(json_url, str(json_path))
+            try:
+                logger.info(f"Downloading {json_url} -> {json_path}...")
+                urllib.request.urlretrieve(json_url, str(json_path))
+            except Exception as e_json:
+                logger.warning(f"Could not download .json config for '{filename}' ({e_json}), continuing if ONNX exists.")
             logger.info(f"✅ Successfully downloaded Piper voice model '{filename}'!")
             return True
         except Exception as e:
@@ -177,6 +180,12 @@ class TTSManager:
 
         # Piper TTS request OR auto fallback
         target_model_str = self.piper_model_en if lang_code == "en" else self.piper_model_es
+        if voice_name and voice_name.endswith(".onnx"):
+            models_dir = Path(self.piper_model_es).parent
+            custom_model = models_dir / voice_name
+            if custom_model.exists():
+                target_model_str = str(custom_model)
+
         if self.has_piper_bin and target_model_str:
             if self._ensure_model_exists(target_model_str):
                 try:
@@ -196,6 +205,48 @@ class TTSManager:
                     return True
                 except Exception as e:
                     logger.error(f"Piper execution failed ({lang_code}): {e}. Trying fallback TTS.")
+
+    def generate_audio_by_narrator(self, text: str, output_file: Path, narrator_info: dict, language: str = "es") -> bool:
+        """Synthesizes text dynamically using DB Narrator info (engine_code, voice_code, download_url, model_filename)."""
+        if not narrator_info:
+            return self.generate_audio(text, output_file, language=language)
+
+        engine_code = narrator_info.get("engine_code", "piper").lower()
+        voice_code = narrator_info.get("voice_code", "es_ES-davefx-medium.onnx")
+        download_url = narrator_info.get("download_url")
+        model_filename = narrator_info.get("model_filename") or (voice_code if voice_code.endswith(".onnx") else f"{voice_code}.onnx")
+
+        if engine_code == "google":
+            if self.google_api_key and self._generate_google_cloud_tts(text, output_file, language, voice_name=voice_code):
+                return True
+            logger.warning("Google Cloud TTS requested by narrator but API key missing/failed. Falling back to Piper...")
+
+        # Piper Local ONNX engine
+        models_dir = Path(self.piper_model_es).parent
+        target_model_path = models_dir / model_filename
+
+        if self.has_piper_bin:
+            if self._ensure_model_exists(str(target_model_path), custom_download_url=download_url):
+                try:
+                    cmd = [
+                        self.piper_bin,
+                        "--model", str(target_model_path),
+                        "--output_file", str(output_file)
+                    ]
+                    subprocess.run(
+                        cmd,
+                        input=text.encode("utf-8"),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        check=True
+                    )
+                    logger.info(f"Generated Piper audio via Narrator '{narrator_info.get('display_name')}': {output_file.name}")
+                    return True
+                except Exception as e:
+                    logger.error(f"Piper execution failed for Narrator '{narrator_info.get('name')}': {e}")
+
+        # Default fallback
+        return self.generate_audio(text, output_file, language=language, tts_engine=engine_code, voice_name=voice_code)
 
         # gTTS Fallback
         try:

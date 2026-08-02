@@ -228,25 +228,25 @@ export function openPreImportModal(tempFileId, filename, inspection) {
   const coverInput = document.getElementById("pre-import-cover-file");
   if (coverInput) coverInput.value = "";
 
-  const updateVoiceOptions = () => {
+  const updateVoiceOptions = async () => {
     const lang = document.getElementById("pre-import-language").value;
     const voiceSelect = document.getElementById("pre-import-voice-select");
     if (!voiceSelect) return;
 
-    if (lang === "en") {
-      voiceSelect.innerHTML = `
-        <option value="google:en-US-Neural2-F">Google Cloud Neural2 (Femenina - en-US-Neural2-F)</option>
-        <option value="google:en-US-Neural2-D">Google Cloud Neural2 (Masculina - en-US-Neural2-D)</option>
-        <option value="google:en-US-Wavenet-D">Google Cloud Wavenet (Masculina - en-US-Wavenet-D)</option>
-        <option value="piper:en_US-lessac-medium.onnx">Piper Local C++ (Lessac - en_US)</option>
-      `;
-    } else {
-      voiceSelect.innerHTML = `
-        <option value="google:es-ES-Neural2-B">Google Cloud Neural2 (Masculina - es-ES-Neural2-B)</option>
-        <option value="google:es-ES-Neural2-A">Google Cloud Neural2 (Femenina - es-ES-Neural2-A)</option>
-        <option value="google:es-ES-Wavenet-C">Google Cloud Wavenet (Masculina - es-ES-Wavenet-C)</option>
-        <option value="piper:es_ES-davefx-medium.onnx">Piper Local C++ (DaveFX - es_ES)</option>
-      `;
+    try {
+      const res = await authFetch(`${API_BASE}/api/admin/narrators`);
+      const data = await res.json();
+      const narrators = data.narrators || [];
+      const filtered = narrators.filter(n => !n.language || n.language.toLowerCase().startsWith(lang.toLowerCase()));
+      const listToUse = filtered.length > 0 ? filtered : narrators;
+
+      voiceSelect.innerHTML = listToUse.map(n => {
+        const engineTag = n.engine_name || (n.engine_code ? n.engine_code.toUpperCase() : 'TTS');
+        const valStr = `${n.narrator_id}:${n.engine_code || 'piper'}:${n.voice_code}`;
+        return `<option value="${valStr}" data-narrator-id="${n.narrator_id}">${escapeHtml(n.display_name)} (${engineTag})</option>`;
+      }).join("");
+    } catch (err) {
+      console.warn("Could not fetch DB narrators for dropdown:", err);
     }
   };
 
@@ -298,25 +298,30 @@ export function openEditExistingBookModal(book) {
   const coverInput = document.getElementById("pre-import-cover-file");
   if (coverInput) coverInput.value = "";
 
-  const updateVoiceOptions = () => {
+  const updateVoiceOptions = async () => {
     const lang = document.getElementById("pre-import-language").value;
     const voiceSelect = document.getElementById("pre-import-voice-select");
     if (!voiceSelect) return;
 
-    if (lang === "en") {
-      voiceSelect.innerHTML = `
-        <option value="google:en-US-Neural2-F">Google Cloud Neural2 (Femenina - en-US-Neural2-F)</option>
-        <option value="google:en-US-Neural2-D">Google Cloud Neural2 (Masculina - en-US-Neural2-D)</option>
-        <option value="google:en-US-Wavenet-D">Google Cloud Wavenet (Masculina - en-US-Wavenet-D)</option>
-        <option value="piper:en_US-lessac-medium.onnx">Piper Local C++ (Lessac - en_US)</option>
-      `;
-    } else {
-      voiceSelect.innerHTML = `
-        <option value="google:es-ES-Neural2-B">Google Cloud Neural2 (Masculina - es-ES-Neural2-B)</option>
-        <option value="google:es-ES-Neural2-A">Google Cloud Neural2 (Femenina - es-ES-Neural2-A)</option>
-        <option value="google:es-ES-Wavenet-C">Google Cloud Wavenet (Masculina - es-ES-Wavenet-C)</option>
-        <option value="piper:es_ES-davefx-medium.onnx">Piper Local C++ (DaveFX - es_ES)</option>
-      `;
+    try {
+      const res = await authFetch(`${API_BASE}/api/admin/narrators`);
+      const data = await res.json();
+      const narrators = data.narrators || [];
+      const filtered = narrators.filter(n => !n.language || n.language.toLowerCase().startsWith(lang.toLowerCase()));
+      const listToUse = filtered.length > 0 ? filtered : narrators;
+
+      voiceSelect.innerHTML = listToUse.map(n => {
+        const engineTag = n.engine_name || (n.engine_code ? n.engine_code.toUpperCase() : 'TTS');
+        const valStr = `${n.narrator_id}:${n.engine_code || 'piper'}:${n.voice_code}`;
+        return `<option value="${valStr}" data-narrator-id="${n.narrator_id}">${escapeHtml(n.display_name)} (${engineTag})</option>`;
+      }).join("");
+
+      if (book && book.narrator_id) {
+        const matchingOpt = Array.from(voiceSelect.options).find(opt => opt.getAttribute("data-narrator-id") == book.narrator_id);
+        if (matchingOpt) matchingOpt.selected = true;
+      }
+    } catch (err) {
+      console.warn("Could not fetch DB narrators for dropdown:", err);
     }
   };
 
@@ -349,21 +354,16 @@ async function submitBookConfigForm() {
   const author = document.getElementById("pre-import-author").value.trim();
   const language = document.getElementById("pre-import-language").value;
   const startNode = document.getElementById("pre-import-start-node").value.trim();
-  const voiceSelection = document.getElementById("pre-import-voice-select").value;
-  const tierId = parseInt(document.getElementById("pre-import-tier").value);
-  const regenCheck = document.getElementById("pre-import-regenerate-check")?.checked || false;
-  const coverInput = document.getElementById("pre-import-cover-file");
-  const coverFile = (coverInput && coverInput.files && coverInput.files[0]) ? coverInput.files[0] : null;
-  const errDiv = document.getElementById("pre-import-error");
-
+  const voiceSelectEl = document.getElementById("pre-import-voice-select");
+  const selectedOpt = voiceSelectEl ? voiceSelectEl.selectedOptions[0] : null;
+  const narratorId = selectedOpt ? parseInt(selectedOpt.getAttribute("data-narrator-id") || "1") : 1;
+  const voiceValue = voiceSelectEl ? voiceSelectEl.value : "";
   let ttsEngine = "auto";
   let voiceName = "default";
-  if (voiceSelection.startsWith("google:")) {
-    ttsEngine = "google";
-    voiceName = voiceSelection.replace("google:", "");
-  } else if (voiceSelection.startsWith("piper:")) {
-    ttsEngine = "piper";
-    voiceName = voiceSelection.replace("piper:", "");
+  if (voiceValue.includes(":")) {
+    const parts = voiceValue.split(":");
+    ttsEngine = parts[1] || "auto";
+    voiceName = parts[2] || "default";
   }
 
   const zone = document.getElementById("book-upload-zone");
@@ -388,6 +388,7 @@ async function submitBookConfigForm() {
           author,
           language,
           start_node: startNode,
+          narrator_id: narratorId,
           tier_id: tierId,
           tts_engine: ttsEngine,
           voice_name: voiceName,
@@ -439,6 +440,7 @@ async function submitBookConfigForm() {
           title,
           author,
           language,
+          narrator_id: narratorId,
           tts_engine: ttsEngine,
           voice_name: voiceName,
           start_node: startNode,

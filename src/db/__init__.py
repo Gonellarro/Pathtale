@@ -105,8 +105,14 @@ class Database(BaseRepository):
         return self.books.register_book_endings(*args, **kwargs)
 
     # --- Narrators Delegations ---
+    def get_all_tts_engines(self, *args, **kwargs):
+        return self.narrators.get_all_tts_engines(*args, **kwargs)
+
     def get_narrators_stats(self, *args, **kwargs):
         return self.narrators.get_narrators_stats(*args, **kwargs)
+
+    def get_narrator_by_id(self, *args, **kwargs):
+        return self.narrators.get_narrator_by_id(*args, **kwargs)
 
     def create_narrator_admin(self, *args, **kwargs):
         return self.narrators.create_narrator_admin(*args, **kwargs)

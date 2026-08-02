@@ -79,6 +79,7 @@ class AdminConfirmBookImportRequest(BaseModel):
     title: str
     author: str
     language: str = "es"
+    narrator_id: Optional[int] = 1
     tts_engine: str = "auto"
     voice_name: str = "default"
     start_node: str = "sec_001"
@@ -88,14 +89,26 @@ class AdminConfirmBookImportRequest(BaseModel):
 class AdminNarratorCreateRequest(BaseModel):
     name: str
     display_name: str
+    engine_id: Optional[int] = 1
+    voice_code: Optional[str] = "default"
+    language: Optional[str] = "es"
+    gender: Optional[str] = "male"
     specialty: Optional[str] = None
     avatar_url: Optional[str] = None
+    download_url: Optional[str] = None
+    model_filename: Optional[str] = None
     bio: Optional[str] = None
 
 class AdminNarratorUpdateRequest(BaseModel):
     display_name: Optional[str] = None
+    engine_id: Optional[int] = None
+    voice_code: Optional[str] = None
+    language: Optional[str] = None
+    gender: Optional[str] = None
     specialty: Optional[str] = None
     avatar_url: Optional[str] = None
+    download_url: Optional[str] = None
+    model_filename: Optional[str] = None
     bio: Optional[str] = None
 
 class AdminBookUpdateRequest(BaseModel):
