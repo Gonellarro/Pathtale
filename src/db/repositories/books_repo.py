@@ -49,6 +49,18 @@ class BooksRepository(BaseRepository):
             """)
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
+    def get_book_by_id(self, book_id: str) -> Optional[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT b.*, n.display_name as narrator_name, st.name as tier_name, st.code as tier_code
+                FROM books b
+                LEFT JOIN narrators n ON b.narrator_id = n.narrator_id
+                LEFT JOIN subscription_tiers st ON b.tier_id = st.tier_id
+                WHERE b.book_id = ?
+            """, (book_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
 
     def update_book_admin(self, book_id: str, updates: Dict[str, Any]):
         fields = []

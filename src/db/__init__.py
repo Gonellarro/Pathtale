@@ -92,6 +92,9 @@ class Database(BaseRepository):
     def get_all_books_admin(self, *args, **kwargs):
         return self.books.get_all_books_admin(*args, **kwargs)
 
+    def get_book_by_id(self, *args, **kwargs):
+        return self.books.get_book_by_id(*args, **kwargs)
+
     def update_book_admin(self, *args, **kwargs):
         return self.books.update_book_admin(*args, **kwargs)
 
