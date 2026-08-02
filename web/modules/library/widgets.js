@@ -91,20 +91,28 @@ export async function loadNarratorsSection() {
     }
 
     if (container.parentElement) container.parentElement.classList.remove("hidden");
-    container.innerHTML = narrators.map(n => `
-      <div class="narrator-card" data-narrator-id="${escapeHtml(n.id)}">
-        <img src="${n.avatar_url}" alt="${escapeHtml(n.name)}" class="narrator-avatar">
-        <div class="narrator-info">
-          <h3 class="narrator-name">${escapeHtml(n.name)}</h3>
-          <p class="narrator-specialty">${escapeHtml(n.specialty)}</p>
-          <p class="narrator-stories-count">
-            <span>🎧</span>
-            <span>${n.story_count} historia${n.story_count === 1 ? '' : 's'}</span>
-          </p>
+    container.innerHTML = narrators.map(n => {
+      const isGoogle = (n.engine_code || '').toLowerCase() === 'google';
+      const engineBadge = isGoogle 
+        ? `<span class="badge" style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); font-size:0.65rem;">⚡ Google Cloud</span>`
+        : `<span class="badge" style="background:rgba(16, 185, 129, 0.15); color:#34d399; border:1px solid rgba(16, 185, 129, 0.3); font-size:0.65rem;">🎙️ Piper ONNX</span>`;
+
+      return `
+        <div class="narrator-card" data-narrator-id="${escapeHtml(String(n.id))}">
+          <img src="${n.avatar_url || '/assets/narrator_davefx.jpg'}" alt="${escapeHtml(n.name)}" class="narrator-avatar">
+          <div class="narrator-info">
+            <h3 class="narrator-name">${escapeHtml(n.name)}</h3>
+            <p class="narrator-specialty">${escapeHtml(n.specialty)}</p>
+            <div style="margin-top:0.25rem;">${engineBadge}</div>
+            <p class="narrator-stories-count" style="margin-top:0.35rem;">
+              <span>🎧</span>
+              <span>${n.story_count} historia${n.story_count === 1 ? '' : 's'}</span>
+            </p>
+          </div>
+          <div class="narrator-arrow">›</div>
         </div>
-        <div class="narrator-arrow">›</div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
   } catch (err) {
     console.warn("Could not load narrators:", err);
   }

@@ -159,3 +159,22 @@ def get_book_asset(book_id: str, subpath: str):
     if not asset_path.exists() or not asset_path.is_file():
         raise HTTPException(status_code=404, detail="Asset file not found")
     return FileResponse(asset_path)
+
+@router.get("/narrators")
+def list_narrators():
+    """Returns active narrator voices from SQLite DB for public/user dashboard rendering."""
+    raw_narrators = engine.db.get_narrators_stats()
+    narrators = []
+    for n in raw_narrators:
+        narrators.append({
+            "id": str(n.get("narrator_id") or n.get("name")),
+            "narrator_id": n.get("narrator_id"),
+            "name": n.get("display_name") or n.get("name"),
+            "specialty": n.get("specialty") or "Narrador Profesional",
+            "avatar_url": n.get("avatar_url") or "/assets/narrator_davefx.jpg",
+            "story_count": n.get("book_count") or 0,
+            "engine_code": n.get("engine_code"),
+            "engine_name": n.get("engine_name"),
+            "language": n.get("language", "es")
+        })
+    return {"narrators": narrators}
