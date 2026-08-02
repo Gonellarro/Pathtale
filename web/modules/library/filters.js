@@ -74,7 +74,7 @@ export function renderFeaturedGrid(books, container, startGameFn) {
     const isLocked = b.is_locked;
 
     if (isLocked) {
-      statusBadgeText = `🔒 ${escapeHtml(b.tier_name)}`;
+      statusBadgeText = `<svg style="width:11px;height:11px;vertical-align:-1px;margin-right:3px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>${escapeHtml(b.tier_name)}`;
       statusClass = "locked";
     } else if (b.status === "en_curso" || (b.has_savegame && b.progress_percent > 0 && b.progress_percent < 90)) {
       statusBadgeText = "En curso";
@@ -85,6 +85,8 @@ export function renderFeaturedGrid(books, container, startGameFn) {
     }
 
     const ratingVal = b.rating || 4.8;
+    const playSvg = `<svg style="width:20px;height:20px;fill:currentColor;margin-left:2px;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+    const lockSvg = `<svg style="width:18px;height:18px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
 
     return `
     <div class="portrait-book-card ${isLocked ? 'card-locked' : ''}" data-action="continue" data-book-id="${b.book_id}">
@@ -95,7 +97,7 @@ export function renderFeaturedGrid(books, container, startGameFn) {
           : `<div class="book-cover-placeholder">
                <svg class="landing-svg-icon" style="width:36px;height:36px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
              </div>`}
-        <div class="card-hover-play">${isLocked ? '🔒' : '▶'}</div>
+        <div class="card-hover-play">${isLocked ? lockSvg : playSvg}</div>
       </div>
       <div class="portrait-card-info">
         <p class="portrait-genre">${escapeHtml(b.genre || "Ficción Interactiva")}</p>
