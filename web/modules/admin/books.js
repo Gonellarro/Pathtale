@@ -383,7 +383,7 @@ async function submitBookConfigForm() {
     }
 
     try {
-      const res = await authFetch(`${API_BASE}/api/admin/books/${editBookId}`, {
+      const res = await authFetch(`${API_BASE}/api/admin/books/${encodeURIComponent(editBookId)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -399,20 +399,35 @@ async function submitBookConfigForm() {
         })
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") || "";
+      let data = {};
+      if (contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Sesión expirada o sin permisos de administración. Vuelve a iniciar sesión.");
+        }
+        throw new Error(`Error de respuesta del servidor (${res.status}).`);
+      }
+
       if (!res.ok) throw new Error(data.detail || "Error al actualizar libro.");
 
       if (coverFile) {
         if (progressMsg) progressMsg.textContent = `Subiendo nueva portada para '${title}'...`;
         const formData = new FormData();
         formData.append("file", coverFile);
-        const resCover = await authFetch(`${API_BASE}/api/admin/books/${editBookId}/cover`, {
+        const resCover = await authFetch(`${API_BASE}/api/admin/books/${encodeURIComponent(editBookId)}/cover`, {
           method: "POST",
           body: formData
         });
         if (!resCover.ok) {
-          const errCover = await resCover.json();
-          alert(`⚠️ Libro actualizado pero hubo un problema al subir la portada: ${errCover.detail}`);
+          const coverContentType = resCover.headers.get("content-type") || "";
+          let errDetail = "Error desconocido";
+          if (coverContentType.includes("application/json")) {
+            const errCover = await resCover.json();
+            errDetail = errCover.detail || errDetail;
+          }
+          alert(`⚠️ Libro actualizado pero hubo un problema al subir la portada: ${errDetail}`);
         }
       }
 
@@ -451,7 +466,17 @@ async function submitBookConfigForm() {
           generate_audios: true
         })
       });
-      const data = await res.json();
+      
+      const contentType = res.headers.get("content-type") || "";
+      let data = {};
+      if (contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Sesión expirada o sin permisos de administración. Vuelve a iniciar sesión.");
+        }
+        throw new Error(`Error de respuesta del servidor (${res.status}).`);
+      }
 
       if (!res.ok) throw new Error(data.detail || "Error al importar libro");
 
