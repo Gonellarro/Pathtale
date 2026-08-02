@@ -92,7 +92,9 @@ export function renderFeaturedGrid(books, container, startGameFn) {
         <span class="card-status-badge ${statusClass}" ${isLocked ? 'style="background:rgba(239, 68, 68, 0.9); color:#fff; border:1px solid rgba(239, 68, 68, 0.4); font-size:0.68rem;"' : ''}>${statusBadgeText}</span>
         ${b.cover_image_url 
           ? `<img src="${b.cover_image_url}?v=${Date.now()}" alt="${escapeHtml(b.title)}" class="portrait-cover-img">` 
-          : `<div class="book-cover-placeholder" style="font-size:2rem">📜</div>`}
+          : `<div class="book-cover-placeholder">
+               <svg class="landing-svg-icon" style="width:36px;height:36px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+             </div>`}
         <div class="card-hover-play">${isLocked ? '🔒' : '▶'}</div>
       </div>
       <div class="portrait-card-info">

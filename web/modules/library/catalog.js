@@ -117,6 +117,7 @@ export function renderFullLibrary(books, startGameFn) {
             <th class="sortable-th" data-sort="title">Título ${getSortIcon('title')}</th>
             <th class="sortable-th" data-sort="author">Autor ${getSortIcon('author')}</th>
             <th class="sortable-th" data-sort="genre">Género / Serie ${getSortIcon('genre')}</th>
+            <th class="sortable-th" data-sort="narrator">Narrador ${getSortIcon('narrator')}</th>
             <th class="sortable-th" data-sort="progress">Progreso ${getSortIcon('progress')}</th>
             <th>Acciones</th>
           </tr>
@@ -139,6 +140,7 @@ export function renderFullLibrary(books, startGameFn) {
                 </td>
                 <td class="td-author">${escapeHtml(b.author || "Desconocido")}</td>
                 <td class="td-genre">${escapeHtml(seriesText)}</td>
+                <td class="td-narrator" style="font-size:0.82rem; color:var(--accent-gold);">🎙️ ${escapeHtml(b.narrator || "DAVEFX")}</td>
                 <td class="td-progress">
                   <div class="table-progress-bar-wrap">
                     <div class="table-progress-bar-fill" style="width: ${b.progress_percent || 0}%"></div>
@@ -195,6 +197,7 @@ export function renderFullLibrary(books, startGameFn) {
           <div class="book-info">
             <h3 class="book-title">${langFlag} ${escapeHtml(b.title)}</h3>
             <p class="book-author">${escapeHtml(b.author)}${b.year ? ' • ' + b.year : ''}</p>
+            <p class="book-narrator" style="font-size:0.8rem; color:var(--accent-gold); margin-top:0.15rem;">🎙️ ${escapeHtml(b.narrator || "DAVEFX")}</p>
             ${seriesText ? `<p class="book-series">${seriesText}</p>` : ''}
             <p class="book-desc">${escapeHtml(b.description || "Aventura interactiva.")}</p>
             

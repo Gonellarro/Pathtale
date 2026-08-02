@@ -91,6 +91,10 @@ def list_books(
 
         is_locked = book_tier["level"] > user_tier["level"]
 
+        narrator_id = full_data.get("narrator_id") or 1
+        narrator_obj = engine.db.get_narrator_by_id(narrator_id) if narrator_id else None
+        narrator_name = narrator_obj.get("display_name") if narrator_obj else (full_data.get("narrator") or "DAVEFX (Piper Local)")
+
         result.append({
             "book_id": b_id,
             "title": full_data.get("title", b_id),
@@ -111,7 +115,8 @@ def list_books(
             "has_savegame": bool(savegame),
             "progress_percent": progress_pct,
             "status": status,
-            "narrator": full_data.get("narrator") or "DaveFX",
+            "narrator_id": narrator_id,
+            "narrator": narrator_name,
             "tier_id": book_tier["tier_id"],
             "tier_code": book_tier["code"],
             "tier_name": book_tier["name"],

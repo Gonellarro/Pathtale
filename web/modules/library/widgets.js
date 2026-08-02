@@ -45,7 +45,9 @@ export async function loadInProgressSection(startGameFn) {
         <div class="continue-thumb-wrap">
           ${b.cover_image_url 
             ? `<img src="${b.cover_image_url}?v=${Date.now()}" alt="${escapeHtml(b.title)}" class="continue-thumb-img">` 
-            : `<div class="book-cover-placeholder" style="font-size:1.5rem">📜</div>`}
+            : `<div class="book-cover-placeholder">
+                 <svg class="landing-svg-icon" style="width:32px;height:32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+               </div>`}
         </div>
         <div class="continue-info">
           <p class="continue-genre">${escapeHtml(b.genre || "Ficción Interactiva")}</p>
@@ -57,8 +59,8 @@ export async function loadInProgressSection(startGameFn) {
             <span class="continue-pct-lbl">${b.progress_percent || 0}%</span>
           </div>
           <div class="continue-meta-row">
-            <span>⏱ ${escapeHtml(b.estimated_duration || "30 min")}</span>
-            <span>📖 ${b.total_sections || 0} caps.</span>
+            <span><svg style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;stroke:var(--accent-gold);fill:none;" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>${escapeHtml(b.estimated_duration || "30 min")}</span>
+            <span><svg style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;stroke:var(--accent-gold);fill:none;" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>${b.total_sections || 0} caps.</span>
           </div>
         </div>
       </div>
@@ -94,8 +96,8 @@ export async function loadNarratorsSection() {
     container.innerHTML = narrators.map(n => {
       const isGoogle = (n.engine_code || '').toLowerCase() === 'google';
       const engineBadge = isGoogle 
-        ? `<span class="badge" style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); font-size:0.65rem;">⚡ Google Cloud</span>`
-        : `<span class="badge" style="background:rgba(16, 185, 129, 0.15); color:#34d399; border:1px solid rgba(16, 185, 129, 0.3); font-size:0.65rem;">🎙️ Piper ONNX</span>`;
+        ? `<span class="badge" style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); font-size:0.65rem;"><svg style="width:11px;height:11px;vertical-align:-1px;margin-right:3px;fill:currentColor;" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>Google Cloud</span>`
+        : `<span class="badge" style="background:rgba(16, 185, 129, 0.15); color:#34d399; border:1px solid rgba(16, 185, 129, 0.3); font-size:0.65rem;"><svg style="width:11px;height:11px;vertical-align:-1px;margin-right:3px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path></svg>Piper ONNX</span>`;
 
       return `
         <div class="narrator-card" data-narrator-id="${escapeHtml(String(n.id))}">
@@ -105,7 +107,7 @@ export async function loadNarratorsSection() {
             <p class="narrator-specialty">${escapeHtml(n.specialty)}</p>
             <div style="margin-top:0.25rem;">${engineBadge}</div>
             <p class="narrator-stories-count" style="margin-top:0.35rem;">
-              <span>🎧</span>
+              <svg style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;stroke:var(--accent-gold);fill:none;" viewBox="0 0 24 24" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
               <span>${n.story_count} historia${n.story_count === 1 ? '' : 's'}</span>
             </p>
           </div>
