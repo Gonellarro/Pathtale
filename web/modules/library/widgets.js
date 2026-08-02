@@ -83,9 +83,16 @@ export async function loadNarratorsSection() {
   if (!container) return;
 
   try {
-    const res = await authFetch(`${API_BASE}/api/narrators`);
+    const res = await authFetch(`${API_BASE}/api/narrators?limit=3`);
     const data = await res.json();
-    const narrators = data.narrators || [];
+    let narrators = data.narrators || [];
+
+    narrators.sort((a, b) => {
+      const cntA = Number(a.story_count ?? a.book_count ?? 0);
+      const cntB = Number(b.story_count ?? b.book_count ?? 0);
+      return cntB - cntA;
+    });
+    narrators = narrators.slice(0, 3);
 
     if (!Array.isArray(narrators) || narrators.length === 0) {
       if (container.parentElement) container.parentElement.classList.add("hidden");
