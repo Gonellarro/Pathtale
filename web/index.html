@@ -562,15 +562,33 @@
       <section id="view-admin" class="view hidden">
         <div class="app-container">
           <div class="library-header-row" style="margin-bottom: 1.5rem; margin-top: 1rem;">
-            <h1 class="section-title" style="font-size: 1.6rem; letter-spacing: 0.05em;">⚙️ DASHBOARD DE ADMINISTRACIÓN</h1>
+            <h1 class="section-title" style="font-size: 1.6rem; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.5rem;">
+              <svg style="width:24px;height:24px;stroke:var(--accent-gold);fill:none;" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+              <span>DASHBOARD DE ADMINISTRACIÓN</span>
+            </h1>
           </div>
 
           <!-- Admin Tabs -->
           <div class="admin-tabs">
-            <button class="admin-tab active" data-tab="users">👤 Usuarios</button>
-            <button class="admin-tab" data-tab="books">📚 Libros & Importación (EPUB / PDF)</button>
-            <button class="admin-tab" data-tab="narrators">🎙️ Narradores</button>
-            <button class="admin-tab" data-tab="logs">📜 Historial / Auditoría</button>
+            <button class="admin-tab active" data-tab="users">
+              <svg style="width:15px;height:15px;vertical-align:-2px;margin-right:5px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Usuarios</span>
+            </button>
+            <button class="admin-tab" data-tab="books">
+              <svg style="width:15px;height:15px;vertical-align:-2px;margin-right:5px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+              <span>Libros & Importación (EPUB / PDF)</span>
+            </button>
+            <button class="admin-tab" data-tab="narrators">
+              <svg style="width:15px;height:15px;vertical-align:-2px;margin-right:5px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+              <span>Narradores</span>
+            </button>
+            <button class="admin-tab" data-tab="logs">
+              <svg style="width:15px;height:15px;vertical-align:-2px;margin-right:5px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><path d="M12 8v4l3 3"></path><circle cx="12" cy="12" r="9"></circle></svg>
+              <span>Historial / Auditoría</span>
+            </button>
           </div>
 
           <!-- Panel 1: Usuarios -->
