@@ -166,18 +166,24 @@ def get_book_asset(book_id: str, subpath: str):
     return FileResponse(asset_path)
 
 @router.get("/narrators")
-def list_narrators():
-    """Returns active narrator voices from SQLite DB for public/user dashboard rendering."""
+def list_narrators(limit: int = 3):
+    """Returns active narrator voices from SQLite DB sorted by most books narrated (top limit)."""
     raw_narrators = engine.db.get_narrators_stats()
+    raw_narrators.sort(key=lambda x: x.get("book_count", 0), reverse=True)
+    if limit and limit > 0:
+        raw_narrators = raw_narrators[:limit]
+
     narrators = []
     for n in raw_narrators:
+        b_count = n.get("book_count") if n.get("book_count") is not None else 0
         narrators.append({
             "id": str(n.get("narrator_id") or n.get("name")),
             "narrator_id": n.get("narrator_id"),
             "name": n.get("display_name") or n.get("name"),
             "specialty": n.get("specialty") or "Narrador Profesional",
             "avatar_url": n.get("avatar_url") or "/assets/narrator_davefx.jpg",
-            "story_count": n.get("book_count") or 0,
+            "story_count": b_count,
+            "book_count": b_count,
             "engine_code": n.get("engine_code"),
             "engine_name": n.get("engine_name"),
             "language": n.get("language", "es")
