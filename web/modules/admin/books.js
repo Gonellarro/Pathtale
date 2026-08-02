@@ -22,11 +22,9 @@ export async function loadAdminBooks() {
           <tr>
             <th>Portada</th>
             <th>Título</th>
-            <th>Autor</th>
             <th>Narrador</th>
             <th>Nivel Tier</th>
             <th>Estado</th>
-            <th>Género / Serie</th>
             <th>Secciones</th>
             <th>Acciones</th>
           </tr>
@@ -34,6 +32,7 @@ export async function loadAdminBooks() {
         <tbody>
           ${books.map(b => {
             const isVisible = b.is_visible !== 0;
+            const cleanNarrator = escapeHtml((b.narrator_name || 'DaveFX').replace(/\s*\(.*?\)/g, "").trim());
             return `
             <tr>
               <td class="td-thumb">
@@ -45,8 +44,7 @@ export async function loadAdminBooks() {
                 <a href="#" class="admin-book-title-link" data-id="${b.book_id}" style="color:var(--accent-gold); text-decoration:none; font-weight:bold;">${escapeHtml(b.title)}</a>
                 <br><small style="color:var(--text-muted)">ID: ${b.book_id}</small>
               </td>
-              <td class="td-author">${escapeHtml(b.author || 'Desconocido')}</td>
-              <td><span class="admin-badge admin-badge-narrator">🎙️ ${escapeHtml(b.narrator_name || 'DaveFX')}</span></td>
+              <td class="td-narrator" style="font-weight:500;">${cleanNarrator}</td>
               <td>
                 <span class="admin-badge admin-badge-tier">
                   🔒 ${escapeHtml(b.tier_name || 'Demo Gratuita')}
@@ -57,7 +55,6 @@ export async function loadAdminBooks() {
                   ${isVisible ? '👁️ Visible' : '🙈 Oculto'}
                 </button>
               </td>
-              <td class="td-genre">${escapeHtml(b.genre || b.series || '-')}</td>
               <td>${b.total_sections || 0} caps.</td>
               <td class="td-actions">
                 <button class="btn-secondary btn-sm btn-tier-book" data-id="${b.book_id}" data-title="${escapeHtml(b.title)}" data-tier="${b.tier_id || 1}">🏷️ Tier</button>
