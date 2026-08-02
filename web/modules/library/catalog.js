@@ -127,6 +127,7 @@ export function renderFullLibrary(books, startGameFn) {
             const langFlag = (b.language && b.language.toLowerCase().startsWith("en")) ? "🇬🇧" : "🇪🇸";
             const seriesText = b.series ? `${b.series}${b.volume ? ' #' + b.volume : ''}` : (b.genre || "-");
             const isLocked = b.is_locked;
+            const cleanNarrator = escapeHtml((b.narrator || "DAVEFX").replace(/\s*\(.*?\)/g, "").trim());
             return `
               <tr class="${isLocked ? 'row-locked' : ''}">
                 <td class="td-thumb">
@@ -140,7 +141,7 @@ export function renderFullLibrary(books, startGameFn) {
                 </td>
                 <td class="td-author">${escapeHtml(b.author || "Desconocido")}</td>
                 <td class="td-genre">${escapeHtml(seriesText)}</td>
-                <td class="td-narrator" style="font-size:0.82rem; color:var(--accent-gold);">🎙️ ${escapeHtml(b.narrator || "DAVEFX")}</td>
+                <td class="td-narrator" style="font-size:0.82rem; color:var(--text-primary);">${cleanNarrator}</td>
                 <td class="td-progress">
                   <div class="table-progress-bar-wrap">
                     <div class="table-progress-bar-fill" style="width: ${b.progress_percent || 0}%"></div>
@@ -197,8 +198,8 @@ export function renderFullLibrary(books, startGameFn) {
           <div class="book-info">
             <h3 class="book-title">${langFlag} ${escapeHtml(b.title)}</h3>
             <p class="book-author">${escapeHtml(b.author)}${b.year ? ' • ' + b.year : ''}</p>
-            <p class="book-narrator" style="font-size:0.8rem; color:var(--accent-gold); margin-top:0.15rem;">🎙️ ${escapeHtml(b.narrator || "DAVEFX")}</p>
-            ${seriesText ? `<p class="book-series">${seriesText}</p>` : ''}
+            <p class="book-narrator" style="font-size:0.8rem; color:var(--accent-gold); margin-top:0.35rem; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.3rem;"><svg style="width:13px;height:13px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg> <span>${escapeHtml(b.narrator || "DAVEFX")}</span></p>
+            ${seriesText ? `<p class="book-series" style="margin-top:0.25rem;">${seriesText}</p>` : ''}
             <p class="book-desc">${escapeHtml(b.description || "Aventura interactiva.")}</p>
             
             <div class="book-progress-wrap">
