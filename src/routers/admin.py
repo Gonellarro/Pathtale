@@ -34,13 +34,18 @@ def _internal_regenerate_audios(book_id: str, tts_engine: str = "auto", voice_na
     for mp3_file in audios_dir.glob("*.mp3"):
         try: mp3_file.unlink()
         except Exception: pass
+    supplements_audio_dir = audios_dir / "supplements"
+    if supplements_audio_dir.exists():
+        for mp3_file in supplements_audio_dir.glob("*.mp3"):
+            try: mp3_file.unlink()
+            except Exception: pass
 
     b_db = engine.db.get_book_by_id(book_id)
     n_id = narrator_id or (b_db.get("narrator_id") if b_db else None) or b_data.get("narrator_id")
     narrator_info = engine.db.get_narrator_by_id(n_id) if n_id else None
 
     logger.info(f"🎙️ Regenerating audios for '{book_id}' ({len(nodes)} nodes, narrator='{narrator_info.get('display_name') if narrator_info else tts_engine}', lang='{final_lang}')...")
-    for n_id, n_data in nodes.items():
+    for node_id, n_data in nodes.items():
         audio_path = book_folder / n_data["audio"]
         tts_parts = []
         if n_data.get('title'):
@@ -67,6 +72,17 @@ def _internal_regenerate_audios(book_id: str, tts_engine: str = "auto", voice_na
                     tts_mgr.generate_audio_by_narrator(opt_text, audio_opt_path, narrator_info, language=final_lang)
                 else:
                     tts_mgr.generate_audio(opt_text, audio_opt_path, language=final_lang, tts_engine=tts_engine, voice_name=voice_name)
+
+    from src.importer.tts_pipeline import generate_supplements_audio
+    generate_supplements_audio(
+        tts_mgr,
+        b_data.get("supplements", []),
+        book_folder,
+        language=final_lang,
+        tts_engine=tts_engine,
+        voice_name=voice_name,
+        narrator_id=n_id,
+    )
 
 @router.get("/roles")
 def admin_list_roles(authorization: Optional[str] = Header(None)):
@@ -372,7 +388,7 @@ async def admin_upload_book(file: UploadFile = File(...), authorization: Optiona
     else:
         importer = EPUBImporter(target_path)
 
-    book_folder = importer.process(generate_audios=True)
+    book_folder = importer.process(generate_audios=False)
     engine._load_installed_books()
     book_data = engine.books.get(book_folder.name, {})
 

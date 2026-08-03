@@ -8,6 +8,44 @@ from src.dependencies import engine, resolve_user_id
 
 router = APIRouter(prefix="/api", tags=["Catalog"])
 
+
+def _book_asset_url(book_id: str, path: Optional[str]) -> Optional[str]:
+    if not path:
+        return None
+    if path.startswith("/api/"):
+        return path
+    return f"/api/books/{book_id}/asset/{path.lstrip('/')}"
+
+
+def _existing_book_asset_url(book_id: str, path: Optional[str]) -> Optional[str]:
+    if not path:
+        return None
+    relative_path = path.lstrip("/")
+    if path.startswith("/api/"):
+        return path
+    if not (BOOKS_DIR / book_id / relative_path).is_file():
+        return None
+    return _book_asset_url(book_id, relative_path)
+
+
+def _serialize_supplements(book_id: str, supplements):
+    return [
+        {
+            "id": item.get("id"),
+            "order": item.get("order", 0),
+            "category": item.get("category", "reference"),
+            "title": item.get("title", "Material adicional"),
+            "text": item.get("text", ""),
+            "source_pages": item.get("source_pages", []),
+            "images": [
+                url for image in item.get("images", [])
+                if (url := _existing_book_asset_url(book_id, image))
+            ],
+            "audio_url": _existing_book_asset_url(book_id, item.get("audio")),
+        }
+        for item in supplements or []
+    ]
+
 @router.get("/tags")
 def get_tags(authorization: Optional[str] = Header(None)):
     """Returns top category/series tags for filtering."""
@@ -122,7 +160,9 @@ def list_books(
             "tier_name": book_tier["name"],
             "tier_level": book_tier["level"],
             "is_locked": is_locked,
-            "rating": 4.8
+            "rating": 4.8,
+            "has_supplements": bool(full_data.get("supplements")),
+            "supplement_count": len(full_data.get("supplements", [])),
         })
 
     if random_sample and result:
@@ -149,7 +189,31 @@ def get_book_details(book_id: str):
         "cover_image_url": f"/api/books/{book_id}/asset/{b_data.get('cover_image')}" if b_data.get('cover_image') else None,
         "total_sections": b_data.get("total_sections"),
         "start_node": b_data.get("start_node"),
-        "features": b_data.get("features", {})
+        "features": b_data.get("features", {}),
+        "has_supplements": bool(b_data.get("supplements")),
+        "supplement_count": len(b_data.get("supplements", [])),
+    }
+
+
+@router.get("/books/{book_id}/supplements")
+def get_book_supplements(book_id: str, authorization: Optional[str] = Header(None)):
+    """Return ordered non-game material without affecting reading progress."""
+    user_id = resolve_user_id(authorization)
+    if book_id not in engine.books:
+        raise HTTPException(status_code=404, detail="Libro no encontrado")
+    user_tier = engine.db.get_user_active_tier(user_id)
+    book_tier = engine.db.get_book_tier(book_id)
+    if book_tier["level"] > user_tier["level"]:
+        raise HTTPException(status_code=403, detail="Tu membresía no permite acceder a este libro")
+    supplements = _serialize_supplements(book_id, engine.books[book_id].get("supplements", []))
+    return {
+        "book_id": book_id,
+        "title": engine.books[book_id].get("title"),
+        "supplements": supplements,
+        "groups": {
+            category: [item for item in supplements if item["category"] == category]
+            for category in ("front_matter", "reference", "back_matter")
+        },
     }
 
 @router.get("/books/{book_id}/asset/{subpath:path}")

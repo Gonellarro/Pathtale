@@ -87,7 +87,17 @@ class GameEngine:
             return None
 
         book_data = self.books[book_id]
-        start_node_id = book_data["start_node"]
+        start_node_id = book_data.get("start_node")
+        if not start_node_id or start_node_id not in book_data.get("nodes", {}):
+            available_nodes = book_data.get("nodes", {})
+            start_node_id = next(iter(available_nodes), None)
+            if not start_node_id:
+                logger.error(f"Book '{book_id}' has no playable nodes.")
+                return None
+            logger.warning(
+                "Book '%s' declares missing start_node; using first available node '%s'.",
+                book_id, start_node_id,
+            )
         logger.info(f"🎮 Starting new game for user {user_id} on book '{book_id}' at start_node = '{start_node_id}'")
 
         self.db.get_or_create_user(user_id)

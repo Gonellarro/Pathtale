@@ -13,7 +13,7 @@ import { setLibraryViewMode, confirmRestartGame } from "./modules/library.js";
 import { 
   showHomeView, showFullLibraryView, showAdminView, showGameView, startGame, submitChoice, 
   jumpToSection, goBackHistory, initVoiceControls, toggleVoiceRecording, 
-  toggleHistoryDrawer 
+  toggleHistoryDrawer, initSupplementControls
 } from "./modules/game.js";
 import { showStatsView } from "./modules/stats.js";
 
@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function initEventListeners() {
   initVoiceControls();
+  initSupplementControls();
 
   // Navigation
   const navBrand = document.getElementById("nav-brand");

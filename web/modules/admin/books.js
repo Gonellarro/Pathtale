@@ -209,11 +209,15 @@ export function openPreImportModal(tempFileId, filename, inspection) {
   const modalSubtitle = document.getElementById("pre-import-subtitle");
   const confirmBtn = document.getElementById("btn-confirm-pre-import");
   const regenContainer = document.getElementById("pre-import-regenerate-container");
+  const generateAudiosContainer = document.getElementById("pre-import-generate-audios-container");
+  const generateAudiosCheck = document.getElementById("pre-import-generate-audios-check");
 
   if (modalTitle) modalTitle.textContent = `✨ Configuración de Importación del Librojuego`;
   if (modalSubtitle) modalSubtitle.textContent = `Archivo analizado correctamente. Revisa y ajusta los metadatos y la voz antes de iniciar la sintetización:`;
   if (confirmBtn) confirmBtn.textContent = `Confirmar e Importar Libro 🚀`;
   if (regenContainer) regenContainer.classList.add("hidden");
+  if (generateAudiosContainer) generateAudiosContainer.classList.remove("hidden");
+  if (generateAudiosCheck) generateAudiosCheck.checked = false;
 
   document.getElementById("pre-import-temp-id").value = tempFileId || "";
   document.getElementById("pre-import-edit-book-id").value = "";
@@ -278,12 +282,14 @@ export function openEditExistingBookModal(book) {
   const confirmBtn = document.getElementById("btn-confirm-pre-import");
   const regenContainer = document.getElementById("pre-import-regenerate-container");
   const regenCheck = document.getElementById("pre-import-regenerate-check");
+  const generateAudiosContainer = document.getElementById("pre-import-generate-audios-container");
 
   if (modalTitle) modalTitle.textContent = `✏️ Editar Librojuego: ${book.title}`;
   if (modalSubtitle) modalSubtitle.textContent = `Edita los metadatos del libro o regenera sus audios con la voz seleccionada:`;
   if (confirmBtn) confirmBtn.textContent = `Guardar Cambios 💾`;
   if (regenContainer) regenContainer.classList.remove("hidden");
   if (regenCheck) regenCheck.checked = false;
+  if (generateAudiosContainer) generateAudiosContainer.classList.add("hidden");
 
   document.getElementById("pre-import-temp-id").value = "";
   document.getElementById("pre-import-edit-book-id").value = book.book_id || "";
@@ -354,6 +360,8 @@ async function submitBookConfigForm() {
   const tierId = parseInt(document.getElementById("pre-import-tier").value || "1");
   const regenCheckEl = document.getElementById("pre-import-regenerate-check");
   const regenCheck = regenCheckEl ? Boolean(regenCheckEl.checked) : false;
+  const generateAudiosCheckEl = document.getElementById("pre-import-generate-audios-check");
+  const generateAudios = generateAudiosCheckEl ? Boolean(generateAudiosCheckEl.checked) : false;
   const coverFileInput = document.getElementById("pre-import-cover-file");
   const coverFile = (coverFileInput && coverFileInput.files && coverFileInput.files[0]) ? coverFileInput.files[0] : null;
   const errDiv = document.getElementById("pre-import-error");
@@ -447,7 +455,11 @@ async function submitBookConfigForm() {
   } else {
     if (zone) zone.classList.add("hidden");
     if (progress) progress.classList.remove("hidden");
-    if (progressMsg) progressMsg.textContent = `Importando y sintetizando audios TTS para '${title}' con voz '${voiceName}'... Por favor espera unos minutos.`;
+    if (progressMsg) {
+      progressMsg.textContent = generateAudios
+        ? `Importando y sintetizando audios TTS para '${title}' con voz '${voiceName}'... Por favor espera unos minutos.`
+        : `Importando la estructura y los contenidos de '${title}' sin generar audios...`;
+    }
 
     try {
       const res = await authFetch(`${API_BASE}/api/admin/books/confirm_import`, {
@@ -463,7 +475,7 @@ async function submitBookConfigForm() {
           voice_name: voiceName,
           start_node: startNode,
           tier_id: tierId,
-          generate_audios: true
+          generate_audios: generateAudios
         })
       });
       

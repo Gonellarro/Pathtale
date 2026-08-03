@@ -2,8 +2,22 @@ import { state, authFetch, escapeHtml, API_BASE } from "../state.js";
 import { openAuthModal } from "../auth.js";
 import { renderHistoryDrawer } from "./history.js";
 import { showGameView, showFullLibraryView } from "./views.js";
+import { loadBookSupplements } from "./supplements.js";
 
 const audioPlayer = document.getElementById("html-audio-player");
+
+function sanitizeRichText(html) {
+  const template = document.createElement("template");
+  template.innerHTML = html || "";
+  const allowed = new Set(["P", "BR", "STRONG", "EM", "U", "MARK", "SUB", "SUP", "SMALL"]);
+  template.content.querySelectorAll("*").forEach(element => {
+    [...element.attributes].forEach(attribute => element.removeAttribute(attribute.name));
+    if (!allowed.has(element.tagName)) {
+      element.replaceWith(document.createTextNode(element.textContent || ""));
+    }
+  });
+  return template.innerHTML;
+}
 
 function getUserId() {
   return (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
@@ -46,6 +60,7 @@ export async function startGame(bookId, forceNew = false) {
     if (data && data.node_id) {
       state.currentGameState = data;
       renderGameState(data);
+      await loadBookSupplements(bookId, forceNew);
     }
   } catch (err) {
     console.error("Error starting game:", err);
@@ -167,7 +182,9 @@ export function renderGameState(gameState) {
   const nodeTextContainer = document.getElementById("node-text");
   const paragraphs = (gameState.text || "").split("\n\n").filter(p => p.trim());
   if (nodeTextContainer) {
-    nodeTextContainer.innerHTML = paragraphs.map(p => `<p>${escapeHtml(p)}</p>`).join("");
+    nodeTextContainer.innerHTML = gameState.text_html
+      ? sanitizeRichText(gameState.text_html)
+      : paragraphs.map(p => `<p>${escapeHtml(p)}</p>`).join("");
   }
 
   const btnOpt = document.getElementById("btn-audio-options");

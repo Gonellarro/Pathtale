@@ -29,6 +29,15 @@ Sistema desacoplado e inteligente para transformar librojuegos en formato **EPUB
    - Audios enviados como mensajes de voz / audio.
    - Botones **Inline Keyboard** para selección rápida de opciones.
 
+5. **Contenido editorial completo**:
+   - Conserva introducciones, prólogos, reglas, tablas, glosarios y apéndices fuera del grafo narrativo.
+   - Clasifica el material como `front_matter`, `reference` o `back_matter` dentro de `book.json`.
+   - Permite consultar y escuchar estos contenidos desde la PWA sin alterar la partida ni sus estadísticas.
+
+### Complementos en la representación intermedia
+
+Desde la versión `1.1` de la IR, `book.json` puede incluir una colección `supplements`. Cada elemento tiene un identificador estable, categoría, orden, título, texto, imágenes, procedencia y una pista de audio opcional. Los libros anteriores siguen siendo compatibles: si no contienen esta colección, la interfaz simplemente oculta la guía del libro.
+
 ---
 
 ## 📂 Estructura del Proyecto

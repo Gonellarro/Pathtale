@@ -760,6 +760,9 @@
             <button id="btn-game-restart" class="btn-game-action" title="Reiniciar esta partida desde el inicio">
               <span>🔄 Reiniciar</span>
             </button>
+            <button id="btn-game-supplements" class="btn-game-action hidden" title="Introducción, reglas y material de consulta">
+              <span>📖 Guía del libro</span>
+            </button>
 
             <div class="goto-section-box">
               <input type="text" id="input-goto-section" class="goto-input" placeholder="Nº Sección (ej: 40)" autocomplete="off">
@@ -848,6 +851,23 @@
         </ul>
       </div>
     </aside>
+
+    <!-- Modal: Introducción, reglas y material complementario -->
+    <div id="modal-supplements" class="modal supplements-modal">
+      <div class="modal-content supplements-modal-content">
+        <div class="modal-header">
+          <div>
+            <span class="section-subtitle-tag">CONTENIDO DEL LIBRO</span>
+            <h2>Guía y material complementario</h2>
+          </div>
+          <button id="btn-close-supplements" class="btn-icon" aria-label="Cerrar material complementario">✕</button>
+        </div>
+        <div class="supplements-layout">
+          <nav id="supplements-navigation" class="supplements-navigation" aria-label="Índice del material complementario"></nav>
+          <article id="supplements-content" class="supplements-content"></article>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal: Autenticación / Login / Registro -->
     <div id="modal-auth" class="modal">
@@ -1124,6 +1144,16 @@
               <label for="pre-import-cover-file" style="font-weight:600;">Portada del Libro 🖼️ (Opcional)</label>
               <input type="file" id="pre-import-cover-file" accept="image/*" class="text-input" style="width:100%; padding: 0.4rem;">
               <small style="color:var(--text-muted);">Formatos aceptados: .jpg, .png, .webp. Si se selecciona, reemplazará la portada actual.</small>
+            </div>
+
+            <div id="pre-import-generate-audios-container" style="margin-top: 0.75rem;">
+              <label style="display:flex; align-items:flex-start; gap:0.7rem; cursor:pointer; background:rgba(217,119,6,0.12); border:1px solid rgba(217,119,6,0.4); padding:0.75rem 0.85rem; border-radius:6px; font-size:0.9rem;">
+                <input type="checkbox" id="pre-import-generate-audios-check" style="width:1.1rem; height:1.1rem; margin-top:0.1rem; accent-color:var(--accent-gold);">
+                <span>
+                  🎙️ <strong>Generar los audios durante la importación</strong><br>
+                  <small style="color:var(--text-muted);">Déjalo desmarcado para importar rápidamente. Podrás generarlos después desde la edición del libro.</small>
+                </span>
+              </label>
             </div>
 
             <div id="pre-import-regenerate-container" class="hidden" style="margin-top: 0.75rem;">

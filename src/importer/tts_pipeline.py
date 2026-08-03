@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 from src.tts import TTSManager
 
@@ -61,3 +61,42 @@ def generate_nodes_audio(
                         tts_manager.generate_audio_by_narrator(opt_text, audio_opt_path, narrator_info, language=language)
                     else:
                         tts_manager.generate_audio(opt_text, audio_opt_path, language=language, tts_engine=tts_engine, voice_name=voice_name)
+
+
+def generate_supplements_audio(
+    tts_manager: TTSManager,
+    supplements: List[Dict[str, Any]],
+    output_dir: Path,
+    language: str = "es",
+    tts_engine: str = "auto",
+    voice_name: Optional[str] = None,
+    narrator_id: Optional[int] = None,
+):
+    """Generate independent audio tracks for non-narrative book material."""
+    if not supplements:
+        return
+    narrator_info = None
+    if narrator_id:
+        try:
+            from src.db import Database
+            narrator_info = Database().get_narrator_by_id(narrator_id)
+        except Exception as e:
+            logger.warning(f"Could not fetch narrator #{narrator_id} for supplements: {e}")
+
+    for item in supplements:
+        relative_audio = item.get("audio")
+        text = item.get("text", "").strip()
+        if not relative_audio or not text:
+            continue
+        audio_path = output_dir / relative_audio
+        audio_path.parent.mkdir(parents=True, exist_ok=True)
+        if audio_path.exists():
+            continue
+        spoken_text = "\n\n".join(filter(None, [item.get("title"), text]))
+        if narrator_info:
+            tts_manager.generate_audio_by_narrator(spoken_text, audio_path, narrator_info, language=language)
+        else:
+            tts_manager.generate_audio(
+                spoken_text, audio_path, language=language,
+                tts_engine=tts_engine, voice_name=voice_name,
+            )

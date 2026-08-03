@@ -35,6 +35,7 @@ def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict
         "display_number": node.get("display_number"),
         "title": node.get("title"),
         "text": node.get("text"),
+        "text_html": node.get("text_html"),
         "images": images_urls,
         "audio_url": audio_url,
         "audio_options_url": audio_options_url,

@@ -84,7 +84,7 @@ class AdminConfirmBookImportRequest(BaseModel):
     voice_name: str = "default"
     start_node: str = "sec_001"
     tier_id: int = 1
-    generate_audios: bool = True
+    generate_audios: bool = False
 
 class AdminNarratorCreateRequest(BaseModel):
     name: str

@@ -4,6 +4,7 @@ import json
 import zipfile
 import shutil
 import logging
+from html import escape
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
@@ -18,8 +19,133 @@ from src.importer.epub_parser import (
 )
 from src.importer.ending_detector import detect_ending_nodes
 from src.importer.tts_pipeline import generate_nodes_audio
+from src.importer.tts_pipeline import generate_supplements_audio
 
 logger = logging.getLogger("Importer")
+
+REFERENCE_TERMS = (
+    "regla", "cómo jugar", "como jugar", "how to play", "glosario", "glossary",
+    "tabla", "chart", "ficha", "character sheet", "combate", "combat",
+    "disciplina", "equipment", "equipo", "magia", "magic",
+)
+FRONT_MATTER_TERMS = (
+    "introducción", "introduccion", "prólogo", "prologo", "sinopsis", "dedicatoria",
+    "preliminar", "preliminares", "atención", "atencion", "créditos", "creditos",
+    "presentación", "presentacion",
+)
+
+
+def _local_name(element) -> str:
+    """Return an HTML/XML tag name without a namespace prefix."""
+    return (getattr(element, "name", "") or "").rsplit(":", 1)[-1].lower()
+
+
+def _find_local(soup, names):
+    names = {name.lower() for name in names}
+    return next((element for element in soup.find_all(True) if _local_name(element) in names), None)
+
+
+def _find_all_local(soup, names):
+    names = {name.lower() for name in names}
+    return [element for element in soup.find_all(True) if _local_name(element) in names]
+
+
+RICH_INLINE_TAGS = {"strong", "b", "em", "i", "u", "mark", "sub", "sup", "small"}
+
+
+def _serialize_rich_text(element) -> str:
+    """Preserve safe inline formatting while stripping source-specific markup/attrs."""
+    output = []
+    for child in element.children:
+        if not getattr(child, "name", None):
+            output.append(escape(str(child)))
+            continue
+        tag = _local_name(child)
+        if tag == "br":
+            output.append("<br>")
+        else:
+            inner = _serialize_rich_text(child)
+            if tag in RICH_INLINE_TAGS:
+                normalized = "strong" if tag == "b" else "em" if tag == "i" else tag
+                output.append(f"<{normalized}>{inner}</{normalized}>")
+            else:
+                output.append(inner)
+    return "".join(output).strip()
+
+
+def _clean_epub_title(title: Optional[str]) -> Optional[str]:
+    if not title:
+        return title
+    return re.sub(r"\s*\.(?:pdf|epub)$", "", title.strip(), flags=re.IGNORECASE)
+
+def build_epub_supplements(z_file, ordered_files, story_files, image_map):
+    """Convert non-story XHTML resources into ordered supplemental material."""
+    if not story_files:
+        return []
+    first_story = ordered_files.index(story_files[0])
+    last_story = ordered_files.index(story_files[-1])
+    counters = {"front_matter": 0, "reference": 0, "back_matter": 0}
+    supplements = []
+
+    for index, filename in enumerate(ordered_files):
+        if filename in story_files:
+            continue
+        base_name = Path(filename).name.lower()
+        if base_name in ("cubierta.xhtml", "titulo.xhtml"):
+            continue
+        soup = BeautifulSoup(z_file.read(filename).decode("utf-8", errors="ignore"), "html.parser")
+        title = next((
+            element.get_text(" ", strip=True)
+            for element in _find_all_local(soup, ["h1", "h2", "h3", "title"])
+            if element.get_text(" ", strip=True)
+        ), Path(filename).stem.replace("_", " ").title())
+        text_parts = []
+        rich_parts = []
+        for element in _find_all_local(soup, ["p", "li", "blockquote"]):
+            text = element.get_text(" ", strip=True)
+            if text:
+                text_parts.append(text)
+                rich_parts.append(f"<p>{_serialize_rich_text(element)}</p>")
+        text = "\n\n".join(text_parts)
+        images = []
+        for image in _find_all_local(soup, ["img"]):
+            image_name = Path(image.get("src", "")).name
+            if image_name in image_map and image_map[image_name] not in images:
+                images.append(image_map[image_name])
+        if len(text) < 40 and not images:
+            continue
+
+        if base_name in ("preliminares.xhtml", "preliminares.html") or any(term in title.lower() for term in FRONT_MATTER_TERMS):
+            category = "front_matter"
+        elif base_name in ("finales.xhtml", "finales.html"):
+            category = "back_matter"
+        elif any(term in title.lower() for term in REFERENCE_TERMS):
+            category = "reference"
+        elif index < first_story:
+            category = "front_matter"
+        elif index > last_story:
+            category = "back_matter"
+        else:
+            category = "reference"
+        counters[category] += 1
+        prefix = {"front_matter": "front", "reference": "reference", "back_matter": "back"}[category]
+        item_id = f"{prefix}_{counters[category]:03d}"
+        supplements.append({
+            "id": item_id,
+            "order": len(supplements) + 1,
+            "category": category,
+            "title": title,
+            "text": text,
+            "text_html": "\n".join(rich_parts),
+            "images": images,
+            "audio": f"audios/supplements/{item_id}.mp3",
+            "source_file": Path(filename).name,
+        })
+    category_order = {"front_matter": 0, "reference": 1, "back_matter": 2}
+    supplements.sort(key=lambda item: (category_order.get(item["category"], 9), item["order"]))
+    for order, item in enumerate(supplements, 1):
+        item["order"] = order
+    return supplements
 
 class EPUBImporter:
     def __init__(self, epub_path: Path, tts_manager: Optional[TTSManager] = None):
@@ -40,7 +166,7 @@ class EPUBImporter:
                     soup_opf = BeautifulSoup(z.read(opf_file).decode('utf-8', errors='ignore'), 'html.parser')
                     t_elem = soup_opf.find(['dc:title', 'title'])
                     if t_elem and t_elem.text.strip():
-                        title = t_elem.text.strip()
+                        title = _clean_epub_title(t_elem.text.strip())
                     a_elem = soup_opf.find(['dc:creator', 'creator'])
                     if a_elem and a_elem.text.strip():
                         author = a_elem.text.strip()
@@ -51,13 +177,18 @@ class EPUBImporter:
                     pass
 
             html_files = [f for f in namelist if f.endswith(('.html', '.xhtml'))]
+            normalized_sections = sorted(
+                [f for f in html_files if "/secciones/" in f.lower() and re.search(r"seccion-\d+", Path(f).stem, re.IGNORECASE)],
+                key=natural_file_sort_key,
+            )
+            first_section = extract_number_from_filename(Path(normalized_sections[0]).name) if normalized_sections else 1
 
             return {
                 "suggested_title": title,
                 "suggested_author": author,
                 "suggested_language": language,
-                "suggested_start_node": "sec_001",
-                "total_sections": len(html_files)
+                "suggested_start_node": f"sec_{first_section:03d}",
+                "total_sections": len(normalized_sections) if normalized_sections else len(html_files)
             }
 
     def process(
@@ -87,7 +218,7 @@ class EPUBImporter:
             opf_file = next((name for name in namelist if name.endswith('.opf')), None)
             
             meta = parse_opf_metadata(z, opf_file) if opf_file else {}
-            title = meta.get("title") or self.epub_path.stem
+            title = _clean_epub_title(meta.get("title")) or self.epub_path.stem
             author = meta.get("author")
             publisher = meta.get("publisher")
             year = meta.get("year")
@@ -128,7 +259,7 @@ class EPUBImporter:
                 base_name = Path(fname).name
                 content = z.read(fname).decode('utf-8', errors='ignore')
                 soup = BeautifulSoup(content, 'html.parser')
-                h1 = soup.find('h1')
+                h1 = _find_local(soup, ['h1', 'h2', 'h3'])
                 h1_text = h1.get_text().strip() if h1 else ""
 
                 if h1_text.isdigit():
@@ -148,10 +279,31 @@ class EPUBImporter:
 
             # Step 2: Build Nodes
             nodes = {}
-            valid_xhtml_files = [
-                f for f in xhtml_files 
-                if Path(f).name.lower() not in ('cubierta.xhtml', 'info.xhtml', 'sinopsis.xhtml', 'titulo.xhtml')
+            content_xhtml_files = [
+                f for f in xhtml_files
+                if Path(f).name.lower() not in ('cubierta.xhtml', 'titulo.xhtml', 'nav.xhtml')
             ]
+            normalized_sections = [
+                f for f in content_xhtml_files
+                if "/secciones/" in f.lower() and re.search(r"seccion-\d+", Path(f).stem, re.IGNORECASE)
+            ]
+            is_normalized = bool(normalized_sections)
+            valid_xhtml_files = sorted(normalized_sections, key=natural_file_sort_key) if is_normalized else []
+            if not is_normalized:
+                for filename in content_xhtml_files:
+                    content = z.read(filename).decode('utf-8', errors='ignore')
+                    soup = BeautifulSoup(content, 'html.parser')
+                    heading = _find_local(soup, ['h1', 'h2', 'h3'])
+                    heading_text = heading.get_text(" ", strip=True) if heading else ""
+                    if re.fullmatch(r"\d{1,4}(?:f\d+)?", heading_text, re.IGNORECASE):
+                        valid_xhtml_files.append(filename)
+            # Preserve compatibility with EPUBs whose story files do not use
+            # numeric headings or filenames.
+            if not valid_xhtml_files:
+                valid_xhtml_files = content_xhtml_files
+            supplements = build_epub_supplements(
+                z, content_xhtml_files, valid_xhtml_files, image_map
+            )
 
             for fname in valid_xhtml_files:
                 base_name = Path(fname).name
@@ -159,22 +311,24 @@ class EPUBImporter:
                 content = z.read(fname).decode('utf-8', errors='ignore')
                 soup = BeautifulSoup(content, 'html.parser')
 
-                h1 = soup.find('h1')
+                h1 = _find_local(soup, ['h1', 'h2', 'h3'])
                 display_num = node_id_to_num.get(node_id)
                 heading_title = h1.get_text().strip() if h1 else (f"Página {display_num}" if display_num else base_name)
 
                 paragraphs = []
-                for p in soup.find_all('p'):
+                rich_paragraphs = []
+                for p in _find_all_local(soup, ['p']):
                     if p.get('class') and 'cubierta' in p.get('class'):
                         continue
                     text_p = p.get_text().strip()
                     if text_p:
                         paragraphs.append(text_p)
+                        rich_paragraphs.append(f"<p>{_serialize_rich_text(p)}</p>")
 
                 full_text = "\n\n".join(paragraphs)
 
                 node_images = []
-                for img in soup.find_all('img'):
+                for img in _find_all_local(soup, ['img']):
                     src = img.get('src', '')
                     img_name = Path(src).name
                     if img_name in image_map:
@@ -182,7 +336,7 @@ class EPUBImporter:
 
                 choices = []
                 choice_idx = 1
-                for a in soup.find_all('a'):
+                for a in _find_all_local(soup, ['a']):
                     href = a.get('href', '')
                     if not href or href.startswith('#') or 'notas' in href:
                         continue
@@ -207,6 +361,7 @@ class EPUBImporter:
                     "display_number": display_num,
                     "title": heading_title,
                     "text": full_text,
+                    "text_html": "\n".join(rich_paragraphs),
                     "images": node_images,
                     "audio": audio_rel_path,
                     "audio_options": audio_options_rel_path,
@@ -215,22 +370,23 @@ class EPUBImporter:
                 nodes[node_id] = node_data
 
             # Add sequential linear continuation choice for pages with 0 choices
-            for i in range(len(valid_xhtml_files) - 1):
-                cur_file = valid_xhtml_files[i]
-                next_file = valid_xhtml_files[i + 1]
-                cur_id = file_to_node_id.get(cur_file)
-                next_id = file_to_node_id.get(next_file)
+            if not is_normalized:
+                for i in range(len(valid_xhtml_files) - 1):
+                    cur_file = valid_xhtml_files[i]
+                    next_file = valid_xhtml_files[i + 1]
+                    cur_id = file_to_node_id.get(cur_file)
+                    next_id = file_to_node_id.get(next_file)
 
-                if cur_id and next_id and cur_id in nodes:
-                    if len(nodes[cur_id]["choices"]) == 0:
-                        next_title = nodes[next_id].get("title") or ""
-                        nodes[cur_id]["choices"].append({
-                            "choice_id": 1,
-                            "text": f"Continuar leyendo ({next_title})" if next_title else "Continuar a la siguiente página",
-                            "target_node": next_id,
-                            "target_display_number": nodes[next_id].get("display_number")
-                        })
-                        nodes[cur_id]["audio_options"] = f"audios/{cur_id}_options.mp3"
+                    if cur_id and next_id and cur_id in nodes:
+                        if len(nodes[cur_id]["choices"]) == 0:
+                            next_title = nodes[next_id].get("title") or ""
+                            nodes[cur_id]["choices"].append({
+                                "choice_id": 1,
+                                "text": f"Continuar leyendo ({next_title})" if next_title else "Continuar a la siguiente página",
+                                "target_node": next_id,
+                                "target_display_number": nodes[next_id].get("display_number")
+                            })
+                            nodes[cur_id]["audio_options"] = f"audios/{cur_id}_options.mp3"
 
             if valid_xhtml_files:
                 start_node_id = file_to_node_id[valid_xhtml_files[0]]
@@ -281,11 +437,18 @@ class EPUBImporter:
             final_title = title_override or title
             final_author = author_override or author or "Desconocido"
             final_language = (language_override or language or "es").lower()[:2]
-            start_node_id = start_node_override or start_node_id
+            if start_node_override and start_node_override in nodes:
+                start_node_id = start_node_override
+            elif start_node_override and start_node_override not in nodes:
+                logger.warning(
+                    "Requested start node '%s' does not exist; keeping detected start node '%s'.",
+                    start_node_override, start_node_id,
+                )
 
             final_narrator_id = narrator_id or (2 if final_language == "en" else 1)
 
             book_json_data = {
+                "ir_version": "1.1",
                 "book_id": book_id,
                 "title": final_title,
                 "author": final_author,
@@ -309,6 +472,7 @@ class EPUBImporter:
                     "combat": False,
                     "variables": False
                 },
+                "supplements": supplements,
                 "nodes": nodes
             }
 
@@ -330,5 +494,10 @@ class EPUBImporter:
 
             if generate_audios:
                 generate_nodes_audio(self.tts_manager, nodes, output_dir, language=final_language, tts_engine=tts_engine, voice_name=voice_name, narrator_id=final_narrator_id)
+                generate_supplements_audio(
+                    self.tts_manager, supplements, output_dir,
+                    language=final_language, tts_engine=tts_engine,
+                    voice_name=voice_name, narrator_id=final_narrator_id,
+                )
 
             return book_json_path

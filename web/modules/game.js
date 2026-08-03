@@ -7,3 +7,4 @@ export { showLandingView, showHomeView, showFullLibraryView, showAdminView, show
 export { startGame, submitChoice, jumpToSection, goBackHistory, updateBackHistoryUI, renderGameState, renderChoices } from "./game/engine.js";
 export { initVoiceControls, triggerAutoVoiceListening, toggleVoiceRecording, updateVoiceUI, uploadAndTranscribeAudio } from "./game/voice.js";
 export { toggleHistoryDrawer, renderHistoryDrawer } from "./game/history.js";
+export { initSupplementControls, loadBookSupplements, openSupplements, closeSupplements } from "./game/supplements.js";
