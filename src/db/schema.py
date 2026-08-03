@@ -177,11 +177,21 @@ class SchemaManager(BaseRepository):
                     total_sections INTEGER DEFAULT 1,
                     start_node TEXT DEFAULT 'sec_001',
                     narrator_id INTEGER DEFAULT 1,
+                    tier_id INTEGER NOT NULL DEFAULT 1,
+                    is_visible INTEGER NOT NULL DEFAULT 1,
                     rating REAL DEFAULT 4.8,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (narrator_id) REFERENCES narrators(narrator_id) ON DELETE SET NULL
                 )
             """)
+
+            # Migrate databases created before book access-control fields existed.
+            cursor.execute("PRAGMA table_info(books)")
+            book_columns = {row["name"] for row in cursor.fetchall()}
+            if "tier_id" not in book_columns:
+                cursor.execute("ALTER TABLE books ADD COLUMN tier_id INTEGER NOT NULL DEFAULT 1")
+            if "is_visible" not in book_columns:
+                cursor.execute("ALTER TABLE books ADD COLUMN is_visible INTEGER NOT NULL DEFAULT 1")
 
             # 7. Subscription Tiers table
             cursor.execute("""
