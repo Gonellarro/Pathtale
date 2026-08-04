@@ -1,5 +1,108 @@
 import { state, authFetch, escapeHtml, API_BASE } from "../state.js";
 
+let activeBookForInfo = null;
+
+function closeBookInfoModal() {
+  document.getElementById("modal-book-info")?.classList.remove("open");
+}
+
+function renderBookRatingStars(value = 0) {
+  const stars = document.getElementById("book-rating-stars");
+  if (!stars) return;
+  stars.dataset.value = String(value);
+  stars.innerHTML = [1, 2, 3, 4, 5].map(n => `
+    <button type="button" class="book-rating-star ${n <= value ? "selected" : ""}" data-rating="${n}" aria-label="${n} de 5 estrellas" aria-checked="${n === value}">★</button>
+  `).join("");
+  stars.querySelectorAll(".book-rating-star").forEach(button => {
+    button.addEventListener("mouseenter", () => {
+      const hovered = Number(button.dataset.rating);
+      stars.querySelectorAll(".book-rating-star").forEach((star, index) => {
+        star.classList.toggle("hovered", index < hovered);
+      });
+    });
+    button.addEventListener("click", async () => {
+      if (!activeBookForInfo) return;
+      const rating = Number(button.dataset.rating);
+      try {
+        const res = await authFetch(`${API_BASE}/api/books/${encodeURIComponent(activeBookForInfo.book_id)}/rating`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rating })
+        });
+        if (!res.ok) throw new Error(`rating ${res.status}`);
+        renderBookRatingStars(rating);
+        const status = document.getElementById("book-rating-status");
+        if (status) status.textContent = "Valoración guardada";
+      } catch (err) {
+        console.error("Error guardando valoración:", err);
+        const status = document.getElementById("book-rating-status");
+        if (status) status.textContent = "No se pudo guardar la valoración";
+      }
+    });
+  });
+  stars.addEventListener("mouseleave", () => {
+    const selected = Number(stars.dataset.value || 0);
+    stars.querySelectorAll(".book-rating-star").forEach((star, index) => {
+      star.classList.toggle("hovered", index < selected);
+    });
+  });
+}
+
+async function openBookInfoModal(book) {
+  if (!book) return;
+  activeBookForInfo = book;
+  const modal = document.getElementById("modal-book-info");
+  const cover = document.getElementById("book-info-cover");
+  const title = document.getElementById("book-info-title");
+  const author = document.getElementById("book-info-author");
+  const meta = document.getElementById("book-info-meta");
+  const description = document.getElementById("book-info-description");
+  const status = document.getElementById("book-rating-status");
+  if (title) title.textContent = book.title || "Información del libro";
+  if (author) author.textContent = book.author ? `Por ${book.author}` : "";
+  if (meta) {
+    const characteristics = [book.year, book.language, book.genre, book.series, book.narrator, book.total_sections ? `${book.total_sections} secciones` : null, book.estimated_duration].filter(Boolean);
+    meta.innerHTML = characteristics.map(item => `<span>${escapeHtml(String(item))}</span>`).join("");
+  }
+  if (description) description.textContent = book.description || "Sin descripción disponible.";
+  if (cover) {
+    cover.src = book.cover_image_url || "";
+    cover.alt = book.title || "Portada del libro";
+    cover.classList.toggle("hidden", !book.cover_image_url);
+  }
+  if (status) status.textContent = "";
+  renderBookRatingStars(0);
+  modal?.classList.add("open");
+  try {
+    const res = await authFetch(`${API_BASE}/api/books/${encodeURIComponent(book.book_id)}/rating`);
+    if (res.ok) {
+      const data = await res.json();
+      renderBookRatingStars(data.rating?.rating || 0);
+    }
+  } catch (err) {
+    console.warn("No se pudo cargar la valoración:", err);
+  }
+}
+
+function bindBookInfoModal(container, books) {
+  container.querySelectorAll("[data-book-info-id]").forEach(titleEl => {
+    titleEl.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const book = books.find(item => item.book_id === titleEl.dataset.bookInfoId);
+      openBookInfoModal(book);
+    });
+  });
+  const modal = document.getElementById("modal-book-info");
+  const close = document.getElementById("btn-close-book-info");
+  if (modal && !modal.dataset.bound) {
+    modal.dataset.bound = "true";
+    close?.addEventListener("click", closeBookInfoModal);
+    modal.addEventListener("click", event => {
+      if (event.target === modal) closeBookInfoModal();
+    });
+  }
+}
+
 export async function loadFullLibrary(startGameFn) {
   const container = document.getElementById("full-library-grid");
   const countLbl = document.getElementById("library-count");
@@ -115,6 +218,7 @@ export function renderFullLibrary(books, startGameFn) {
           <tr>
             <th>Portada</th>
             <th class="sortable-th" data-sort="title">Título ${getSortIcon('title')}</th>
+            <th>Valoración</th>
             <th class="sortable-th" data-sort="author">Autor ${getSortIcon('author')}</th>
             <th class="sortable-th" data-sort="genre">Género / Serie ${getSortIcon('genre')}</th>
             <th class="sortable-th" data-sort="narrator">Narrador ${getSortIcon('narrator')}</th>
@@ -128,6 +232,7 @@ export function renderFullLibrary(books, startGameFn) {
             const seriesText = b.series ? `${b.series}${b.volume ? ' #' + b.volume : ''}` : (b.genre || "-");
             const isLocked = b.is_locked;
             const cleanNarrator = escapeHtml((b.narrator || "DAVEFX").replace(/\s*\(.*?\)/g, "").trim());
+            const ratingStars = b.rating != null ? "★".repeat(Math.max(0, Math.min(5, Math.floor(Number(b.rating))))) : "";
             return `
               <tr class="${isLocked ? 'row-locked' : ''}">
                 <td class="td-thumb">
@@ -136,9 +241,10 @@ export function renderFullLibrary(books, startGameFn) {
                     : `<span style="font-size:1.2rem">📜</span>`}
                 </td>
                 <td class="td-title">
-                  <strong>${langFlag} ${escapeHtml(b.title)}</strong>
+                  <strong data-book-info-id="${escapeHtml(b.book_id)}" class="book-info-title-trigger">${langFlag} ${escapeHtml(b.title)}</strong>
                   ${isLocked ? `<br><span class="admin-badge" style="background:rgba(239, 68, 68, 0.15); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); margin-top:0.2rem; font-size:0.68rem">🔒 ${escapeHtml(b.tier_name)}</span>` : ''}
                 </td>
+                <td class="td-book-rating">${b.rating != null ? ratingStars : "—"}</td>
                 <td class="td-author">${escapeHtml(b.author || "Desconocido")}</td>
                 <td class="td-genre">${escapeHtml(seriesText)}</td>
                 <td class="td-narrator" style="font-size:0.82rem; color:var(--text-primary);">${cleanNarrator}</td>
@@ -179,6 +285,7 @@ export function renderFullLibrary(books, startGameFn) {
         sortTableBooks(state.allLibraryBooks, field, startGameFn);
       };
     });
+    bindBookInfoModal(container, books);
   } else {
     container.className = "library-grid";
     container.innerHTML = books.map(b => {
@@ -196,8 +303,9 @@ export function renderFullLibrary(books, startGameFn) {
             ${isLocked ? `<span class="card-status-badge tier-locked-badge" style="background:#ef4444; color:#fff">🔒 ${escapeHtml(b.tier_name)}</span>` : ''}
           </div>
           <div class="book-info">
-            <h3 class="book-title">${langFlag} ${escapeHtml(b.title)}</h3>
+            <h3 class="book-title book-info-title-trigger" data-book-info-id="${escapeHtml(b.book_id)}">${langFlag} ${escapeHtml(b.title)}</h3>
             <p class="book-author">${escapeHtml(b.author)}${b.year ? ' • ' + b.year : ''}</p>
+            <p class="book-library-rating">${b.rating != null ? "★".repeat(Math.max(0, Math.min(5, Math.floor(Number(b.rating))))) : "Sin valoraciones"}</p>
             <p class="book-narrator" style="font-size:0.8rem; color:var(--accent-gold); margin-top:0.35rem; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.3rem;"><svg style="width:13px;height:13px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg> <span>${escapeHtml(b.narrator || "DAVEFX")}</span></p>
             ${seriesText ? `<p class="book-series" style="margin-top:0.25rem;">${seriesText}</p>` : ''}
             <p class="book-desc">${escapeHtml(b.description || "Aventura interactiva.")}</p>
@@ -233,6 +341,7 @@ export function renderFullLibrary(books, startGameFn) {
         </div>
       `;
     }).join("");
+    bindBookInfoModal(container, books);
   }
 
   container.querySelectorAll("[data-action]").forEach(btn => {

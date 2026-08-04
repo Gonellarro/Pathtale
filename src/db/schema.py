@@ -226,6 +226,18 @@ class SchemaManager(BaseRepository):
                 )
             """)
 
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_book_ratings (
+                    user_id INTEGER NOT NULL,
+                    book_id TEXT NOT NULL,
+                    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, book_id),
+                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                    FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE
+                )
+            """)
+
             # 9. Reading Logs table (Audit & Analytics)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS reading_logs (

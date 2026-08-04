@@ -1,12 +1,16 @@
 import random
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Header
+from pydantic import BaseModel
 from fastapi.responses import FileResponse
 
 from config import BOOKS_DIR
 from src.dependencies import engine, resolve_user_id
 
 router = APIRouter(prefix="/api", tags=["Catalog"])
+
+class BookRatingRequest(BaseModel):
+    rating: int
 
 
 def _book_asset_url(book_id: str, path: Optional[str]) -> Optional[str]:
@@ -162,7 +166,7 @@ def list_books(
             "tier_name": book_tier["name"],
             "tier_level": book_tier["level"],
             "is_locked": is_locked,
-            "rating": 4.8,
+            "rating": engine.db.get_book_rating_summary(b_id).get("average"),
             "created_at": db_book.get("created_at"),
             "has_supplements": bool(full_data.get("supplements")),
             "supplement_count": len(full_data.get("supplements", [])),
@@ -199,6 +203,22 @@ def get_book_details(book_id: str):
         "supplement_count": len(b_data.get("supplements", [])),
     }
 
+
+@router.get("/books/{book_id}/rating")
+def get_book_rating(book_id: str, authorization: Optional[str] = Header(None)):
+    user_id = resolve_user_id(authorization)
+    if book_id not in engine.books:
+        raise HTTPException(status_code=404, detail="Libro no encontrado")
+    return {"rating": engine.db.get_user_book_rating(user_id, book_id)}
+
+@router.put("/books/{book_id}/rating")
+def set_book_rating(book_id: str, req: BookRatingRequest, authorization: Optional[str] = Header(None)):
+    user_id = resolve_user_id(authorization)
+    if book_id not in engine.books:
+        raise HTTPException(status_code=404, detail="Libro no encontrado")
+    if req.rating < 1 or req.rating > 5:
+        raise HTTPException(status_code=422, detail="La valoración debe estar entre 1 y 5 estrellas")
+    return {"rating": engine.db.set_user_book_rating(user_id, book_id, req.rating)}
 
 @router.get("/books/{book_id}/supplements")
 def get_book_supplements(book_id: str, authorization: Optional[str] = Header(None)):

@@ -1,38 +1,6 @@
 import { state, authFetch, escapeHtml, API_BASE } from "../state.js";
 
-export async function loadCategoryTags(startGameFn) {
-  const filterBar = document.getElementById("filter-tags-bar");
-  if (!filterBar) return;
-
-  try {
-    const res = await authFetch(`${API_BASE}/api/tags`);
-    const data = await res.json();
-    const tags = data.tags || [];
-
-    const defaultPills = `
-      <button class="tag-pill active" data-tag="Todos">TODOS</button>
-      <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
-    `;
-
-    const tagPills = tags.map(t => `<button class="tag-pill" data-tag="${escapeHtml(t)}">${escapeHtml(t.toUpperCase())}</button>`).join("");
-    filterBar.innerHTML = defaultPills + tagPills;
-
-    filterBar.querySelectorAll(".tag-pill").forEach(btn => {
-      btn.onclick = () => {
-        filterBar.querySelectorAll(".tag-pill").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        const tag = btn.getAttribute("data-tag");
-        loadFeaturedLibrary(startGameFn, tag, 3);
-      };
-    });
-  } catch (err) {
-    console.warn("Could not load category tags:", err);
-  }
-}
-
 export async function loadFeaturedLibrary(startGameFn, tag = "Todos", limit = 3) {
-  loadCategoryTags(startGameFn);
-
   const container = document.getElementById("home-featured-grid");
   if (container) {
     container.innerHTML = `
@@ -84,7 +52,8 @@ export function renderFeaturedGrid(books, container, startGameFn) {
       statusClass = "completado";
     }
 
-    const ratingVal = b.rating || 4.8;
+    const ratingVal = b.rating;
+    const ratingStars = ratingVal != null ? "★".repeat(Math.max(0, Math.min(5, Math.floor(Number(ratingVal))))) : "";
     const playSvg = `<svg style="width:20px;height:20px;fill:currentColor;margin-left:2px;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
     const lockSvg = `<svg style="width:18px;height:18px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
 
@@ -103,8 +72,7 @@ export function renderFeaturedGrid(books, container, startGameFn) {
         <p class="portrait-genre">${escapeHtml(b.genre || "Ficción Interactiva")}</p>
         <h3 class="portrait-title">${escapeHtml(b.title)}</h3>
         <div class="portrait-rating">
-          <span class="portrait-rating-stars">★★★★★</span>
-          <span class="portrait-rating-val">${ratingVal}</span>
+          <span class="portrait-rating-stars">${ratingStars || "—"}</span>
         </div>
       </div>
     </div>

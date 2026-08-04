@@ -98,6 +98,15 @@ class Database(BaseRepository):
     def update_book_admin(self, *args, **kwargs):
         return self.books.update_book_admin(*args, **kwargs)
 
+    def get_user_book_rating(self, *args, **kwargs):
+        return self.books.get_user_book_rating(*args, **kwargs)
+
+    def set_user_book_rating(self, *args, **kwargs):
+        return self.books.set_user_book_rating(*args, **kwargs)
+
+    def get_book_rating_summary(self, *args, **kwargs):
+        return self.books.get_book_rating_summary(*args, **kwargs)
+
     def delete_book_admin(self, *args, **kwargs):
         return self.books.delete_book_admin(*args, **kwargs)
 

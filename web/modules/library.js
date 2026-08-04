@@ -4,5 +4,5 @@
  */
 
 export { checkLastActiveGame, loadInProgressSection, loadNarratorsSection } from "./library/widgets.js";
-export { loadCategoryTags, loadFeaturedLibrary, renderFeaturedGrid } from "./library/filters.js";
+export { loadFeaturedLibrary, renderFeaturedGrid } from "./library/filters.js";
 export { loadFullLibrary, setLibraryViewMode, sortTableBooks, renderFullLibrary, confirmRestartGame } from "./library/catalog.js";

@@ -112,14 +112,7 @@
                 <h2 class="section-title">ÚLTIMAS ADQUISICIONES</h2>
               </div>
 
-              <!-- Filter Tag Pills -->
-              <div id="filter-tags-bar" class="tags-filter-bar">
-                <button class="tag-pill active" data-tag="Todos">TODOS</button>
-                <button class="tag-pill" data-tag="EN CURSO">EN CURSO</button>
-                <!-- Dynamic category/series tags loaded via JS -->
-              </div>
-
-              <!-- Featured 6 Random Books Grid -->
+              <!-- Latest acquisitions grid -->
               <div class="featured-books-grid" id="home-featured-grid">
                 <!-- Rendered via JS -->
               </div>
@@ -848,6 +841,29 @@
         </ul>
       </div>
     </aside>
+
+    <!-- Modal: Información y valoración del libro -->
+    <div id="modal-book-info" class="modal">
+      <div class="modal-content book-info-modal-content">
+        <div class="modal-header">
+          <h2 id="book-info-title">Información del libro</h2>
+          <button id="btn-close-book-info" class="btn-icon" aria-label="Cerrar información">✕</button>
+        </div>
+        <div class="book-info-modal-body">
+          <img id="book-info-cover" class="book-info-cover" alt="">
+          <div class="book-info-details">
+            <p id="book-info-author" class="book-info-author"></p>
+            <p id="book-info-meta" class="book-info-meta"></p>
+            <p id="book-info-description" class="book-info-description"></p>
+          </div>
+        </div>
+        <div class="book-rating-panel">
+          <span>Tu valoración</span>
+          <div id="book-rating-stars" class="book-rating-stars" role="radiogroup" aria-label="Valorar libro"></div>
+          <small id="book-rating-status" class="book-rating-status"></small>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal: Introducción, reglas y material complementario -->
     <div id="modal-supplements" class="modal supplements-modal">

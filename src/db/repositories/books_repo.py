@@ -2,6 +2,34 @@ from typing import Optional, Dict, Any, List
 from src.db.base import BaseRepository
 
 class BooksRepository(BaseRepository):
+    def get_user_book_rating(self, user_id: int, book_id: str):
+        with self.get_connection() as conn:
+            row = conn.execute(
+                "SELECT rating, updated_at FROM user_book_ratings WHERE user_id = ? AND book_id = ?",
+                (user_id, book_id)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def set_user_book_rating(self, user_id: int, book_id: str, rating: int):
+        with self.get_connection() as conn:
+            conn.execute("""
+                INSERT INTO user_book_ratings (user_id, book_id, rating, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id, book_id) DO UPDATE SET
+                    rating = excluded.rating,
+                    updated_at = CURRENT_TIMESTAMP
+            """, (user_id, book_id, rating))
+            conn.commit()
+            return self.get_user_book_rating(user_id, book_id)
+
+    def get_book_rating_summary(self, book_id: str):
+        with self.get_connection() as conn:
+            row = conn.execute(
+                "SELECT ROUND(AVG(rating), 1) AS average, COUNT(*) AS count FROM user_book_ratings WHERE book_id = ?",
+                (book_id,)
+            ).fetchone()
+            return {"average": row["average"], "count": row["count"]} if row else {"average": None, "count": 0}
+
     def upsert_book(self, b: Dict[str, Any]):
         with self.get_connection() as conn:
             cursor = conn.cursor()
