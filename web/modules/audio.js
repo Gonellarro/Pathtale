@@ -7,6 +7,11 @@ import { updateSetting } from "./settings.js";
 
 const audioPlayer = document.getElementById("html-audio-player");
 
+function showAudioDock() {
+  const dock = document.getElementById("global-audio-player");
+  if (dock) dock.classList.remove("hidden");
+}
+
 export function toggleAudioPlay() {
   if (audioPlayer.paused) {
     if (!audioPlayer.src && state.currentGameState) {
@@ -27,6 +32,7 @@ export function playOptionsAudio() {
 }
 
 export function onAudioPlay() {
+  showAudioDock();
   const label = document.getElementById("audio-label");
   const icon = document.getElementById("audio-icon");
   const btn = document.getElementById("btn-audio-play");
@@ -34,6 +40,8 @@ export function onAudioPlay() {
   if (label) {
     label.textContent = (state.currentAudioType === "options") ? "Pausar Opciones" : "Pausar Narración";
   }
+  const context = document.getElementById("audio-context");
+  if (context) context.textContent = state.currentAudioType === "options" ? "OPCIONES" : "NARRACIÓN";
   if (btn) btn.classList.add("playing");
 
   // Re-apply speed on every play event so changing audio src does not reset speed to 1.0

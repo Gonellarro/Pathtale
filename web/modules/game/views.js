@@ -18,14 +18,11 @@ const navBtns = {
   admin: document.getElementById("btn-nav-admin")
 };
 
-const audioPlayer = document.getElementById("html-audio-player");
-
 export function showLandingView() {
   showHomeView();
 }
 
 export function showHomeView() {
-  if (audioPlayer) audioPlayer.pause();
   document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.home) { views.home.classList.add("active"); views.home.classList.remove("hidden"); }
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
@@ -45,7 +42,6 @@ export function showHomeView() {
 }
 
 export function showFullLibraryView() {
-  if (audioPlayer) audioPlayer.pause();
   document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.library) { views.library.classList.add("active"); views.library.classList.remove("hidden"); }
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
@@ -66,7 +62,6 @@ export function showAdminView() {
     return;
   }
 
-  if (audioPlayer) audioPlayer.pause();
   document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.admin) { views.admin.classList.add("active"); views.admin.classList.remove("hidden"); }
 

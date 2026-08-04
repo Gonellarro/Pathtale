@@ -792,21 +792,6 @@
 
             <!-- Audio & Voice Control Panel -->
             <div class="media-controls">
-              <!-- Audio Player -->
-              <div class="audio-player-box">
-                <button id="btn-audio-play" class="btn-media btn-play">
-                  <span id="audio-icon">▶</span>
-                  <span id="audio-label">Escuchar Narración</span>
-                </button>
-                <div class="audio-timeline">
-                  <span id="audio-time-current">0:00</span>
-                  <input type="range" id="audio-slider" min="0" max="100" value="0">
-                  <span id="audio-time-total">0:00</span>
-                </div>
-                <button id="btn-audio-options" class="btn-pill hidden" title="Escuchar u Oír Opciones">🔊 Opciones</button>
-                <button id="btn-audio-speed" class="btn-pill">1.0x</button>
-              </div>
-
               <!-- Voice Input Button -->
               <div class="voice-input-box">
                 <button id="btn-voice-record" class="btn-media btn-voice">
@@ -1242,6 +1227,30 @@
     </div>
   </div>
 
+  <div id="global-audio-player" class="global-audio-player hidden" aria-label="Reproductor de PathTale">
+    <div class="global-player-track">
+      <div id="global-player-artwork" class="global-player-artwork">▶</div>
+      <div class="global-player-info">
+        <span id="audio-context" class="global-player-context">NARRACIÓN</span>
+        <strong id="audio-track-title">Selecciona una aventura</strong>
+        <span id="audio-track-subtitle" class="global-player-subtitle"></span>
+      </div>
+    </div>
+    <div class="global-player-controls">
+      <div class="global-player-timeline">
+        <span id="audio-time-current">0:00</span>
+        <input type="range" id="audio-slider" min="0" max="100" value="0" aria-label="Progreso del audio">
+        <span id="audio-time-total">0:00</span>
+      </div>
+      <div class="global-player-actions">
+        <button id="btn-audio-play" class="player-control-button player-play-button" aria-label="Reproducir o pausar">
+          <span id="audio-icon">▶</span>
+        </button>
+        <button id="btn-audio-options" class="player-secondary-button hidden" title="Escuchar opciones">Opciones</button>
+        <button id="btn-audio-speed" class="player-secondary-button" title="Cambiar velocidad">1.0x</button>
+      </div>
+    </div>
+  </div>
   <audio id="html-audio-player" preload="auto"></audio>
   <script type="module" src="/app.js"></script>
 </body>
