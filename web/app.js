@@ -7,7 +7,7 @@ import { initAuthControls } from "./modules/auth.js";
 import { loadSettings, updateSetting, toggleSettingsModal } from "./modules/settings.js";
 import { 
   toggleAudioPlay, playOptionsAudio, onAudioSeek, toggleAudioSpeed, 
-  updateAudioProgress, onAudioPlay, onAudioPause, onAudioEnded 
+  updateAudioProgress, onAudioPlay, onAudioPause, onAudioEnded, onAudioVolumeChange
 } from "./modules/audio.js";
 import { setLibraryViewMode, confirmRestartGame } from "./modules/library.js";
 import { 
@@ -134,6 +134,14 @@ function initEventListeners() {
 
   const audioSlider = document.getElementById("audio-slider");
   if (audioSlider) audioSlider.addEventListener("input", onAudioSeek);
+
+  const volumeSlider = document.getElementById("audio-volume-slider");
+  if (volumeSlider) {
+    const savedVolume = Number(localStorage.getItem("alj_audio_volume"));
+    if (Number.isFinite(savedVolume)) volumeSlider.value = savedVolume;
+    if (audioPlayer && Number.isFinite(savedVolume)) audioPlayer.volume = savedVolume;
+    volumeSlider.addEventListener("input", onAudioVolumeChange);
+  }
 
   const btnSpeed = document.getElementById("btn-audio-speed");
   if (btnSpeed) btnSpeed.addEventListener("click", toggleAudioSpeed);

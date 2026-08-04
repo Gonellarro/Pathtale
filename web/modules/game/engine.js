@@ -163,12 +163,10 @@ export function renderGameState(gameState) {
   const playerDock = document.getElementById("global-audio-player");
   const playerTitle = document.getElementById("audio-track-title");
   const playerSubtitle = document.getElementById("audio-track-subtitle");
-  const playerContext = document.getElementById("audio-context");
   const playerArtwork = document.getElementById("global-player-artwork");
   if (playerDock) playerDock.classList.remove("hidden");
   if (playerTitle) playerTitle.textContent = gameState.book_title || "Librojuego";
-  if (playerSubtitle) playerSubtitle.textContent = gameState.title || `Sección ${gameState.display_number || ""}`;
-  if (playerContext) playerContext.textContent = state.currentAudioType === "options" ? "OPCIONES" : "NARRACIÓN";
+  if (playerSubtitle) playerSubtitle.textContent = `Sección ${gameState.display_number || ""}`;
   if (playerArtwork) {
     playerArtwork.innerHTML = gameState.images?.[0]
       ? `<img src="${escapeHtml(gameState.images[0])}?v=${Date.now()}" alt="">`

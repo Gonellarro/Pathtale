@@ -40,8 +40,6 @@ export function onAudioPlay() {
   if (label) {
     label.textContent = (state.currentAudioType === "options") ? "Pausar Opciones" : "Pausar Narración";
   }
-  const context = document.getElementById("audio-context");
-  if (context) context.textContent = state.currentAudioType === "options" ? "OPCIONES" : "NARRACIÓN";
   if (btn) btn.classList.add("playing");
 
   // Re-apply speed on every play event so changing audio src does not reset speed to 1.0
@@ -100,6 +98,13 @@ export function onAudioSeek(e) {
   if (!audioPlayer.duration) return;
   const pct = e.target.value;
   audioPlayer.currentTime = (pct / 100) * audioPlayer.duration;
+}
+
+export function onAudioVolumeChange(e) {
+  if (!audioPlayer) return;
+  const volume = Math.max(0, Math.min(1, Number(e.target.value)));
+  audioPlayer.volume = volume;
+  localStorage.setItem("alj_audio_volume", String(volume));
 }
 
 export function toggleAudioSpeed() {
