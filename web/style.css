@@ -1531,6 +1531,231 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
   body:has(.global-audio-player:not(.hidden)) { padding-bottom: 122px; }
 }
 
+/* Figma audiobook player composition -----------------------------------
+ * The game view deliberately remains a composition of small existing
+ * regions (header, story, media, choices).  These rules only provide the
+ * visual language; playback and game state stay in their own modules.
+ */
+#view-game .game-container {
+  width: min(100%, 768px);
+  margin: 0 auto;
+  padding: 0 1.5rem 7rem;
+}
+
+#view-game .game-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: 0 -1.5rem 0;
+  padding: 1rem 1.5rem;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: rgba(12, 9, 6, .96);
+  backdrop-filter: blur(14px);
+  box-shadow: none;
+}
+
+#view-game .game-topbar > .btn-icon {
+  display: none;
+}
+
+#view-game .game-meta h2 {
+  font-family: var(--font-family-serif);
+  font-size: .96rem;
+  letter-spacing: .01em;
+  color: var(--text-main);
+}
+
+#view-game .game-title-row { margin-bottom: .15rem; }
+#view-game .game-meta::after {
+  content: "Aventura interactiva";
+  display: block;
+  color: var(--text-muted);
+  font-size: .72rem;
+}
+
+#view-game .game-progress-badge,
+#view-game #game-progress-badge {
+  width: 3.15rem;
+  height: 3.15rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent-gold);
+  font-family: var(--font-family-serif);
+  font-size: .92rem;
+  background:
+    radial-gradient(circle, var(--bg-primary) 0 67%, transparent 69%),
+    conic-gradient(from -90deg, var(--accent-gold) calc(var(--progress, 0) * 1%), rgba(201, 138, 58, .18) 0);
+}
+
+#view-game .progress-bar-wrap { display: none; }
+
+#view-game .game-controls-bar {
+  margin: 0 -1.5rem;
+  padding: .85rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+#view-game .btn-game-action {
+  padding: .45rem .8rem;
+  border-color: var(--border-color);
+  border-radius: .5rem;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: .75rem;
+  font-weight: 400;
+  box-shadow: none;
+}
+#view-game .btn-game-action:hover:not(:disabled) {
+  color: var(--text-main);
+  border-color: rgba(201, 138, 58, .55);
+  background: rgba(201, 138, 58, .06);
+}
+
+#view-game .story-card {
+  padding: 2.1rem 0 1rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+#view-game .node-image-container { border-radius: .75rem; }
+#view-game .node-header { margin: 0 0 1.9rem; }
+#view-game .node-badge {
+  padding: 0;
+  margin: 0 0 .6rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent-gold);
+  font-family: var(--font-family-serif);
+  font-size: .95rem;
+  letter-spacing: .04em;
+}
+#view-game .node-header h1 {
+  display: block;
+  color: var(--accent-gold);
+  font-family: var(--font-family-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+#view-game .node-text {
+  margin-bottom: 2.5rem;
+  color: var(--text-main);
+  font-size: .96rem;
+  line-height: 1.9;
+}
+#view-game .node-text p {
+  margin: 0 0 1.75rem;
+  text-indent: 1.5em;
+}
+
+#view-game .media-controls {
+  margin: 0 0 2.3rem;
+  padding: 0;
+  align-items: center;
+  border: 0;
+  background: transparent;
+}
+#view-game .btn-voice {
+  width: 4rem;
+  height: 4rem;
+  padding: 0;
+  border: 2px solid rgba(201, 138, 58, .55);
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  color: var(--accent-gold);
+  box-shadow: none;
+}
+#view-game .btn-voice .mic-icon { font-size: 1.35rem; }
+#view-game .voice-input-box { display: flex; flex-direction: column; align-items: center; gap: .55rem; }
+#view-game #voice-label { color: var(--text-muted); font-size: .72rem; }
+
+#view-game .choices-container {
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  background: rgba(26, 18, 8, .72);
+}
+#view-game .choices-heading {
+  margin-bottom: 1.2rem;
+  color: var(--text-muted);
+  font-family: var(--font-family-serif);
+  font-size: .83rem;
+  letter-spacing: .14em;
+  text-align: center;
+  text-transform: uppercase;
+}
+#view-game .choices-list { gap: .75rem; }
+#view-game .btn-choice {
+  padding: 1rem 1.05rem;
+  border-color: var(--border-color);
+  border-radius: .8rem;
+  background: rgba(26, 18, 8, .42);
+  font-size: .86rem;
+  font-weight: 400;
+  box-shadow: none;
+}
+#view-game .btn-choice .choice-num {
+  min-width: 1.7rem;
+  height: 1.7rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(201, 138, 58, .25);
+  border-radius: 50%;
+  color: var(--accent-gold);
+  font-size: .75rem;
+}
+#view-game .btn-choice .choice-arrow { display: none; }
+
+/* Expanded dock treatment from Figma's player card. */
+.global-audio-player {
+  width: min(calc(100% - 2rem), 720px);
+  padding: 1.15rem 1.25rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 1rem 1rem 0 0;
+  background: rgba(26, 18, 8, .97);
+  box-shadow: 0 -16px 36px rgba(0, 0, 0, .35);
+}
+.global-player-waveform {
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  margin-bottom: .8rem;
+}
+.global-player-waveform span {
+  width: 3px;
+  height: calc(7px + (var(--wave, 0) * 1px));
+  border-radius: 999px;
+  background: rgba(201, 138, 58, .28);
+}
+.global-player-waveform span:nth-child(3n) { height: 19px; }
+.global-player-waveform span:nth-child(4n) { height: 12px; }
+.global-player-waveform span:nth-child(5n) { height: 23px; }
+.global-player-waveform span:nth-child(-n+14) { background: var(--accent-gold); }
+.global-player-timeline { gap: .65rem; }
+.global-player-timeline input[type="range"] { height: 4px; }
+.global-player-row { margin-top: .7rem; }
+.global-player-artwork { width: 40px; height: 40px; flex-basis: 40px; border-radius: .55rem; }
+.global-player-info strong { font-family: var(--font-family-serif); font-size: .8rem; }
+.global-player-subtitle { font-size: .68rem; }
+.player-play-button { width: 46px; height: 46px; }
+.global-player-volume input[type="range"] { width: 68px; }
+
+@media (max-width: 600px) {
+  #view-game .game-container { padding-left: 1rem; padding-right: 1rem; }
+  #view-game .game-topbar, #view-game .game-controls-bar { margin-left: -1rem; margin-right: -1rem; padding-left: 1rem; padding-right: 1rem; }
+  #view-game .choices-container { padding: 1rem; }
+}
+
 .audio-player-box {
   display: flex;
   align-items: center;

@@ -173,7 +173,10 @@ export function renderGameState(gameState) {
       : "▶";
   }
   const pct = gameState.progress_percent || 0;
-  if (progBadge) progBadge.textContent = `${pct}%`;
+  if (progBadge) {
+    progBadge.textContent = `${pct}%`;
+    progBadge.style.setProperty("--progress", pct);
+  }
   if (progBar) progBar.style.width = `${pct}%`;
 
   const nodeImgContainer = document.getElementById("node-image-container");
