@@ -156,10 +156,23 @@ export function renderGameState(gameState) {
   updateBackHistoryUI();
 
   const titleEl = document.getElementById("game-book-title");
+  const subtitleEl = document.getElementById("game-book-subtitle");
+  const sectionTitleEl = document.getElementById("game-section-title");
+  const sectionCountEl = document.getElementById("game-section-count");
   const progBadge = document.getElementById("game-progress-badge");
+  const progRing = document.getElementById("game-progress-ring");
   const progBar = document.getElementById("game-progress-bar");
 
   if (titleEl) titleEl.textContent = gameState.book_title || "Librojuego";
+  const displaySection = gameState.display_number || gameState.node_id || "";
+  if (subtitleEl) {
+    const narratorRaw = (gameState.narrator_name || "Narración").replace(/\s*\([^)]*\)/g, "").trim();
+    const narrator = narratorRaw ? narratorRaw.charAt(0) + narratorRaw.slice(1).toLowerCase() : "Narración";
+    const engineName = gameState.narrator_engine?.includes("Google") ? "Google Cloud" : "";
+    subtitleEl.textContent = [`Sección ${displaySection}`, narrator, engineName].filter(Boolean).join(" · ");
+  }
+  if (sectionTitleEl) sectionTitleEl.textContent = `Sección ${displaySection}`;
+  if (sectionCountEl) sectionCountEl.textContent = `Sección ${displaySection} de ${gameState.total_sections || "—"}`;
   const playerDock = document.getElementById("global-audio-player");
   const playerTitle = document.getElementById("audio-track-title");
   const playerSubtitle = document.getElementById("audio-track-subtitle");
@@ -175,8 +188,8 @@ export function renderGameState(gameState) {
   const pct = gameState.progress_percent || 0;
   if (progBadge) {
     progBadge.textContent = `${pct}%`;
-    progBadge.style.setProperty("--progress", pct);
   }
+  if (progRing) progRing.style.setProperty("--progress", pct);
   if (progBar) progBar.style.width = `${pct}%`;
 
   const nodeImgContainer = document.getElementById("node-image-container");

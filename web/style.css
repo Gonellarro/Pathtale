@@ -1547,9 +1547,9 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
   top: 0;
   z-index: 20;
   margin: 0 -1.5rem 0;
-  padding: 1rem 1.5rem;
+  justify-content: space-between;
+  padding: .75rem 1.5rem .55rem;
   border: 0;
-  border-bottom: 1px solid var(--border-color);
   border-radius: 0;
   background: rgba(12, 9, 6, .96);
   backdrop-filter: blur(14px);
@@ -1563,33 +1563,67 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
 #view-game .game-meta h2 {
   font-family: var(--font-family-serif);
   font-size: .96rem;
+  font-weight: 700;
   letter-spacing: .01em;
   color: var(--text-main);
+  margin: 0;
 }
 
-#view-game .game-title-row { margin-bottom: .15rem; }
-#view-game .game-meta::after {
-  content: "Aventura interactiva";
-  display: block;
+#view-game .game-book-subtitle {
+  margin: .3rem 0 0;
   color: var(--text-muted);
   font-size: .72rem;
 }
 
-#view-game .game-progress-badge,
-#view-game #game-progress-badge {
-  width: 3.15rem;
-  height: 3.15rem;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
+#view-game .game-section-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+#view-game #game-section-title {
   color: var(--accent-gold);
   font-family: var(--font-family-serif);
-  font-size: .92rem;
+  font-size: .84rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+#view-game #game-section-count {
+  color: var(--text-muted);
+  font-size: .72rem;
+}
+
+#view-game .game-progress-summary {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  flex: 0 0 auto;
+  padding-top: .05rem;
+}
+#view-game .game-progress-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .1rem;
+}
+#view-game #game-progress-badge {
+  color: var(--accent-gold);
+  font-family: var(--font-family-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+#view-game .game-progress-copy > span:last-child {
+  color: var(--text-muted);
+  font-size: .6rem;
+  line-height: 1;
+}
+#view-game .game-progress-ring {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
   background:
-    radial-gradient(circle, var(--bg-primary) 0 67%, transparent 69%),
+    radial-gradient(circle, var(--bg-primary) 0 68%, transparent 70%),
     conic-gradient(from -90deg, var(--accent-gold) calc(var(--progress, 0) * 1%), rgba(201, 138, 58, .18) 0);
 }
 
@@ -1597,7 +1631,7 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
 
 #view-game .game-controls-bar {
   margin: 0 -1.5rem;
-  padding: .85rem 1.5rem 1rem;
+  padding: .4rem 1.5rem .9rem;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -1625,7 +1659,7 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
   box-shadow: none;
 }
 #view-game .node-image-container { border-radius: .75rem; }
-#view-game .node-header { margin: 0 0 1.9rem; }
+#view-game .node-header { display: none; }
 #view-game .node-badge {
   padding: 0;
   margin: 0 0 .6rem;

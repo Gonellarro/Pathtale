@@ -16,6 +16,7 @@ class JumpRequest(BaseModel):
 
 def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict:
     node = state["current_node"]
+    book = engine.books.get(book_id, {})
     book_dir_url = f"/api/books/{book_id}/asset"
 
     images_urls = [f"{book_dir_url}/{img}" for img in node.get("images", [])]
@@ -24,13 +25,19 @@ def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict
 
     history = engine.db.get_history(user_id, book_id, limit=100)
     visited_count = len(set(h["to_node_id"] for h in history))
-    total_sections = engine.books.get(book_id, {}).get("total_sections", 1)
+    total_sections = book.get("total_sections", 1)
     progress_pct = min(100, int((visited_count / max(1, total_sections)) * 100))
+    narrator_id = book.get("narrator_id")
+    narrator = engine.db.get_narrator_by_id(narrator_id) if narrator_id else None
 
     return {
         "user_id": user_id,
         "book_id": book_id,
         "book_title": state.get("book_title"),
+        "book_author": book.get("author"),
+        "narrator_name": narrator.get("display_name") if narrator else None,
+        "narrator_engine": narrator.get("engine_name") if narrator else None,
+        "total_sections": total_sections,
         "node_id": node.get("id"),
         "display_number": node.get("display_number"),
         "title": node.get("title"),
