@@ -41,6 +41,6 @@ models/
 *~
 .DS_Store
 
-# ===== Artefacts y figma =====
+# ===== Artefacts y figmac=====
 .artifacts/
 .figma/

@@ -181,8 +181,9 @@ export function renderGameState(gameState) {
   if (playerTitle) playerTitle.textContent = gameState.book_title || "Librojuego";
   if (playerSubtitle) playerSubtitle.textContent = `Sección ${gameState.display_number || ""}`;
   if (playerArtwork) {
-    playerArtwork.innerHTML = gameState.images?.[0] || gameState.cover_image_url
-      ? `<img src="${escapeHtml(gameState.images?.[0] || gameState.cover_image_url)}?v=${Date.now()}" alt="">`
+    const artworkUrl = gameState.cover_image_url || gameState.images?.[0];
+    playerArtwork.innerHTML = artworkUrl
+      ? `<img src="${escapeHtml(artworkUrl)}?v=${Date.now()}" alt="">`
       : "▶";
   }
   const pct = gameState.progress_percent || 0;
