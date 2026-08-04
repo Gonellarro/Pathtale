@@ -1380,6 +1380,42 @@ body {
   }
 }
 
+@media (max-width: 700px) {
+  /* Mobile navigation is a touch-scrollable rail instead of wrapping. */
+  .navbar {
+    padding: 0 .75rem;
+    overflow: hidden;
+  }
+  .nav-content {
+    justify-content: flex-start;
+    gap: .85rem;
+    min-width: 0;
+  }
+  .nav-brand {
+    flex: 0 0 auto;
+  }
+  .nav-actions {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    max-width: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    justify-content: flex-start;
+    gap: .45rem;
+    white-space: nowrap;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+  }
+  .nav-actions::-webkit-scrollbar { display: none; }
+  .nav-actions .nav-btn,
+  .nav-actions .nav-btn-login,
+  .nav-actions .nav-btn-icon {
+    flex: 0 0 auto;
+  }
+}
+
 /* Story Card */
 .story-card {
   background: var(--bg-card);
