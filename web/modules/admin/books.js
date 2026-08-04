@@ -1,5 +1,10 @@
-import { authFetch, escapeHtml, API_BASE } from "../state.js";
-import { openAdminBookTierModal } from "./users.js";
+import { openAdminBookTierModal } from "./book-tier-modal.js";
+import { fetchAdminBooks, updateAdminBook, deleteAdminBook, inspectAdminBook, regenerateBookAudios } from "./books-api.js";
+import { populateBookNarrators } from "./book-narrator-selector.js";
+import { readBookConfigForm } from "./book-form-data.js";
+import { submitBookEdit, submitBookImport } from "./book-config-submit.js";
+import { setPreImportFields, bindPreImportModal } from "./book-modal.js";
+import { renderAdminBooksList } from "./books-list.js";
 
 export let currentAdminBooks = [];
 
@@ -9,113 +14,26 @@ export async function loadAdminBooks() {
   if (!container) return;
 
   try {
-    const res = await authFetch(`${API_BASE}/api/admin/books`);
+    const res = await fetchAdminBooks();
     const data = await res.json();
     const books = data.books || [];
     currentAdminBooks = books;
 
     if (countLbl) countLbl.textContent = `Total: ${books.length} libro${books.length === 1 ? '' : 's'}`;
 
-    container.innerHTML = `
-      <table class="library-table">
-        <thead>
-          <tr>
-            <th>Portada</th>
-            <th>Título</th>
-            <th>Narrador</th>
-            <th>Nivel Tier</th>
-            <th>Estado</th>
-            <th>Secciones</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${books.map(b => {
-            const isVisible = b.is_visible !== 0;
-            const cleanNarrator = escapeHtml((b.narrator_name || 'DaveFX').replace(/\s*\(.*?\)/g, "").trim());
-            return `
-            <tr>
-              <td class="td-thumb">
-                ${b.cover_image 
-                  ? `<img src="/api/books/${b.book_id}/asset/${b.cover_image}?v=${Date.now()}" alt="${escapeHtml(b.title)}" class="table-thumb-img">`
-                  : `📜`}
-              </td>
-              <td class="td-title">
-                <a href="#" class="admin-book-title-link" data-id="${b.book_id}" style="color:var(--accent-gold); text-decoration:none; font-weight:bold;">${escapeHtml(b.title)}</a>
-                <br><small style="color:var(--text-muted)">ID: ${b.book_id}</small>
-              </td>
-              <td class="td-narrator" style="font-weight:500;">${cleanNarrator}</td>
-              <td>
-                <span class="admin-badge admin-badge-tier">
-                  🔒 ${escapeHtml(b.tier_name || 'Demo Gratuita')}
-                </span>
-              </td>
-              <td>
-                <button class="btn-secondary btn-sm btn-toggle-visible-book" data-id="${b.book_id}" data-visible="${isVisible ? '1' : '0'}" style="color:${isVisible ? 'var(--success)' : '#ef4444'}">
-                  ${isVisible ? '👁️ Visible' : '🙈 Oculto'}
-                </button>
-              </td>
-              <td>${b.total_sections || 0} caps.</td>
-              <td class="td-actions">
-                <button class="btn-secondary btn-sm btn-tier-book" data-id="${b.book_id}" data-title="${escapeHtml(b.title)}" data-tier="${b.tier_id || 1}">🏷️ Tier</button>
-                <button class="btn-secondary btn-sm btn-delete-book" data-id="${b.book_id}" style="color: #ff6b6b">🗑️</button>
-              </td>
-            </tr>
-          `;
-          }).join("")}
-        </tbody>
-      </table>
-    `;
-
-    const openEditForBookId = (bid) => {
-      const bObj = currentAdminBooks.find(item => item.book_id === bid);
-      if (bObj) {
-        openEditExistingBookModal(bObj);
-      }
-    };
-
-    container.querySelectorAll(".admin-book-title-link").forEach(link => {
-      link.onclick = (e) => {
-        e.preventDefault();
-        openEditForBookId(link.getAttribute("data-id"));
-      };
-    });
-
-    container.querySelectorAll(".btn-toggle-visible-book").forEach(btn => {
-      btn.onclick = async () => {
-        const bid = btn.getAttribute("data-id");
-        const currentVis = btn.getAttribute("data-visible") === "1";
+    renderAdminBooksList(container, books, {
+      onEdit: (bookId) => {
+        const book = currentAdminBooks.find((item) => item.book_id === bookId);
+        if (book) openEditExistingBookModal(book);
+      },
+      onToggle: async (bookId, visible) => {
         try {
-          const res = await authFetch(`${API_BASE}/api/admin/books/${bid}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ is_visible: !currentVis })
-          });
-          if (res.ok) {
-            loadAdminBooks();
-          }
-        } catch (err) {
-          console.error("Error toggling book visibility:", err);
-        }
-      };
-    });
-
-    container.querySelectorAll(".btn-tier-book").forEach(btn => {
-      btn.onclick = () => {
-        const bid = btn.getAttribute("data-id");
-        const btitle = btn.getAttribute("data-title");
-        const btier = btn.getAttribute("data-tier");
-        openAdminBookTierModal(bid, btitle, btier);
-      };
-    });
-
-    container.querySelectorAll(".btn-delete-book").forEach(btn => {
-      btn.onclick = () => {
-        const bid = btn.getAttribute("data-id");
-        if (confirm(`¿Eliminar el libro '${bid}' del catálogo?`)) {
-          deleteBook(bid);
-        }
-      };
+          const response = await updateAdminBook(bookId, { is_visible: !visible });
+          if (response.ok) loadAdminBooks();
+        } catch (error) { console.error("Error toggling book visibility:", error); }
+      },
+      onTier: (bookId, title, tier) => openAdminBookTierModal(bookId, title, tier),
+      onDelete: (bookId) => { if (confirm(`¿Eliminar el libro '${bookId}' del catálogo?`)) deleteBook(bookId); },
     });
   } catch (err) {
     console.error("Error loading admin books:", err);
@@ -124,7 +42,7 @@ export async function loadAdminBooks() {
 
 async function deleteBook(bookId) {
   try {
-    const res = await authFetch(`${API_BASE}/api/admin/books/${bookId}`, { method: "DELETE" });
+    const res = await deleteAdminBook(bookId);
     if (res.ok) loadAdminBooks();
   } catch (err) {
     alert("Error al eliminar libro.");
@@ -169,8 +87,8 @@ async function handleEpubUpload(file) {
   const progressMsg = document.getElementById("upload-progress-msg");
 
   const ext = file.name.split('.').pop().toLowerCase();
-  if (ext !== 'epub' && ext !== 'pdf') {
-    alert("Por favor, selecciona un archivo .epub o .pdf válido.");
+  if (ext !== 'epub') {
+    alert("Por favor, selecciona un EPUB normalizado (.epub) válido.");
     return;
   }
 
@@ -182,10 +100,7 @@ async function handleEpubUpload(file) {
   formData.append("file", file);
 
   try {
-    const res = await authFetch(`${API_BASE}/api/admin/books/inspect`, {
-      method: "POST",
-      body: formData
-    });
+    const res = await inspectAdminBook(formData);
 
     const data = await res.json();
     if (res.ok) {
@@ -219,56 +134,23 @@ export function openPreImportModal(tempFileId, filename, inspection) {
   if (generateAudiosContainer) generateAudiosContainer.classList.remove("hidden");
   if (generateAudiosCheck) generateAudiosCheck.checked = false;
 
-  document.getElementById("pre-import-temp-id").value = tempFileId || "";
-  document.getElementById("pre-import-edit-book-id").value = "";
-  document.getElementById("pre-import-title").value = inspection.suggested_title || filename;
-  document.getElementById("pre-import-author").value = inspection.suggested_author || "Desconocido";
-  document.getElementById("pre-import-language").value = inspection.suggested_language || "es";
-  document.getElementById("pre-import-start-node").value = inspection.suggested_start_node || "sec_001";
-  document.getElementById("pre-import-tier").value = "1";
-  const coverInput = document.getElementById("pre-import-cover-file");
-  if (coverInput) coverInput.value = "";
+  setPreImportFields({
+    tempFileId,
+    title: inspection.suggested_title || filename,
+    author: inspection.suggested_author || "Desconocido",
+    language: inspection.suggested_language || "es",
+    startNode: inspection.suggested_start_node || "sec_001",
+    tierId: "1",
+  });
 
-  const updateVoiceOptions = async () => {
-    const lang = document.getElementById("pre-import-language").value;
-    const voiceSelect = document.getElementById("pre-import-voice-select");
-    if (!voiceSelect) return;
+  const refreshNarrators = () => populateBookNarrators(
+    document.getElementById("pre-import-voice-select"),
+    document.getElementById("pre-import-language").value,
+  );
+  refreshNarrators();
+  document.getElementById("pre-import-language").onchange = refreshNarrators;
 
-    try {
-      const res = await authFetch(`${API_BASE}/api/admin/narrators`);
-      const data = await res.json();
-      const narrators = data.narrators || [];
-      const filtered = narrators.filter(n => !n.language || n.language.toLowerCase().startsWith(lang.toLowerCase()));
-      const listToUse = filtered.length > 0 ? filtered : narrators;
-
-      voiceSelect.innerHTML = listToUse.map(n => {
-        const engineTag = n.engine_name || (n.engine_code ? n.engine_code.toUpperCase() : 'TTS');
-        const valStr = `${n.narrator_id}:${n.engine_code || 'piper'}:${n.voice_code}`;
-        return `<option value="${valStr}" data-narrator-id="${n.narrator_id}">${escapeHtml(n.display_name)} (${engineTag})</option>`;
-      }).join("");
-    } catch (err) {
-      console.warn("Could not fetch DB narrators for dropdown:", err);
-    }
-  };
-
-  updateVoiceOptions();
-  document.getElementById("pre-import-language").onchange = updateVoiceOptions;
-
-  const btnClose = document.getElementById("btn-close-modal-pre-import");
-  const btnCancel = document.getElementById("btn-cancel-pre-import");
-  const form = document.getElementById("form-pre-import");
-
-  const closeModal = () => modal.classList.remove("open");
-  if (btnClose) btnClose.onclick = closeModal;
-  if (btnCancel) btnCancel.onclick = closeModal;
-
-  if (form) {
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      await submitBookConfigForm();
-      closeModal();
-    };
-  }
+  bindPreImportModal(submitBookConfigForm);
 
   modal.classList.add("open");
 }
@@ -291,91 +173,32 @@ export function openEditExistingBookModal(book) {
   if (regenCheck) regenCheck.checked = false;
   if (generateAudiosContainer) generateAudiosContainer.classList.add("hidden");
 
-  document.getElementById("pre-import-temp-id").value = "";
-  document.getElementById("pre-import-edit-book-id").value = book.book_id || "";
-  document.getElementById("pre-import-title").value = book.title || "";
-  document.getElementById("pre-import-author").value = book.author || "";
-  document.getElementById("pre-import-language").value = book.language || "es";
-  document.getElementById("pre-import-start-node").value = book.start_node || "sec_001";
-  document.getElementById("pre-import-tier").value = book.tier_id || "1";
-  const coverInput = document.getElementById("pre-import-cover-file");
-  if (coverInput) coverInput.value = "";
+  setPreImportFields({
+    editBookId: book.book_id,
+    title: book.title,
+    author: book.author,
+    language: book.language,
+    startNode: book.start_node,
+    tierId: book.tier_id,
+  });
 
-  const updateVoiceOptions = async () => {
-    const lang = document.getElementById("pre-import-language").value;
-    const voiceSelect = document.getElementById("pre-import-voice-select");
-    if (!voiceSelect) return;
+  const refreshNarrators = () => populateBookNarrators(
+    document.getElementById("pre-import-voice-select"),
+    document.getElementById("pre-import-language").value,
+    book.narrator_id || null,
+  );
+  refreshNarrators();
+  document.getElementById("pre-import-language").onchange = refreshNarrators;
 
-    try {
-      const res = await authFetch(`${API_BASE}/api/admin/narrators`);
-      const data = await res.json();
-      const narrators = data.narrators || [];
-      const filtered = narrators.filter(n => !n.language || n.language.toLowerCase().startsWith(lang.toLowerCase()));
-      const listToUse = filtered.length > 0 ? filtered : narrators;
-
-      voiceSelect.innerHTML = listToUse.map(n => {
-        const engineTag = n.engine_name || (n.engine_code ? n.engine_code.toUpperCase() : 'TTS');
-        const valStr = `${n.narrator_id}:${n.engine_code || 'piper'}:${n.voice_code}`;
-        return `<option value="${valStr}" data-narrator-id="${n.narrator_id}">${escapeHtml(n.display_name)} (${engineTag})</option>`;
-      }).join("");
-
-      if (book && book.narrator_id) {
-        const matchingOpt = Array.from(voiceSelect.options).find(opt => opt.getAttribute("data-narrator-id") == book.narrator_id);
-        if (matchingOpt) matchingOpt.selected = true;
-      }
-    } catch (err) {
-      console.warn("Could not fetch DB narrators for dropdown:", err);
-    }
-  };
-
-  updateVoiceOptions();
-  document.getElementById("pre-import-language").onchange = updateVoiceOptions;
-
-  const btnClose = document.getElementById("btn-close-modal-pre-import");
-  const btnCancel = document.getElementById("btn-cancel-pre-import");
-  const form = document.getElementById("form-pre-import");
-
-  const closeModal = () => modal.classList.remove("open");
-  if (btnClose) btnClose.onclick = closeModal;
-  if (btnCancel) btnCancel.onclick = closeModal;
-
-  if (form) {
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      await submitBookConfigForm();
-      closeModal();
-    };
-  }
+  bindPreImportModal(submitBookConfigForm);
 
   modal.classList.add("open");
 }
 
 async function submitBookConfigForm() {
-  const editBookId = document.getElementById("pre-import-edit-book-id").value;
-  const tempFileId = document.getElementById("pre-import-temp-id").value;
-  const title = document.getElementById("pre-import-title").value.trim();
-  const author = document.getElementById("pre-import-author").value.trim();
-  const language = document.getElementById("pre-import-language").value;
-  const startNode = document.getElementById("pre-import-start-node").value.trim();
-  const tierId = parseInt(document.getElementById("pre-import-tier").value || "1");
-  const regenCheckEl = document.getElementById("pre-import-regenerate-check");
-  const regenCheck = regenCheckEl ? Boolean(regenCheckEl.checked) : false;
-  const generateAudiosCheckEl = document.getElementById("pre-import-generate-audios-check");
-  const generateAudios = generateAudiosCheckEl ? Boolean(generateAudiosCheckEl.checked) : false;
-  const coverFileInput = document.getElementById("pre-import-cover-file");
-  const coverFile = (coverFileInput && coverFileInput.files && coverFileInput.files[0]) ? coverFileInput.files[0] : null;
+  const config = readBookConfigForm();
+  const { editBookId, title, regenCheck, generateAudios } = config;
   const errDiv = document.getElementById("pre-import-error");
-  const voiceSelectEl = document.getElementById("pre-import-voice-select");
-  const selectedOpt = voiceSelectEl ? voiceSelectEl.selectedOptions[0] : null;
-  const narratorId = selectedOpt ? parseInt(selectedOpt.getAttribute("data-narrator-id") || "1") : 1;
-  const voiceValue = voiceSelectEl ? voiceSelectEl.value : "";
-  let ttsEngine = "auto";
-  let voiceName = "default";
-  if (voiceValue.includes(":")) {
-    const parts = voiceValue.split(":");
-    ttsEngine = parts[1] || "auto";
-    voiceName = parts[2] || "default";
-  }
 
   const zone = document.getElementById("book-upload-zone");
   const progress = document.getElementById("upload-progress");
@@ -385,59 +208,13 @@ async function submitBookConfigForm() {
     if (zone) zone.classList.add("hidden");
     if (progress) progress.classList.remove("hidden");
     if (progressMsg) {
-      progressMsg.textContent = regenCheck
-        ? `Actualizando metadatos y regenerando audios TTS para '${title}' con voz '${voiceName}'... Por favor espera unos minutos.`
+        progressMsg.textContent = regenCheck
+        ? `Actualizando metadatos y regenerando audios TTS para '${title}'... Por favor espera unos minutos.`
         : `Guardando cambios para '${title}'...`;
     }
 
     try {
-      const res = await authFetch(`${API_BASE}/api/admin/books/${encodeURIComponent(editBookId)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          author,
-          language,
-          start_node: startNode,
-          narrator_id: narratorId,
-          tier_id: tierId,
-          tts_engine: ttsEngine,
-          voice_name: voiceName,
-          regenerate_audios: regenCheck
-        })
-      });
-
-      const contentType = res.headers.get("content-type") || "";
-      let data = {};
-      if (contentType.includes("application/json")) {
-        data = await res.json();
-      } else {
-        if (res.status === 401 || res.status === 403) {
-          throw new Error("Sesión expirada o sin permisos de administración. Vuelve a iniciar sesión.");
-        }
-        throw new Error(`Error de respuesta del servidor (${res.status}).`);
-      }
-
-      if (!res.ok) throw new Error(data.detail || "Error al actualizar libro.");
-
-      if (coverFile) {
-        if (progressMsg) progressMsg.textContent = `Subiendo nueva portada para '${title}'...`;
-        const formData = new FormData();
-        formData.append("file", coverFile);
-        const resCover = await authFetch(`${API_BASE}/api/admin/books/${encodeURIComponent(editBookId)}/cover`, {
-          method: "POST",
-          body: formData
-        });
-        if (!resCover.ok) {
-          const coverContentType = resCover.headers.get("content-type") || "";
-          let errDetail = "Error desconocido";
-          if (coverContentType.includes("application/json")) {
-            const errCover = await resCover.json();
-            errDetail = errCover.detail || errDetail;
-          }
-          alert(`⚠️ Libro actualizado pero hubo un problema al subir la portada: ${errDetail}`);
-        }
-      }
+      const data = await submitBookEdit(config);
 
       alert(`✅ ¡Éxito! ${data.message || "Libro actualizado correctamente."}`);
       loadAdminBooks();
@@ -456,56 +233,13 @@ async function submitBookConfigForm() {
     if (zone) zone.classList.add("hidden");
     if (progress) progress.classList.remove("hidden");
     if (progressMsg) {
-      progressMsg.textContent = generateAudios
-        ? `Importando y sintetizando audios TTS para '${title}' con voz '${voiceName}'... Por favor espera unos minutos.`
+        progressMsg.textContent = generateAudios
+        ? `Importando y sintetizando audios TTS para '${title}'... Por favor espera unos minutos.`
         : `Importando la estructura y los contenidos de '${title}' sin generar audios...`;
     }
 
     try {
-      const res = await authFetch(`${API_BASE}/api/admin/books/confirm_import`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          temp_file_id: tempFileId,
-          title,
-          author,
-          language,
-          narrator_id: narratorId,
-          tts_engine: ttsEngine,
-          voice_name: voiceName,
-          start_node: startNode,
-          tier_id: tierId,
-          generate_audios: generateAudios
-        })
-      });
-      
-      const contentType = res.headers.get("content-type") || "";
-      let data = {};
-      if (contentType.includes("application/json")) {
-        data = await res.json();
-      } else {
-        if (res.status === 401 || res.status === 403) {
-          throw new Error("Sesión expirada o sin permisos de administración. Vuelve a iniciar sesión.");
-        }
-        throw new Error(`Error de respuesta del servidor (${res.status}).`);
-      }
-
-      if (!res.ok) throw new Error(data.detail || "Error al importar libro");
-
-      const createdBookId = data.book_id;
-      if (createdBookId && coverFile) {
-        if (progressMsg) progressMsg.textContent = `Subiendo portada personalizada para '${title}'...`;
-        const formData = new FormData();
-        formData.append("file", coverFile);
-        const resCover = await authFetch(`${API_BASE}/api/admin/books/${createdBookId}/cover`, {
-          method: "POST",
-          body: formData
-        });
-        if (!resCover.ok) {
-          const errCover = await resCover.json();
-          alert(`⚠️ Libro importado pero hubo un problema al subir la portada: ${errCover.detail}`);
-        }
-      }
+      const data = await submitBookImport(config);
 
       alert(`✅ ¡Éxito! ${data.message}`);
       loadAdminBooks();
@@ -576,23 +310,19 @@ async function savePostUploadMetadata(synthesizeAudios = false) {
   const errDiv = document.getElementById("post-upload-error");
 
   try {
-    const res = await authFetch(`${API_BASE}/api/admin/books/${bookId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const res = await updateAdminBook(bookId, {
         title,
         author,
         language,
         start_node: startNode,
         narrator_id: narratorId,
         tier_id: tierId
-      })
     });
     if (!res.ok) throw new Error("Error al guardar cambios de metadatos.");
 
     if (synthesizeAudios) {
       alert(`🎙️ Iniciando sintetización de audios para '${title}' (${language})...`);
-      authFetch(`${API_BASE}/api/books/${bookId}/regenerate_audios`, { method: "POST" });
+      regenerateBookAudios(bookId);
     } else {
       alert("✅ Metadatos guardados correctamente.");
     }

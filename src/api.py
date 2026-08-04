@@ -10,6 +10,7 @@ from src.routers.auth import router as auth_router
 from src.routers.catalog import router as catalog_router
 from src.routers.game import router as game_router
 from src.routers.admin import router as admin_router
+from src.routers.admin_books import router as admin_books_router
 from src.routers.stats import router as stats_router
 
 logger = logging.getLogger("API")
@@ -56,6 +57,7 @@ app.include_router(auth_router)
 app.include_router(catalog_router)
 app.include_router(game_router)
 app.include_router(admin_router)
+app.include_router(admin_books_router)
 app.include_router(stats_router)
 
 # --- Serve PWA Static Files ---

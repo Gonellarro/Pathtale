@@ -572,7 +572,7 @@
             </button>
             <button class="admin-tab" data-tab="books">
               <svg style="width:15px;height:15px;vertical-align:-2px;margin-right:5px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-              <span>Libros & Importación (EPUB / PDF)</span>
+              <span>Libros & Importación (EPUB normalizado)</span>
             </button>
             <button class="admin-tab" data-tab="narrators">
               <svg style="width:15px;height:15px;vertical-align:-2px;margin-right:5px;stroke:currentColor;fill:none;" viewBox="0 0 24 24" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
@@ -595,13 +595,13 @@
             </div>
           </div>
 
-          <!-- Panel 2: Libros & Importación EPUB / PDF -->
+            <!-- Panel 2: Libros & Importación de EPUB normalizado -->
           <div id="admin-panel-books" class="admin-panel hidden">
-            <!-- Drag & Drop EPUB / PDF Upload Zone -->
+            <!-- Drag & Drop normalized EPUB Upload Zone -->
             <div class="admin-upload-zone" id="book-upload-zone">
               <div class="upload-icon">📖</div>
-              <p>Arrastra un archivo <strong>.epub</strong> o <strong>.pdf</strong> aquí o haz clic para seleccionar</p>
-              <input type="file" id="input-book-upload" accept=".epub,.pdf" style="display:none">
+              <p>Arrastra un EPUB normalizado <strong>.epub</strong> aquí o haz clic para seleccionar</p>
+              <input type="file" id="input-book-upload" accept=".epub" style="display:none">
               <p class="upload-hint">Se ejecutará la importación completa: parseo, metadatos, imagen y audios TTS con Piper</p>
             </div>
             <div id="upload-progress" class="upload-progress hidden">

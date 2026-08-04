@@ -1,15 +1,26 @@
-import os
 import time
 import logging
-from pathlib import Path
 from typing import Optional, Dict, Any, List
 from fastapi import HTTPException, Header
-from pydantic import BaseModel
 
-from config import BOOKS_DIR, BASE_DIR, ALLOWED_ORIGINS, DATA_DIR
+from config import BASE_DIR
 from src.engine import GameEngine
 from src.stt import STTManager
 from src.voice_parser import VoiceParser
+from src.api_models import (
+    AdminBookUpdateRequest,
+    AdminConfirmBookImportRequest,
+    AdminNarratorCreateRequest,
+    AdminNarratorUpdateRequest,
+    AdminRegenerateAudiosRequest,
+    AdminUserCreateRequest,
+    AdminUserSubscriptionRequest,
+    AdminUserUpdateRequest,
+    ChoiceRequest,
+    LoginRequest,
+    RegisterRequest,
+    StartGameRequest,
+)
 
 logger = logging.getLogger("API")
 
@@ -40,101 +51,6 @@ voice_parser = VoiceParser()
 WEB_DIR = BASE_DIR / "web"
 temp_dir = BASE_DIR / "data" / "temp"
 temp_dir.mkdir(parents=True, exist_ok=True)
-
-# Shared Pydantic Models
-class StartGameRequest(BaseModel):
-    user_id: Optional[int] = 1
-    book_id: str
-
-class ChoiceRequest(BaseModel):
-    choice_id: Optional[Any] = None
-    target_node: Optional[str] = None
-    text: Optional[str] = None
-    text_query: Optional[str] = None
-
-class RegisterRequest(BaseModel):
-    username: str
-    password: str
-    first_name: Optional[str] = None
-
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-class AdminUserCreateRequest(BaseModel):
-    username: str
-    password: str
-    first_name: Optional[str] = None
-    role: Optional[str] = "user"
-    tier_id: Optional[int] = 1
-
-class AdminUserUpdateRequest(BaseModel):
-    first_name: Optional[str] = None
-    role: Optional[str] = None
-    tier_id: Optional[int] = None
-    password: Optional[str] = None
-
-class AdminConfirmBookImportRequest(BaseModel):
-    temp_file_id: str
-    title: str
-    author: str
-    language: str = "es"
-    narrator_id: Optional[int] = 1
-    tts_engine: str = "auto"
-    voice_name: str = "default"
-    start_node: str = "sec_001"
-    tier_id: int = 1
-    generate_audios: bool = False
-
-class AdminNarratorCreateRequest(BaseModel):
-    name: str
-    display_name: str
-    engine_id: Optional[int] = 1
-    voice_code: Optional[str] = "default"
-    language: Optional[str] = "es"
-    gender: Optional[str] = "male"
-    specialty: Optional[str] = None
-    avatar_url: Optional[str] = None
-    download_url: Optional[str] = None
-    model_filename: Optional[str] = None
-    bio: Optional[str] = None
-
-class AdminNarratorUpdateRequest(BaseModel):
-    display_name: Optional[str] = None
-    engine_id: Optional[int] = None
-    voice_code: Optional[str] = None
-    language: Optional[str] = None
-    gender: Optional[str] = None
-    specialty: Optional[str] = None
-    avatar_url: Optional[str] = None
-    download_url: Optional[str] = None
-    model_filename: Optional[str] = None
-    bio: Optional[str] = None
-
-class AdminBookUpdateRequest(BaseModel):
-    title: Optional[str] = None
-    author: Optional[str] = None
-    narrator_id: Optional[int] = None
-    tier_id: Optional[int] = None
-    is_visible: Optional[bool] = None
-    genre: Optional[str] = None
-    series: Optional[str] = None
-    volume: Optional[int] = None
-    description: Optional[str] = None
-    language: Optional[str] = None
-    start_node: Optional[str] = None
-    tts_engine: Optional[str] = None
-    voice_name: Optional[str] = None
-    regenerate_audios: Optional[bool] = False
-
-class AdminRegenerateAudiosRequest(BaseModel):
-    tts_engine: Optional[str] = "auto"
-    voice_name: Optional[str] = None
-    language: Optional[str] = None
-
-class AdminUserSubscriptionRequest(BaseModel):
-    tier_id: int
-    duration_days: Optional[int] = None
 
 # Helper to resolve user_id from Authorization Bearer header
 def resolve_user_id(authorization: Optional[str] = Header(None)) -> int:

@@ -4,7 +4,8 @@
  */
 
 import { state } from "./state.js";
-import { loadAdminUsers, loadAdminRoles, openAdminUserModal, openAdminBookTierModal } from "./admin/users.js";
+import { loadAdminUsers, loadAdminRoles, openAdminUserModal } from "./admin/users.js";
+import { openAdminBookTierModal } from "./admin/book-tier-modal.js";
 import { loadAdminBooks, initAdminUploadZone, openPreImportModal, openEditExistingBookModal, openPostUploadModal, currentAdminBooks } from "./admin/books.js";
 import { loadAdminNarrators } from "./admin/narrators.js";
 import { loadAdminLogs } from "./admin/audit.js";
