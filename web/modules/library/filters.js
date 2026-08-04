@@ -22,7 +22,7 @@ export async function loadCategoryTags(startGameFn) {
         filterBar.querySelectorAll(".tag-pill").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         const tag = btn.getAttribute("data-tag");
-        loadFeaturedLibrary(startGameFn, tag, 6);
+        loadFeaturedLibrary(startGameFn, tag, 3);
       };
     });
   } catch (err) {
@@ -30,7 +30,7 @@ export async function loadCategoryTags(startGameFn) {
   }
 }
 
-export async function loadFeaturedLibrary(startGameFn, tag = "Todos", limit = 6) {
+export async function loadFeaturedLibrary(startGameFn, tag = "Todos", limit = 3) {
   loadCategoryTags(startGameFn);
 
   const container = document.getElementById("home-featured-grid");
@@ -45,7 +45,7 @@ export async function loadFeaturedLibrary(startGameFn, tag = "Todos", limit = 6)
   const uid = (state.currentUser && state.currentUser.user_id) ? state.currentUser.user_id : 1;
 
   try {
-    const res = await authFetch(`${API_BASE}/api/books?limit=${limit}&tag=${encodeURIComponent(tag)}&user_id=${uid}&random_sample=true`);
+    const res = await authFetch(`${API_BASE}/api/books?limit=${limit}&tag=${encodeURIComponent(tag)}&user_id=${uid}&latest=true`);
     const data = await res.json();
     const books = data.books || [];
     renderFeaturedGrid(books, container, startGameFn);

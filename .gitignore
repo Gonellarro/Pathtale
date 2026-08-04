@@ -40,3 +40,6 @@ models/
 *.swo
 *~
 .DS_Store
+
+# ===== Artefacts =====
+.artifacts/

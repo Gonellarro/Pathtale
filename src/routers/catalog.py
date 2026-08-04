@@ -67,6 +67,7 @@ def list_books(
     limit: Optional[int] = Query(None),
     tag: Optional[str] = Query(None),
     random_sample: Optional[bool] = Query(False),
+    latest: Optional[bool] = Query(False),
     narrator: Optional[str] = Query(None)
 ):
     """Returns a list of imported books with rich metadata and user progress status."""
@@ -93,6 +94,7 @@ def list_books(
             continue
 
         full_data = engine.books.get(b_id, {})
+        db_book = engine.db.get_book_by_id(b_id) or {}
         
         book_tier = engine.db.get_book_tier(b_id)
         if book_tier.get("is_visible") == 0:
@@ -161,11 +163,14 @@ def list_books(
             "tier_level": book_tier["level"],
             "is_locked": is_locked,
             "rating": 4.8,
+            "created_at": db_book.get("created_at"),
             "has_supplements": bool(full_data.get("supplements")),
             "supplement_count": len(full_data.get("supplements", [])),
         })
 
-    if random_sample and result:
+    if latest:
+        result.sort(key=lambda book: (book.get("created_at") or "", book.get("book_id") or ""), reverse=True)
+    elif random_sample and result:
         random.shuffle(result)
 
     if limit and limit > 0:
