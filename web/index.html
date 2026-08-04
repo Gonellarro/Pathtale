@@ -736,27 +736,30 @@
       <!-- VIEW: JUEGO -->
       <section id="view-game" class="view">
         <div class="game-container">
-          <!-- Top Bar -->
-          <div class="game-topbar">
+          <div class="game-sticky-header">
+            <!-- Top Bar -->
+            <div class="game-topbar">
             <div class="game-meta">
               <h2 id="game-book-title">Cargando libro...</h2>
               <p id="game-book-subtitle" class="game-book-subtitle"></p>
               <div class="game-section-row">
                 <span id="game-section-title">Sección</span>
-                <span id="game-section-count"></span>
               </div>
             </div>
             <div class="game-progress-summary" aria-label="Progreso de lectura">
-              <div class="game-progress-copy">
-                <span id="game-progress-badge">0%</span>
-                <span>completado</span>
+              <div class="game-progress-main">
+                <div class="game-progress-copy">
+                  <span id="game-progress-badge">0%</span>
+                  <span>completado</span>
+                </div>
+                <span id="game-progress-ring" class="game-progress-ring" aria-hidden="true"></span>
               </div>
-              <span id="game-progress-ring" class="game-progress-ring" aria-hidden="true"></span>
+              <span id="game-section-count"></span>
             </div>
-          </div>
+            </div>
 
-          <!-- Controls Toolbar: Atrás, Reiniciar, Ir a Sección -->
-          <div class="game-controls-bar">
+            <!-- Controls Toolbar: Atrás, Reiniciar, Ir a Sección -->
+            <div class="game-controls-bar">
             <button id="btn-game-history-back" class="btn-game-action" title="Volver a la sección anterior" disabled>
               <span>‹ Atrás</span>
             </button>
@@ -772,6 +775,7 @@
               <button id="btn-game-goto" class="btn-game-action btn-goto-action" title="Ir a la sección especificada">
                 <span>Ir a →</span>
               </button>
+            </div>
             </div>
           </div>
 

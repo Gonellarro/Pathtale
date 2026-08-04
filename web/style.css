@@ -1542,11 +1542,17 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
   padding: 0 1.5rem 7rem;
 }
 
-#view-game .game-topbar {
+#view-game .game-sticky-header {
   position: sticky;
-  top: 0;
+  top: 68px;
   z-index: 20;
-  margin: 0 -1.5rem 0;
+  margin: 0 -1.5rem;
+  background: rgba(12, 9, 6, .97);
+  backdrop-filter: blur(14px);
+}
+
+#view-game .game-topbar {
+  margin: 0;
   justify-content: space-between;
   padding: .75rem 1.5rem .55rem;
   border: 0;
@@ -1595,10 +1601,16 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
 
 #view-game .game-progress-summary {
   display: flex;
-  align-items: center;
-  gap: .7rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .35rem;
   flex: 0 0 auto;
   padding-top: .05rem;
+}
+#view-game .game-progress-main {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
 }
 #view-game .game-progress-copy {
   display: flex;
@@ -1626,11 +1638,17 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
     radial-gradient(circle, var(--bg-primary) 0 68%, transparent 70%),
     conic-gradient(from -90deg, var(--accent-gold) calc(var(--progress, 0) * 1%), rgba(201, 138, 58, .18) 0);
 }
+#view-game #game-section-count {
+  color: var(--text-muted);
+  font-size: .72rem;
+  line-height: 1;
+  white-space: nowrap;
+}
 
 #view-game .progress-bar-wrap { display: none; }
 
 #view-game .game-controls-bar {
-  margin: 0 -1.5rem;
+  margin: 0;
   padding: .4rem 1.5rem .9rem;
   border-bottom: 1px solid var(--border-color);
 }
@@ -1786,7 +1804,8 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
 
 @media (max-width: 600px) {
   #view-game .game-container { padding-left: 1rem; padding-right: 1rem; }
-  #view-game .game-topbar, #view-game .game-controls-bar { margin-left: -1rem; margin-right: -1rem; padding-left: 1rem; padding-right: 1rem; }
+  #view-game .game-sticky-header { margin-left: -1rem; margin-right: -1rem; }
+  #view-game .game-topbar, #view-game .game-controls-bar { padding-left: 1rem; padding-right: 1rem; }
   #view-game .choices-container { padding: 1rem; }
 }
 
