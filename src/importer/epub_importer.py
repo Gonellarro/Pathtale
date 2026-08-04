@@ -43,7 +43,7 @@ def _find_all_local(soup, names):
 def _clean_epub_title(title: Optional[str]) -> Optional[str]:
     if not title:
         return title
-    return re.sub(r"\s*\.(?:pdf|epub)$", "", title.strip(), flags=re.IGNORECASE)
+    return re.sub(r"\s*\.epub$", "", title.strip(), flags=re.IGNORECASE)
 
 class EPUBImporter:
     def __init__(self, epub_path: Path, tts_manager: Optional[TTSManager] = None):
