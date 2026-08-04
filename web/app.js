@@ -46,6 +46,32 @@ function initEventListeners() {
   if (btnProfile) btnProfile.addEventListener("click", toggleSettingsModal);
   if (navBtns.history) navBtns.history.addEventListener("click", toggleHistoryDrawer);
 
+  const audioTrackLink = document.getElementById("audio-track-link");
+  if (audioTrackLink) {
+    audioTrackLink.addEventListener("click", async () => {
+      if (!state.currentBookId) return;
+
+      const source = audioPlayer?.src;
+      const currentTime = audioPlayer?.currentTime || 0;
+      const wasPlaying = Boolean(audioPlayer && !audioPlayer.paused);
+      const playbackRate = audioPlayer?.playbackRate || 1;
+      const audioType = state.currentAudioType;
+
+      await startGame(state.currentBookId, false);
+
+      if (!audioPlayer || !source) return;
+      audioPlayer.src = source;
+      audioPlayer.playbackRate = playbackRate;
+      state.currentAudioType = audioType;
+      const restorePosition = () => {
+        audioPlayer.currentTime = Math.min(currentTime, audioPlayer.duration || currentTime);
+        if (wasPlaying) audioPlayer.play().catch(() => {});
+      };
+      if (audioPlayer.readyState >= 1) restorePosition();
+      else audioPlayer.addEventListener("loadedmetadata", restorePosition, { once: true });
+    });
+  }
+
   // View mode toggles for full library view
   const btnViewGrid = document.getElementById("btn-view-grid");
   const btnViewTable = document.getElementById("btn-view-table");

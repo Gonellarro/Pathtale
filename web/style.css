@@ -1494,6 +1494,15 @@ body {
 }
 .global-player-artwork img { width: 100%; height: 100%; object-fit: cover; }
 .global-player-info { min-width: 0; display: grid; gap: 0.12rem; }
+.global-player-info {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.global-player-info:hover strong { color: var(--accent-gold-bright); }
 .global-player-info strong,
 .global-player-subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .global-player-info strong { color: var(--text-main); font-size: 0.92rem; }
