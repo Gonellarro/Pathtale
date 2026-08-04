@@ -20,6 +20,8 @@ data/**
 !data/books/.gitkeep
 !data/temp/
 !data/temp/.gitkeep
+!data/audios/
+!data/audios/catalog.json
 
 # ===== Libros: ignore EPUBs, keep directory =====
 Libros/**

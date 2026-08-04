@@ -3,6 +3,7 @@ import { openAuthModal } from "../auth.js";
 import { renderHistoryDrawer } from "./history.js";
 import { showGameView, showFullLibraryView } from "./views.js";
 import { loadBookSupplements } from "./supplements.js";
+import { syncAmbientRuntime } from "../ambient_audio.js";
 
 const audioPlayer = document.getElementById("html-audio-player");
 
@@ -147,6 +148,8 @@ export function updateBackHistoryUI() {
 
 export function renderGameState(gameState) {
   if (!gameState || !gameState.node_id) return;
+
+  syncAmbientRuntime(gameState.audio_runtime);
 
   if (!state.isNavigatingBack) {
     if (state.navigationHistory.length === 0 || state.navigationHistory[state.navigationHistory.length - 1] !== gameState.node_id) {

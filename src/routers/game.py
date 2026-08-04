@@ -8,11 +8,40 @@ from src.dependencies import (
     engine, stt_manager, voice_parser, temp_dir, logger,
     StartGameRequest, ChoiceRequest, resolve_user_id
 )
+from src.services.audio_catalog import AudioCatalog, AudioCatalogError
 
 router = APIRouter(prefix="/api", tags=["Game"])
+audio_catalog = AudioCatalog()
 
 class JumpRequest(BaseModel):
     target: str
+
+
+def _format_audio_runtime(book: dict, node_id: str) -> Optional[dict]:
+    """Expose shared music references as safe runtime URLs for the web player."""
+    runtime = book.get("audio")
+    if not runtime:
+        return None
+    scenes = {}
+    for scene_id, scene in (runtime.get("music_scenes") or {}).items():
+        tracks = []
+        for track in scene.get("tracks", []):
+            try:
+                asset = audio_catalog.get_asset(track["asset_id"])
+            except (AudioCatalogError, KeyError):
+                continue
+            if asset.get("type") != "music":
+                continue
+            tracks.append({**track, "file": audio_catalog.public_url(track["asset_id"])})
+        if tracks:
+            scenes[scene_id] = {**scene, "tracks": tracks}
+    return {
+        "schema": runtime.get("schema", "pathtale.audio-runtime/1.0"),
+        "catalog_version": runtime.get("catalog_version"),
+        "music_scenes": scenes,
+        "fx_library": runtime.get("fx_library", {}),
+        "node_directive": (runtime.get("node_directives") or {}).get(node_id, {}),
+    }
 
 def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict:
     node = state["current_node"]
@@ -48,6 +77,7 @@ def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict
         "audio_url": audio_url,
         "cover_image_url": cover_image_url,
         "audio_options_url": audio_options_url,
+        "audio_runtime": _format_audio_runtime(book, node.get("id")),
         "choices": node.get("choices", []),
         "inventory": state.get("inventory", {}),
         "variables": state.get("variables", {}),

@@ -4,6 +4,7 @@
 
 import { state, formatTime } from "./state.js";
 import { updateSetting } from "./settings.js";
+import { resumeAmbientAudio, pauseAmbientAudio } from "./ambient_audio.js";
 
 const audioPlayer = document.getElementById("html-audio-player");
 const PLAY_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5 19 12 7 19.5Z"></path></svg>';
@@ -35,6 +36,7 @@ export function playOptionsAudio() {
 
 export function onAudioPlay() {
   showAudioDock();
+  resumeAmbientAudio();
   const label = document.getElementById("audio-label");
   const icon = document.getElementById("audio-icon");
   const btn = document.getElementById("btn-audio-play");
@@ -52,6 +54,7 @@ export function onAudioPlay() {
 }
 
 export function onAudioPause() {
+  pauseAmbientAudio();
   const label = document.getElementById("audio-label");
   const icon = document.getElementById("audio-icon");
   const btn = document.getElementById("btn-audio-play");

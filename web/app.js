@@ -16,6 +16,7 @@ import {
   toggleHistoryDrawer, initSupplementControls
 } from "./modules/game.js";
 import { showStatsView } from "./modules/stats.js";
+import { setAmbientVolume } from "./modules/ambient_audio.js";
 
 const audioPlayer = document.getElementById("html-audio-player");
 const navBtns = {
@@ -165,8 +166,15 @@ function initEventListeners() {
   if (volumeSlider) {
     const savedVolume = Number(localStorage.getItem("alj_audio_volume"));
     if (Number.isFinite(savedVolume)) volumeSlider.value = savedVolume;
-    if (audioPlayer && Number.isFinite(savedVolume)) audioPlayer.volume = savedVolume;
+    if (audioPlayer) audioPlayer.volume = Number.isFinite(savedVolume) ? savedVolume : 1;
     volumeSlider.addEventListener("input", onAudioVolumeChange);
+  }
+
+  const ambientVolumeSlider = document.getElementById("ambient-volume-slider");
+  if (ambientVolumeSlider) {
+    const savedAmbientVolume = Number(localStorage.getItem("alj_ambient_volume"));
+    if (Number.isFinite(savedAmbientVolume)) ambientVolumeSlider.value = savedAmbientVolume;
+    ambientVolumeSlider.addEventListener("input", (event) => setAmbientVolume(event.target.value));
   }
 
   const btnSpeed = document.getElementById("btn-audio-speed");

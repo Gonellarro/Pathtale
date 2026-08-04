@@ -6,8 +6,10 @@ from fastapi.responses import FileResponse
 
 from config import BOOKS_DIR
 from src.dependencies import engine, resolve_user_id
+from src.services.audio_catalog import AudioCatalog, AudioCatalogError
 
 router = APIRouter(prefix="/api", tags=["Catalog"])
+audio_catalog = AudioCatalog()
 
 class BookRatingRequest(BaseModel):
     rating: int
@@ -253,6 +255,16 @@ def get_book_asset(book_id: str, subpath: str):
     if not asset_path.exists() or not asset_path.is_file():
         raise HTTPException(status_code=404, detail="Asset file not found")
     return FileResponse(asset_path)
+
+
+@router.get("/audio-assets/{asset_id}")
+def get_audio_asset(asset_id: str):
+    """Serve a shared catalog audio asset by stable ID."""
+    try:
+        asset = audio_catalog.get_asset(asset_id)
+    except AudioCatalogError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return FileResponse(asset["path"])
 
 @router.get("/narrators")
 def list_narrators(limit: int = 3):
