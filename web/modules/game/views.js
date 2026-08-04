@@ -23,6 +23,7 @@ export function showLandingView() {
 }
 
 export function showHomeView() {
+  document.body.classList.remove("game-mode");
   document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.home) { views.home.classList.add("active"); views.home.classList.remove("hidden"); }
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
@@ -42,6 +43,7 @@ export function showHomeView() {
 }
 
 export function showFullLibraryView() {
+  document.body.classList.remove("game-mode");
   document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.library) { views.library.classList.add("active"); views.library.classList.remove("hidden"); }
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
@@ -51,6 +53,7 @@ export function showFullLibraryView() {
 }
 
 export function showAdminView() {
+  document.body.classList.remove("game-mode");
   if (!state.authToken) {
     openAuthModal();
     return;
@@ -77,6 +80,7 @@ export function showGameView() {
     openAuthModal();
     return;
   }
+  document.body.classList.add("game-mode");
   document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.game) { views.game.classList.add("active"); views.game.classList.remove("hidden"); }
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));

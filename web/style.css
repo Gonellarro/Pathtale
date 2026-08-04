@@ -1543,13 +1543,20 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
 }
 
 #view-game .game-sticky-header {
-  position: sticky;
-  top: 68px;
-  z-index: 20;
-  margin: 0 -1.5rem;
+  position: fixed;
+  top: 0;
+  left: 50%;
+  width: min(calc(100% - 3rem), 768px);
+  transform: translateX(-50%);
+  z-index: 120;
+  margin: 0;
   background: rgba(12, 9, 6, .97);
   backdrop-filter: blur(14px);
 }
+
+#view-game .game-container { padding-top: 9rem; }
+#view-game .game-sticky-header + .story-card { scroll-margin-top: 9rem; }
+.game-mode .navbar { display: none; }
 
 #view-game .game-topbar {
   margin: 0;
@@ -1803,8 +1810,8 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
 .global-player-volume input[type="range"] { width: 68px; }
 
 @media (max-width: 600px) {
-  #view-game .game-container { padding-left: 1rem; padding-right: 1rem; }
-  #view-game .game-sticky-header { margin-left: -1rem; margin-right: -1rem; }
+  #view-game .game-container { padding-left: 1rem; padding-right: 1rem; padding-top: 9rem; }
+  #view-game .game-sticky-header { width: calc(100% - 2rem); }
   #view-game .game-topbar, #view-game .game-controls-bar { padding-left: 1rem; padding-right: 1rem; }
   #view-game .choices-container { padding: 1rem; }
 }
