@@ -18,12 +18,27 @@ const navBtns = {
   admin: document.getElementById("btn-nav-admin")
 };
 
+function placeAudioPlayer(inGame) {
+  const dock = document.getElementById("global-audio-player");
+  if (!dock) return;
+  if (inGame) {
+    const storyCard = document.querySelector("#view-game .story-card");
+    const mediaControls = storyCard?.querySelector(".media-controls");
+    if (storyCard && mediaControls && dock.parentElement !== storyCard) {
+      storyCard.insertBefore(dock, mediaControls);
+    }
+  } else if (dock.parentElement !== document.body) {
+    document.body.appendChild(dock);
+  }
+}
+
 export function showLandingView() {
   showHomeView();
 }
 
 export function showHomeView() {
   document.body.classList.remove("game-mode");
+  placeAudioPlayer(false);
   document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.home) { views.home.classList.add("active"); views.home.classList.remove("hidden"); }
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
@@ -44,6 +59,7 @@ export function showHomeView() {
 
 export function showFullLibraryView() {
   document.body.classList.remove("game-mode");
+  placeAudioPlayer(false);
   document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.library) { views.library.classList.add("active"); views.library.classList.remove("hidden"); }
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
@@ -54,6 +70,7 @@ export function showFullLibraryView() {
 
 export function showAdminView() {
   document.body.classList.remove("game-mode");
+  placeAudioPlayer(false);
   if (!state.authToken) {
     openAuthModal();
     return;
@@ -81,6 +98,7 @@ export function showGameView() {
     return;
   }
   document.body.classList.add("game-mode");
+  placeAudioPlayer(true);
   document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.classList.add("hidden"); });
   if (views.game) { views.game.classList.add("active"); views.game.classList.remove("hidden"); }
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));

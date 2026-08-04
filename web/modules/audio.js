@@ -6,6 +6,8 @@ import { state, formatTime } from "./state.js";
 import { updateSetting } from "./settings.js";
 
 const audioPlayer = document.getElementById("html-audio-player");
+const PLAY_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5 19 12 7 19.5Z"></path></svg>';
+const PAUSE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"></path></svg>';
 
 function showAudioDock() {
   const dock = document.getElementById("global-audio-player");
@@ -36,7 +38,7 @@ export function onAudioPlay() {
   const label = document.getElementById("audio-label");
   const icon = document.getElementById("audio-icon");
   const btn = document.getElementById("btn-audio-play");
-  if (icon) icon.textContent = "⏸";
+  if (icon) icon.innerHTML = PAUSE_ICON;
   if (label) {
     label.textContent = (state.currentAudioType === "options") ? "Pausar Opciones" : "Pausar Narración";
   }
@@ -53,7 +55,7 @@ export function onAudioPause() {
   const label = document.getElementById("audio-label");
   const icon = document.getElementById("audio-icon");
   const btn = document.getElementById("btn-audio-play");
-  if (icon) icon.textContent = "▶";
+  if (icon) icon.innerHTML = PLAY_ICON;
   if (label) label.textContent = "Escuchar Narración";
   if (btn) btn.classList.remove("playing");
 }

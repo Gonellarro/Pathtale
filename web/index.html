@@ -804,9 +804,11 @@
             <div class="media-controls">
               <!-- Voice Input Button -->
               <div class="voice-input-box">
-                <button id="btn-voice-record" class="btn-media btn-voice">
-                  <span class="mic-icon">🎤</span>
-                  <span id="voice-label">Responder por Voz</span>
+                <button id="btn-voice-record" class="btn-media btn-voice" aria-label="Responder por voz">
+                  <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"></path>
+                  </svg>
                 </button>
                 <input type="file" id="input-voice-file" accept="audio/*" capture="microphone" class="hidden">
                 <div id="voice-status" class="voice-status hidden">
@@ -1238,12 +1240,6 @@
   </div>
 
   <div id="global-audio-player" class="global-audio-player hidden" aria-label="Reproductor de PathTale">
-    <div class="global-player-waveform" aria-hidden="true">
-      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-    </div>
     <div class="global-player-timeline">
       <span id="audio-time-current">0:00</span>
       <input type="range" id="audio-slider" min="0" max="100" value="0" aria-label="Progreso del audio">
@@ -1259,15 +1255,21 @@
       </div>
       <div class="global-player-actions">
         <button id="btn-audio-play" class="player-control-button player-play-button" aria-label="Reproducir o pausar">
-          <span id="audio-icon">▶</span>
+          <span id="audio-icon" class="audio-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5Z"></path></svg>
+          </span>
         </button>
+      </div>
+      <div class="global-player-settings">
+        <label class="global-player-volume" title="Volumen">
+          <span class="volume-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4Z"></path><path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"></path></svg>
+          </span>
+          <input type="range" id="audio-volume-slider" min="0" max="1" step="0.01" value="1" aria-label="Volumen">
+        </label>
         <button id="btn-audio-options" class="player-secondary-button hidden" title="Escuchar opciones">Opciones</button>
         <button id="btn-audio-speed" class="player-secondary-button" title="Cambiar velocidad">1.0x</button>
       </div>
-      <label class="global-player-volume" title="Volumen">
-        <span aria-hidden="true">🔊</span>
-        <input type="range" id="audio-volume-slider" min="0" max="1" step="0.01" value="1" aria-label="Volumen">
-      </label>
     </div>
   </div>
   <audio id="html-audio-player" preload="auto"></audio>
