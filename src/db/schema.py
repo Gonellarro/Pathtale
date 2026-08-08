@@ -219,12 +219,29 @@ class SchemaManager(BaseRepository):
                     current_node_id TEXT NOT NULL,
                     inventory TEXT DEFAULT '[]',
                     variables TEXT DEFAULT '{}',
+                    playback_node_id TEXT,
+                    playback_position_seconds REAL NOT NULL DEFAULT 0,
+                    playback_captured_at_ms INTEGER NOT NULL DEFAULT 0,
+                    playback_updated_at TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
                     FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE,
                     UNIQUE (user_id, book_id)
                 )
             """)
+
+            # Playback bookmark was added after the original savegame schema.
+            # Keep this migration additive so existing libraries remain intact.
+            cursor.execute("PRAGMA table_info(savegames)")
+            savegame_columns = {row["name"] for row in cursor.fetchall()}
+            for col, definition in [
+                ("playback_node_id", "TEXT"),
+                ("playback_position_seconds", "REAL NOT NULL DEFAULT 0"),
+                ("playback_captured_at_ms", "INTEGER NOT NULL DEFAULT 0"),
+                ("playback_updated_at", "TIMESTAMP"),
+            ]:
+                if col not in savegame_columns:
+                    cursor.execute(f"ALTER TABLE savegames ADD COLUMN {col} {definition}")
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_book_ratings (

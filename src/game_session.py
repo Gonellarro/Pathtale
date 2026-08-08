@@ -101,6 +101,8 @@ class GameSessionService:
             "current_node": node_data,
             "inventory": savegame["inventory"],
             "variables": savegame["variables"],
+            "playback_node_id": savegame.get("playback_node_id"),
+            "playback_position_seconds": savegame.get("playback_position_seconds", 0),
         }
         for plugin in self.plugins:
             state = plugin.on_node_enter(user_id, node_data, state)

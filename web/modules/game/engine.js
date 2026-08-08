@@ -4,6 +4,7 @@ import { renderHistoryDrawer } from "./history.js";
 import { showGameView, showFullLibraryView } from "./views.js";
 import { loadBookSupplements } from "./supplements.js";
 import { syncAmbientRuntime } from "../ambient_audio.js";
+import { loadNarrativeAudio, persistCurrentNarrationBookmark } from "../audio.js";
 
 const audioPlayer = document.getElementById("html-audio-player");
 
@@ -29,7 +30,12 @@ export async function startGame(bookId, forceNew = false) {
     openAuthModal();
     return;
   }
-  if (state.currentBookId !== bookId || forceNew) {
+  const changingBook = state.currentBookId && state.currentBookId !== bookId;
+  if (changingBook) {
+    // Preserve the departing book before its audio source is replaced.
+    await persistCurrentNarrationBookmark();
+  }
+  if (changingBook || forceNew) {
     state.navigationHistory = [];
   }
   state.currentBookId = bookId;
@@ -229,11 +235,7 @@ export function renderGameState(gameState) {
   }
 
   if (audioPlayer && gameState.audio_url) {
-    state.currentAudioType = "narrative";
-    audioPlayer.src = `${gameState.audio_url}?v=${Date.now()}`;
-    if (state.appSettings.autoplay) {
-      audioPlayer.play().catch(() => {});
-    }
+    loadNarrativeAudio(gameState);
   }
 
   renderChoices(gameState.choices || []);

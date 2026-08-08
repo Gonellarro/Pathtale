@@ -21,6 +21,12 @@ class ChoiceRequest(BaseModel):
     text_query: Optional[str] = None
 
 
+class PlaybackPositionRequest(BaseModel):
+    node_id: str
+    position_seconds: float
+    captured_at_ms: int
+
+
 class RegisterRequest(BaseModel):
     username: str
     password: str

@@ -7,7 +7,8 @@ import { initAuthControls } from "./modules/auth.js";
 import { loadSettings, updateSetting, toggleSettingsModal } from "./modules/settings.js";
 import { 
   toggleAudioPlay, playOptionsAudio, onAudioSeek, toggleAudioSpeed, 
-  updateAudioProgress, onAudioPlay, onAudioPause, onAudioEnded, onAudioVolumeChange
+  updateAudioProgress, onAudioPlay, onAudioPause, onAudioEnded, onAudioVolumeChange,
+  persistNarrationBookmarkOnExit
 } from "./modules/audio.js";
 import { setLibraryViewMode, confirmRestartGame } from "./modules/library.js";
 import { 
@@ -31,6 +32,10 @@ document.addEventListener("DOMContentLoaded", () => {
   loadSettings();
   showHomeView();
 });
+
+// Browsers can close or suspend a tab without dispatching the player's pause
+// event. Keep the last listening point in that case as well.
+window.addEventListener("pagehide", persistNarrationBookmarkOnExit);
 
 function initEventListeners() {
   initVoiceControls();

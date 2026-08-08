@@ -17,6 +17,7 @@ from src.api_models import (
     AdminUserSubscriptionRequest,
     AdminUserUpdateRequest,
     ChoiceRequest,
+    PlaybackPositionRequest,
     LoginRequest,
     RegisterRequest,
     StartGameRequest,

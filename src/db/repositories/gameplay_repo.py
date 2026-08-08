@@ -21,6 +21,9 @@ class GameplayRepository(BaseRepository):
                 "current_node_id": d["current_node_id"],
                 "inventory": json.loads(d.get("inventory") or "[]"),
                 "variables": json.loads(d.get("variables") or "{}"),
+                "playback_node_id": d.get("playback_node_id"),
+                "playback_position_seconds": float(d.get("playback_position_seconds") or 0),
+                "playback_captured_at_ms": int(d.get("playback_captured_at_ms") or 0),
                 "updated_at": d.get("updated_at")
             }
 
@@ -31,7 +34,7 @@ class GameplayRepository(BaseRepository):
                 SELECT s.*, b.title, b.author, b.cover_image, b.genre, b.estimated_duration
                 FROM savegames s
                 JOIN books b ON b.book_id = s.book_id
-                WHERE s.user_id = ?
+                WHERE s.user_id = ? AND b.is_visible = 1
                 ORDER BY s.updated_at DESC
                 LIMIT 1
             """, (user_id,))
@@ -50,7 +53,7 @@ class GameplayRepository(BaseRepository):
                 SELECT s.*, b.title, b.author, b.cover_image, b.genre, b.estimated_duration, b.total_sections
                 FROM savegames s
                 JOIN books b ON b.book_id = s.book_id
-                WHERE s.user_id = ?
+                WHERE s.user_id = ? AND b.is_visible = 1
                 ORDER BY s.updated_at DESC
                 LIMIT ?
             """, (user_id, limit))
@@ -71,18 +74,74 @@ class GameplayRepository(BaseRepository):
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO savegames (user_id, book_id, current_node_id, inventory, variables, updated_at)
-                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, ?, ?, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))
                 ON CONFLICT(user_id, book_id) DO UPDATE SET
                     current_node_id=excluded.current_node_id,
                     inventory=excluded.inventory,
                     variables=excluded.variables,
-                    updated_at=CURRENT_TIMESTAMP
+                    playback_node_id=NULL,
+                    playback_position_seconds=0,
+                    playback_captured_at_ms=0,
+                    playback_updated_at=NULL,
+                    updated_at=STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
             """, (user_id, book_id, current_node_id, inv_json, var_json))
 
             cursor.execute("""
                 INSERT INTO reading_logs (user_id, book_id, node_id, choice_made, action_type)
                 VALUES (?, ?, ?, 'Avance de lectura', 'progress_save')
             """, (user_id, book_id, current_node_id))
+            conn.commit()
+
+    def save_playback_position(
+        self,
+        user_id: int,
+        book_id: str,
+        node_id: str,
+        position_seconds: float,
+        captured_at_ms: int,
+    ) -> bool:
+        """Persist a narration bookmark only for the section still being read.
+
+        Requests can arrive out of order on a mobile connection. The client
+        timestamp prevents an older pause from replacing a newer bookmark.
+        """
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE savegames
+                SET playback_node_id = ?,
+                    playback_position_seconds = ?,
+                    playback_captured_at_ms = ?,
+                    playback_updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+                    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+                WHERE user_id = ? AND book_id = ? AND current_node_id = ?
+                  AND ? >= COALESCE(playback_captured_at_ms, 0)
+                """,
+                (
+                    node_id,
+                    max(0.0, position_seconds),
+                    captured_at_ms,
+                    user_id,
+                    book_id,
+                    node_id,
+                    captured_at_ms,
+                ),
+            )
+            conn.commit()
+            return cursor.rowcount == 1
+
+    def touch_savegame(self, user_id: int, book_id: str) -> None:
+        """Mark an existing book as the user's most recently opened one.
+
+        This deliberately does not write a reading log or change the saved
+        node, inventory or variables.
+        """
+        with self.get_connection() as conn:
+            conn.execute(
+                "UPDATE savegames SET updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now') "
+                "WHERE user_id = ? AND book_id = ?",
+                (user_id, book_id),
+            )
             conn.commit()
 
     def record_step(self, user_id: int, book_id: str, from_node_id: Optional[str], to_node_id: str, choice_text: Optional[str] = None):

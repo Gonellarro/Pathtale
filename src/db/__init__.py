@@ -148,6 +148,12 @@ class Database(BaseRepository):
     def save_game(self, *args, **kwargs):
         return self.gameplay.save_game(*args, **kwargs)
 
+    def touch_savegame(self, *args, **kwargs):
+        return self.gameplay.touch_savegame(*args, **kwargs)
+
+    def save_playback_position(self, *args, **kwargs):
+        return self.gameplay.save_playback_position(*args, **kwargs)
+
     def record_step(self, *args, **kwargs):
         return self.gameplay.record_step(*args, **kwargs)
 

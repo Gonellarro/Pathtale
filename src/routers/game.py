@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from src.dependencies import (
     engine, stt_manager, voice_parser, temp_dir, logger,
-    StartGameRequest, ChoiceRequest, resolve_user_id
+    StartGameRequest, ChoiceRequest, PlaybackPositionRequest, resolve_user_id
 )
 from src.services.audio_catalog import AudioCatalog, AudioCatalogError
 
@@ -82,7 +82,12 @@ def _format_game_state_response(user_id: int, book_id: str, state: dict) -> dict
         "inventory": state.get("inventory", {}),
         "variables": state.get("variables", {}),
         "progress_percent": progress_pct,
-        "history_count": len(history)
+        "history_count": len(history),
+        "playback_position_seconds": (
+            state.get("playback_position_seconds", 0)
+            if state.get("playback_node_id") == node.get("id")
+            else 0
+        )
     }
 
 @router.post("/games")
@@ -121,6 +126,9 @@ def get_last_active_game(user_id: int, authorization: Optional[str] = Header(Non
         return {"has_active_game": False}
 
     book_id = last_game["book_id"]
+    book_record = engine.db.get_book_by_id(book_id) or {}
+    if book_record.get("is_visible", 1) == 0:
+        return {"has_active_game": False}
     book_data = engine.books.get(book_id, {})
     return {
         "has_active_game": True,
@@ -138,6 +146,9 @@ def get_in_progress_games(user_id: int, limit: int = 3, authorization: Optional[
     result = []
     for s in saves:
         b_id = s["book_id"]
+        book_record = engine.db.get_book_by_id(b_id) or {}
+        if book_record.get("is_visible", 1) == 0:
+            continue
         book_data = engine.books.get(b_id, {})
         history = engine.db.get_history(uid, b_id, limit=500)
         visited_count = len(set(h["to_node_id"] for h in history))
@@ -163,6 +174,9 @@ def get_game_state(user_id: int, book_id: str, authorization: Optional[str] = He
     state = engine.get_current_state(uid, book_id)
     if not state:
         state = engine.start_game(uid, book_id)
+    else:
+        # Reopening a saved book makes it the most recently read adventure.
+        engine.db.touch_savegame(uid, book_id)
     return _format_game_state_response(uid, book_id, state)
 
 @router.get("/games/{user_id}/{book_id}/history")
@@ -171,6 +185,25 @@ def get_game_history(user_id: int, book_id: str, authorization: Optional[str] = 
     uid = resolve_user_id(authorization)
     history = engine.db.get_history(uid, book_id)
     return history
+
+
+@router.put("/games/{user_id}/{book_id}/playback-position")
+def save_playback_position(
+    user_id: int,
+    book_id: str,
+    req: PlaybackPositionRequest,
+    authorization: Optional[str] = Header(None),
+):
+    """Save the user's paused narration position without changing game state."""
+    uid = resolve_user_id(authorization)
+    saved = engine.db.save_playback_position(
+        uid,
+        book_id,
+        req.node_id,
+        req.position_seconds,
+        req.captured_at_ms,
+    )
+    return {"saved": saved}
 
 @router.post("/games/{user_id}/{book_id}/choice")
 def make_choice(user_id: int, book_id: str, req: ChoiceRequest, authorization: Optional[str] = Header(None)):
