@@ -54,7 +54,7 @@ class BookImportService:
         effective_voice = narrator_info.get("voice_code") if narrator_info else voice_name
 
         try:
-            book_folder = importer.process(
+            book_json_path = importer.process(
                 generate_audios=generate_audios,
                 title=title,
                 author=author,
@@ -65,6 +65,7 @@ class BookImportService:
                 tier_id=tier_id,
                 narrator_id=narrator_id,
             )
+            book_folder = book_json_path.parent
             if narrator_id:
                 self.database.update_book_admin(book_folder.name, {"narrator_id": narrator_id})
             self.reload_books()
