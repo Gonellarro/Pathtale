@@ -117,14 +117,6 @@ function initEventListeners() {
   const btnCloseHistory = document.getElementById("btn-close-history");
   if (btnCloseHistory) btnCloseHistory.addEventListener("click", toggleHistoryDrawer);
 
-  // Library View Toggle
-  const btnGrid = document.getElementById("btn-view-grid");
-  const btnTable = document.getElementById("btn-view-table");
-  if (btnGrid && btnTable) {
-    btnGrid.addEventListener("click", () => setLibraryViewMode("grid"));
-    btnTable.addEventListener("click", () => setLibraryViewMode("table"));
-  }
-
   // Library Event Delegation (Card Clicks)
   const libraryGrid = document.getElementById("library-grid");
   if (libraryGrid) {

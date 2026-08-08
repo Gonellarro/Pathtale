@@ -6,7 +6,10 @@
 import { state } from "./state.js";
 import { loadAdminUsers, loadAdminRoles, openAdminUserModal } from "./admin/users.js";
 import { openAdminBookTierModal } from "./admin/book-tier-modal.js";
-import { loadAdminBooks, initAdminUploadZone, openPreImportModal, openEditExistingBookModal, openPostUploadModal, currentAdminBooks } from "./admin/books.js";
+import { loadAdminBooks, currentAdminBooks } from "./admin/books.js";
+import { initAdminUploadZone, openPreImportModal } from "./admin/book-import-flow.js";
+import { openEditExistingBookModal } from "./admin/book-edit-flow.js";
+import { openPostUploadModal } from "./admin/book-post-upload-flow.js";
 import { loadAdminNarrators } from "./admin/narrators.js";
 import { loadAdminLogs } from "./admin/audit.js";
 
@@ -18,7 +21,7 @@ export async function loadAdminDashboard() {
   }
 
   initAdminTabs();
-  initAdminUploadZone();
+  initAdminUploadZone(loadAdminBooks);
   await Promise.all([
     loadAdminUsers(),
     loadAdminBooks(),

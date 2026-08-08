@@ -2,7 +2,7 @@ import { state } from "../state.js";
 import { openAuthModal, updateAuthUI } from "../auth.js";
 import { checkLastActiveGame, loadInProgressSection, loadFeaturedLibrary, loadNarratorsSection, loadFullLibrary } from "../library.js";
 import { loadAdminDashboard } from "../admin.js";
-import { startGame } from "./engine.js";
+import { startGame } from "./api.js";
 
 const views = {
   home: document.getElementById("view-home"),

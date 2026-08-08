@@ -1,0 +1,247 @@
+/* Modern CSS Design System for PathTale Interactive Gamebooks */
+
+:root,
+[data-theme="pathtale"] {
+  /* Exact Figma Theme Color Palette */
+  --bg-primary: #0c0906;
+  --bg-navbar: rgba(12, 9, 6, 0.94);
+  --bg-card: #1a1208;
+  --bg-card-hover: #261b0d;
+  --bg-secondary: #2a1e0e;
+  --border-color: rgba(201, 138, 58, 0.15);
+
+  --text-main: #f0e8d8;        /* Figma --foreground: warm parchment */
+  --text-muted: #8a7355;       /* Figma --muted-foreground: warm brown */
+  --text-dim: #6b5742;
+
+  --accent-gold: #c98a3a;      /* Figma --primary: rich warm gold */
+  --accent-gold-bright: #e5a84e; /* Figma --accent: bright gold */
+  --accent-primary: #c98a3a;
+  --accent-hover: #e5a84e;
+  --accent-light: #f0e8d8;
+  --accent-gradient: linear-gradient(135deg, #c98a3a 0%, #a36820 100%);
+
+  --btn-login-border: rgba(201, 138, 58, 0.3);
+  --btn-login-hover: #c98a3a;
+
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  --font-family-sans: 'Lato', system-ui, sans-serif;
+  --font-family-serif: 'Cinzel', serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 25px rgba(201, 138, 58, 0.25);
+
+  --font-body-size: 1.15rem;
+  --line-height-body: 1.8;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0b0f19;
+  --bg-navbar: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --border-color: #334155;
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  --accent-gold: #6366f1;
+  --accent-gold-bright: #818cf8;
+  --accent-primary: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-light: #818cf8;
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+
+  --btn-login-border: #334155;
+  --btn-login-hover: #818cf8;
+}
+
+[data-theme="light"] {
+  --bg-primary: #f6f1e8;
+  --bg-navbar: #ede4d4;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1e9dc;
+  --border-color: #d9ccb9;
+
+  --text-main: #2a201b;
+  --text-muted: #6b5749;
+  --text-dim: #947e6e;
+
+  --accent-gold: #9e6b38;
+  --accent-gold-bright: #b3783e;
+  --accent-primary: #9e6b38;
+  --accent-hover: #7d5228;
+  --accent-light: #c48a4d;
+  --accent-gradient: linear-gradient(135deg, #a66e38 0%, #784a1e 100%);
+
+  --btn-login-border: #c4b5a2;
+  --btn-login-hover: #8c5a2b;
+}
+
+/* Reset & Base */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-family-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Container (15% wider: 1265px) */
+.app-container {
+  max-width: 1265px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 1.5rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Navbar (Header bar constrained to same width as app-container) */
+.navbar {
+  max-width: 1265px;
+  margin: 0 auto;
+  width: 100%;
+  height: 68px;
+  background-color: var(--bg-navbar);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  padding: 0 1.5rem;
+}
+
+.nav-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.logo-img {
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-family-sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-svg-icon {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  display: inline-block;
+  vertical-align: middle;
+  transition: stroke 0.2s ease;
+}
+
+.nav-btn:hover {
+  color: var(--text-main);
+}
+
+.nav-btn.active {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.nav-btn-login {
+  background: transparent;
+  border: 1px solid var(--btn-login-border);
+  color: var(--text-main);
+  font-family: var(--font-family-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.45rem 1.3rem;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-btn-login:hover {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold-bright);
+}
+
+.nav-btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.nav-btn-icon:hover {
+  color: var(--text-main);
+  background-color: var(--bg-card-hover);
+}
+
+/* Views */
+.main-content {
+  flex: 1;
+  padding: 1.5rem 0 3rem 0;
+}
+
+.view {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.view.active {
+  display: block;
+  opacity: 1;
+}

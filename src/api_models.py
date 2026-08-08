@@ -27,6 +27,14 @@ class PlaybackPositionRequest(BaseModel):
     captured_at_ms: int
 
 
+class JumpRequest(BaseModel):
+    target: str
+
+
+class BookRatingRequest(BaseModel):
+    rating: int
+
+
 class RegisterRequest(BaseModel):
     username: str
     password: str

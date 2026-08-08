@@ -1,7 +1,11 @@
 from config import DB_PATH
 from src.db.base import BaseRepository
 from src.db.schema import SchemaManager
-from src.db.repositories.auth_repo import AuthRepository
+from src.db.repositories.identity_repo import IdentityRepository
+from src.db.repositories.subscription_repo import SubscriptionRepository
+from src.db.repositories.user_admin_repo import UserAdminRepository
+from src.db.repositories.user_preferences_repo import UserPreferencesRepository
+from src.db.repositories.passwords import hash_password
 from src.db.repositories.books_repo import BooksRepository
 from src.db.repositories.narrators_repo import NarratorsRepository
 from src.db.repositories.gameplay_repo import GameplayRepository
@@ -15,7 +19,10 @@ class Database(BaseRepository):
     def __init__(self, db_path=DB_PATH):
         super().__init__(db_path)
         self.schema = SchemaManager(self.db_path)
-        self.auth = AuthRepository(self.db_path)
+        self.identity = IdentityRepository(self.db_path)
+        self.subscriptions = SubscriptionRepository(self.db_path)
+        self.user_admin = UserAdminRepository(self.db_path)
+        self.preferences = UserPreferencesRepository(self.db_path)
         self.books = BooksRepository(self.db_path)
         self.narrators = NarratorsRepository(self.db_path)
         self.gameplay = GameplayRepository(self.db_path)
@@ -29,61 +36,61 @@ class Database(BaseRepository):
 
     # --- Auth & User Delegations ---
     def _hash_password(self, password: str, salt_hex: str):
-        return self.auth._hash_password(password, salt_hex)
+        return hash_password(password, salt_hex)
 
     def register_user(self, *args, **kwargs):
-        return self.auth.register_user(*args, **kwargs)
+        return self.identity.register_user(*args, **kwargs)
 
     def login_user(self, *args, **kwargs):
-        return self.auth.login_user(*args, **kwargs)
+        return self.identity.login_user(*args, **kwargs)
 
     def get_user_by_token(self, *args, **kwargs):
-        return self.auth.get_user_by_token(*args, **kwargs)
+        return self.identity.get_user_by_token(*args, **kwargs)
 
     def get_session(self, *args, **kwargs):
-        return self.auth.get_session(*args, **kwargs)
+        return self.identity.get_session(*args, **kwargs)
 
     def logout_user(self, *args, **kwargs):
-        return self.auth.logout_user(*args, **kwargs)
+        return self.identity.logout_user(*args, **kwargs)
 
     def get_user(self, *args, **kwargs):
-        return self.auth.get_user(*args, **kwargs)
+        return self.identity.get_user(*args, **kwargs)
 
     def get_or_create_user(self, *args, **kwargs):
-        return self.auth.get_or_create_user(*args, **kwargs)
+        return self.identity.get_or_create_user(*args, **kwargs)
 
     def get_all_subscription_tiers(self, *args, **kwargs):
-        return self.auth.get_all_subscription_tiers(*args, **kwargs)
+        return self.subscriptions.get_all_subscription_tiers(*args, **kwargs)
 
     def get_user_active_tier(self, *args, **kwargs):
-        return self.auth.get_user_active_tier(*args, **kwargs)
+        return self.subscriptions.get_user_active_tier(*args, **kwargs)
 
     def assign_user_subscription(self, *args, **kwargs):
-        return self.auth.assign_user_subscription(*args, **kwargs)
+        return self.subscriptions.assign_user_subscription(*args, **kwargs)
 
     def get_book_tier(self, *args, **kwargs):
-        return self.auth.get_book_tier(*args, **kwargs)
+        return self.subscriptions.get_book_tier(*args, **kwargs)
 
     def get_all_users_admin(self, *args, **kwargs):
-        return self.auth.get_all_users_admin(*args, **kwargs)
+        return self.user_admin.get_all_users_admin(*args, **kwargs)
 
     def get_all_roles(self, *args, **kwargs):
-        return self.auth.get_all_roles(*args, **kwargs)
+        return self.user_admin.get_all_roles(*args, **kwargs)
 
     def create_user_admin(self, *args, **kwargs):
-        return self.auth.create_user_admin(*args, **kwargs)
+        return self.user_admin.create_user_admin(*args, **kwargs)
 
     def update_user_admin(self, *args, **kwargs):
-        return self.auth.update_user_admin(*args, **kwargs)
+        return self.user_admin.update_user_admin(*args, **kwargs)
 
     def delete_user_admin(self, *args, **kwargs):
-        return self.auth.delete_user_admin(*args, **kwargs)
+        return self.user_admin.delete_user_admin(*args, **kwargs)
 
     def update_user_settings(self, *args, **kwargs):
-        return self.auth.update_user_settings(*args, **kwargs)
+        return self.preferences.update_user_settings(*args, **kwargs)
 
     def get_user_settings(self, *args, **kwargs):
-        return self.auth.get_user_settings(*args, **kwargs)
+        return self.preferences.get_user_settings(*args, **kwargs)
 
     # --- Books Delegations ---
     def upsert_book(self, *args, **kwargs):
