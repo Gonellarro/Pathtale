@@ -33,6 +33,10 @@ export async function confirmAdminBookImport(payload) {
   });
 }
 
+export async function fetchAdminAudioJob(jobId) {
+  return authFetch(`${API_BASE}/api/admin/books/audio-jobs/${encodeURIComponent(jobId)}`);
+}
+
 export async function uploadAdminBookCover(bookId, formData) {
   return authFetch(`${API_BASE}/api/admin/books/${encodeURIComponent(bookId)}/cover`, {
     method: "POST",

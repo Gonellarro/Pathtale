@@ -1,136 +1,149 @@
+"""Audio synthesis for an already published book."""
+
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Dict, List, Optional
 
 from src.tts import TTSManager
-from src.importer.tts_pipeline import generate_supplements_audio
 
 logger = logging.getLogger("BookAudioService")
 
+ProgressCallback = Callable[[Dict[str, object]], None]
+
 
 class BookAudioService:
-    """Coordinates audio regeneration for an already imported book.
-
-    The service owns filesystem traversal and TTS orchestration. HTTP routers
-    should only perform authorization, validation and response formatting.
-    """
+    """Builds and synthesizes a book's audio tracks without HTTP concerns."""
 
     def __init__(self, books_dir: Path, database):
         self.books_dir = Path(books_dir)
         self.database = database
 
-    def regenerate(
+    def generate(
         self,
         book_id: str,
+        *,
         tts_engine: str = "auto",
         voice_name: Optional[str] = None,
         language: Optional[str] = None,
         narrator_id: Optional[int] = None,
-    ) -> None:
+        overwrite: bool = False,
+        on_progress: Optional[ProgressCallback] = None,
+    ) -> Dict[str, int]:
+        """Generate missing tracks, or all tracks when ``overwrite`` is true."""
+        book_folder, book_data = self._load_book(book_id)
+        final_language = (language or book_data.get("language") or "es").lower()[:2]
+        selected_narrator_id, narrator_info = self._resolve_narrator(book_id, book_data, narrator_id)
+        tasks = self._build_tasks(book_data, final_language)
+
+        if overwrite:
+            self._remove_existing_audio(book_folder / "audios")
+
+        total = len(tasks)
+        generated = 0
+        skipped = 0
+        self._report(on_progress, total=total, completed=0, generated=0, skipped=0, current_item=None)
+        tts_manager = TTSManager()
+
+        for index, task in enumerate(tasks, start=1):
+            output_path = book_folder / task["relative_path"]
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            if output_path.exists():
+                skipped += 1
+            else:
+                success = self._generate(
+                    tts_manager,
+                    task["text"],
+                    output_path,
+                    final_language,
+                    narrator_info,
+                    tts_engine,
+                    voice_name,
+                )
+                if not success:
+                    raise RuntimeError(f"No se pudo generar el audio '{task['relative_path']}'.")
+                generated += 1
+            self._report(
+                on_progress,
+                total=total,
+                completed=index,
+                generated=generated,
+                skipped=skipped,
+                current_item=task["relative_path"],
+            )
+
+        logger.info(
+            "Audio generation complete for '%s': %d generated, %d already available.",
+            book_id,
+            generated,
+            skipped,
+        )
+        return {"total": total, "generated": generated, "skipped": skipped, "narrator_id": selected_narrator_id or 0}
+
+    def regenerate(self, book_id: str, **kwargs) -> Dict[str, int]:
+        """Regenerate every track while preserving the same synthesis workflow."""
+        return self.generate(book_id, overwrite=True, **kwargs)
+
+    def _load_book(self, book_id: str):
         book_folder = self.books_dir / book_id
         json_path = book_folder / "book.json"
         if not json_path.exists():
             raise FileNotFoundError(f"No se encontró book.json para el libro '{book_id}'.")
+        with json_path.open("r", encoding="utf-8") as source:
+            return book_folder, json.load(source)
 
-        with open(json_path, "r", encoding="utf-8") as f:
-            book_data = json.load(f)
-
-        final_language = (language or book_data.get("language") or "es").lower()[:2]
-        nodes = book_data.get("nodes", {})
-        tts_manager = TTSManager()
-
-        audio_dir = book_folder / "audios"
-        audio_dir.mkdir(exist_ok=True)
-        for mp3_file in audio_dir.glob("*.mp3"):
-            try:
-                mp3_file.unlink()
-            except OSError:
-                logger.warning("Could not remove old audio '%s'", mp3_file)
-
-        supplements_audio_dir = audio_dir / "supplements"
-        if supplements_audio_dir.exists():
-            for mp3_file in supplements_audio_dir.glob("*.mp3"):
-                try:
-                    mp3_file.unlink()
-                except OSError:
-                    logger.warning("Could not remove old supplement audio '%s'", mp3_file)
-
+    def _resolve_narrator(self, book_id: str, book_data: Dict, narrator_id: Optional[int]):
         db_book = self.database.get_book_by_id(book_id)
-        selected_narrator_id = (
-            narrator_id
-            or (db_book.get("narrator_id") if db_book else None)
-            or book_data.get("narrator_id")
-        )
-        narrator_info = (
-            self.database.get_narrator_by_id(selected_narrator_id)
-            if selected_narrator_id
-            else None
-        )
+        selected_narrator_id = narrator_id or (db_book.get("narrator_id") if db_book else None) or book_data.get("narrator_id")
+        narrator_info = self.database.get_narrator_by_id(selected_narrator_id) if selected_narrator_id else None
         if selected_narrator_id and not narrator_info:
             raise ValueError(f"El narrador #{selected_narrator_id} no existe o está inactivo.")
+        return selected_narrator_id, narrator_info
 
-        narrator_label = narrator_info.get("display_name") if narrator_info else tts_engine
-        logger.info(
-            "Regenerating audios for '%s' (%d nodes, narrator='%s', lang='%s')...",
-            book_id,
-            len(nodes),
-            narrator_label,
-            final_language,
-        )
+    @staticmethod
+    def _build_tasks(book_data: Dict, language: str) -> List[Dict[str, str]]:
+        tasks: List[Dict[str, str]] = []
+        for node in book_data.get("nodes", {}).values():
+            text_parts = [part for part in (node.get("title"), node.get("text")) if part]
+            if node.get("audio") and text_parts:
+                tasks.append({"relative_path": node["audio"], "text": "\n\n".join(text_parts)})
+            if node.get("audio_options") and node.get("choices"):
+                prefix = "Opción" if language == "es" else "Option"
+                heading = "¿Qué deseas hacer?" if language == "es" else "What do you want to do?"
+                choices = [f"{prefix} {choice['choice_id']}: {choice['text']}." for choice in node["choices"]]
+                tasks.append({"relative_path": node["audio_options"], "text": "\n\n".join([heading, *choices])})
+        for supplement in book_data.get("supplements", []):
+            text = supplement.get("text", "").strip()
+            if supplement.get("audio") and text:
+                tasks.append({
+                    "relative_path": supplement["audio"],
+                    "text": "\n\n".join(filter(None, [supplement.get("title"), text])),
+                })
+        return tasks
 
-        for node_data in nodes.values():
-            audio_path = book_folder / node_data["audio"]
-            text_parts = [part for part in (node_data.get("title"), node_data.get("text")) if part]
-            if text_parts:
-                self._generate(
-                    tts_manager,
-                    "\n\n".join(text_parts),
-                    audio_path,
-                    final_language,
-                    narrator_info,
-                    tts_engine,
-                    voice_name,
-                )
+    @staticmethod
+    def _remove_existing_audio(audio_dir: Path) -> None:
+        if not audio_dir.exists():
+            return
+        for audio_file in audio_dir.rglob("*.mp3"):
+            try:
+                audio_file.unlink()
+            except OSError:
+                logger.warning("Could not remove old audio '%s'", audio_file)
 
-            if node_data.get("audio_options") and node_data.get("choices"):
-                options = [
-                    "¿Qué deseas hacer?" if final_language == "es" else "What do you want to do?"
-                ]
-                prefix = "Opción" if final_language == "es" else "Option"
-                options.extend(
-                    f"{prefix} {choice['choice_id']}: {choice['text']}."
-                    for choice in node_data["choices"]
-                )
-                self._generate(
-                    tts_manager,
-                    "\n\n".join(options),
-                    book_folder / node_data["audio_options"],
-                    final_language,
-                    narrator_info,
-                    tts_engine,
-                    voice_name,
-                )
-
-        generate_supplements_audio(
-            tts_manager,
-            book_data.get("supplements", []),
-            book_folder,
-            language=final_language,
+    @staticmethod
+    def _generate(tts_manager, text, output_path, language, narrator_info, tts_engine, voice_name) -> bool:
+        if narrator_info:
+            return tts_manager.generate_audio_by_narrator(text, output_path, narrator_info, language=language)
+        return tts_manager.generate_audio(
+            text,
+            output_path,
+            language=language,
             tts_engine=tts_engine,
             voice_name=voice_name,
-            narrator_id=selected_narrator_id,
         )
 
     @staticmethod
-    def _generate(tts_manager, text, output_path, language, narrator_info, tts_engine, voice_name):
-        if narrator_info:
-            tts_manager.generate_audio_by_narrator(text, output_path, narrator_info, language=language)
-        else:
-            tts_manager.generate_audio(
-                text,
-                output_path,
-                language=language,
-                tts_engine=tts_engine,
-                voice_name=voice_name,
-            )
+    def _report(callback: Optional[ProgressCallback], **payload) -> None:
+        if callback:
+            callback(payload)

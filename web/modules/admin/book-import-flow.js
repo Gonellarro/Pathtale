@@ -3,6 +3,7 @@ import { populateBookNarrators } from "./book-narrator-selector.js";
 import { readBookConfigForm } from "./book-form-data.js";
 import { submitBookImport } from "./book-config-submit.js";
 import { setPreImportFields, bindPreImportModal } from "./book-modal.js";
+import { waitForAudioJob } from "./audio-job-monitor.js";
 
 export function initAdminUploadZone(onImported) {
   const zone = document.getElementById("book-upload-zone");
@@ -107,7 +108,17 @@ async function submitImportConfig(onImported) {
   }
   try {
     const data = await submitBookImport(config);
-    alert(`✅ ¡Éxito! ${data.message}`);
+    if (data.audio_job) {
+      await waitForAudioJob(data.audio_job, (job) => {
+        if (!progressMsg) return;
+        const total = job.total || "…";
+        const current = job.current_item ? ` · ${job.current_item}` : "";
+        progressMsg.textContent = `Generando audios: ${job.completed}/${total}${current}`;
+      });
+      alert(`✅ ¡Éxito! ${data.message} Audios generados.`);
+    } else {
+      alert(`✅ ¡Éxito! ${data.message}`);
+    }
     await onImported();
   } catch (error) {
     if (errorBox) {

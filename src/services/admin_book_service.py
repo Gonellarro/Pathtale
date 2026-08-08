@@ -1,7 +1,7 @@
 """Application service for administrative book operations."""
 
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
 from src.services.book_audio_service import BookAudioService
 from src.services.book_file_store import BookFileStore
@@ -32,10 +32,6 @@ class AdminBookService:
         self,
         book_id: str,
         updates: Dict[str, Any],
-        *,
-        regenerate_audios: bool = False,
-        tts_engine: str = "auto",
-        voice_name: Optional[str] = None,
     ) -> None:
         db_updates = {
             key: value for key, value in updates.items()
@@ -45,15 +41,6 @@ class AdminBookService:
             self.database.update_book_admin(book_id, db_updates)
         self.files.update_document(book_id, updates)
         self.reload_books()
-
-        if regenerate_audios:
-            self.audio.regenerate(
-                book_id,
-                tts_engine=tts_engine,
-                voice_name=voice_name,
-                language=updates.get("language"),
-                narrator_id=updates.get("narrator_id"),
-            )
 
     def replace_cover(self, book_id: str, filename: str, content: bytes) -> str:
         relative_path = self.files.store_cover(book_id, filename, content)

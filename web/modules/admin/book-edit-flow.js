@@ -2,6 +2,7 @@ import { populateBookNarrators } from "./book-narrator-selector.js";
 import { readBookConfigForm } from "./book-form-data.js";
 import { submitBookEdit } from "./book-config-submit.js";
 import { setPreImportFields, bindPreImportModal } from "./book-modal.js";
+import { waitForAudioJob } from "./audio-job-monitor.js";
 
 export function openEditExistingBookModal(book, onUpdated = () => {}) {
   const modal = document.getElementById("modal-pre-import");
@@ -53,7 +54,15 @@ async function submitEditConfig(onUpdated) {
   }
   try {
     const data = await submitBookEdit(config);
-    alert(`✅ ¡Éxito! ${data.message || "Libro actualizado correctamente."}`);
+    if (data.audio_job) {
+      await waitForAudioJob(data.audio_job, (job) => {
+        if (!progressMsg) return;
+        const total = job.total || "…";
+        const current = job.current_item ? ` · ${job.current_item}` : "";
+        progressMsg.textContent = `Regenerando audios: ${job.completed}/${total}${current}`;
+      });
+    }
+    alert(`✅ ¡Éxito! ${data.message || "Libro actualizado correctamente."}${data.audio_job ? " Audios generados." : ""}`);
     await onUpdated();
   } catch (error) {
     if (errorBox) {
