@@ -14,9 +14,9 @@ export function openEditExistingBookModal(book, onUpdated = () => {}) {
   const regenContainer = document.getElementById("pre-import-regenerate-container");
   const regenCheck = document.getElementById("pre-import-regenerate-check");
   const generateAudiosContainer = document.getElementById("pre-import-generate-audios-container");
-  if (modalTitle) modalTitle.textContent = `✏️ Editar Librojuego: ${book.title}`;
+  if (modalTitle) modalTitle.textContent = `Editar Librojuego: ${book.title}`;
   if (modalSubtitle) modalSubtitle.textContent = "Edita los metadatos del libro o regenera sus audios con la voz seleccionada:";
-  if (confirmBtn) confirmBtn.textContent = "Guardar Cambios 💾";
+  if (confirmBtn) confirmBtn.textContent = "Guardar Cambios";
   if (regenContainer) regenContainer.classList.remove("hidden");
   if (regenCheck) regenCheck.checked = false;
   if (generateAudiosContainer) generateAudiosContainer.classList.add("hidden");

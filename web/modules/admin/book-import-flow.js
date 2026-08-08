@@ -65,9 +65,9 @@ export function openPreImportModal(tempFileId, filename, inspection, onImported 
   const generateAudiosContainer = document.getElementById("pre-import-generate-audios-container");
   const generateAudiosCheck = document.getElementById("pre-import-generate-audios-check");
   const errorBox = document.getElementById("pre-import-error");
-  if (modalTitle) modalTitle.textContent = "✨ Configuración de Importación del Librojuego";
-  if (modalSubtitle) modalSubtitle.textContent = "Archivo analizado correctamente. Revisa y ajusta los metadatos y la voz antes de iniciar la sintetización:";
-  if (confirmBtn) confirmBtn.textContent = "Confirmar e Importar Libro 🚀";
+  if (modalTitle) modalTitle.textContent = "Importación de Librojuego";
+  if (modalSubtitle) modalSubtitle.textContent = "Revisa los metadatos antes de iniciar.";
+  if (confirmBtn) confirmBtn.textContent = "Confirmar e Importar Libro";
   if (regenContainer) regenContainer.classList.add("hidden");
   if (generateAudiosContainer) generateAudiosContainer.classList.remove("hidden");
   if (generateAudiosCheck) generateAudiosCheck.checked = false;

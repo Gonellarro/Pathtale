@@ -49,7 +49,7 @@ async function savePostUploadMetadata(synthesizeAudios, onUpdated) {
     const response = await updateAdminBook(bookId, payload);
     if (!response.ok) throw new Error("Error al guardar cambios de metadatos.");
     if (synthesizeAudios) {
-      alert(`🎙️ Iniciando sintetización de audios para '${title}' (${payload.language})...`);
+      alert(`Iniciando sintetización de audios para '${title}' (${payload.language})...`);
       await regenerateBookAudios(bookId);
     } else {
       alert("✅ Metadatos guardados correctamente.");
