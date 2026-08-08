@@ -1,4 +1,5 @@
 import json
+import shutil
 import time
 from pathlib import Path
 from typing import Optional
@@ -88,9 +89,21 @@ async def upload_book_cover(book_id: str, file: UploadFile = File(...), authoriz
 @router.delete("/books/{book_id}")
 def delete_book(book_id: str, hard: bool = Query(False), authorization: Optional[str] = Header(None)):
     require_admin(authorization)
-    engine.db.delete_book_admin(book_id, hard_delete=hard)
+    book = engine.db.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Libro no encontrado")
+    if hard and book.get("is_visible") != 0:
+        raise HTTPException(status_code=400, detail="Solo se puede borrar definitivamente un libro que ya está oculto")
+    try:
+        engine.db.delete_book_admin(book_id, hard_delete=hard)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if hard:
+        book_folder = BOOKS_DIR / book_id
+        if book_folder.exists():
+            shutil.rmtree(book_folder)
     engine._load_installed_books()
-    return {"status": "success", "message": f"Audiolibro '{book_id}' {'eliminado permanentemente' if hard else 'ocultado'} correctamente."}
+    return {"status": "success", "message": f"Audiolibro '{book_id}' {'eliminado permanentemente' if hard else 'ocultado'} correctamente.", "hard_deleted": hard}
 
 
 @router.post("/books/inspect")

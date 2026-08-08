@@ -29,6 +29,6 @@ export function renderAdminBooksList(container, books, handlers) {
     button.onclick = () => handlers.onTier(button.dataset.id, button.dataset.title, button.dataset.tier);
   });
   container.querySelectorAll(".btn-delete-book").forEach((button) => {
-    button.onclick = () => handlers.onDelete(button.dataset.id);
+    button.onclick = () => handlers.onDelete(button.dataset.id, button.closest("tr")?.querySelector(".btn-toggle-visible-book")?.dataset.visible !== "1");
   });
 }

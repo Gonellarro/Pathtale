@@ -102,11 +102,12 @@ def list_books(
         full_data = engine.books.get(b_id, {})
         db_book = engine.db.get_book_by_id(b_id) or {}
         
+        if db_book.get("is_visible", 1) == 0:
+            # Hidden books never appear in public catalogues, including for admins.
+            # Administrators can inspect them only through the Dashboard endpoint.
+            continue
+
         book_tier = engine.db.get_book_tier(b_id)
-        if book_tier.get("is_visible") == 0:
-            user = engine.db.get_user_by_token(authorization.split(" ")[1]) if authorization and authorization.startswith("Bearer ") else None
-            if not (user and user.get("role_name") == "admin"):
-                continue
 
         genre = full_data.get("genre") or "Aventura"
         series = full_data.get("series")

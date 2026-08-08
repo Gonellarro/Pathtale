@@ -115,10 +115,16 @@ class BooksRepository(BaseRepository):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             if hard_delete:
-                cursor.execute("DELETE FROM books WHERE book_id = ?", (book_id,))
+                row = cursor.execute("SELECT is_visible FROM books WHERE book_id = ?", (book_id,)).fetchone()
+                if not row:
+                    raise ValueError(f"Libro no encontrado: {book_id}")
+                if row["is_visible"] != 0:
+                    raise ValueError("Solo se puede borrar definitivamente un libro que ya está oculto")
                 cursor.execute("DELETE FROM savegames WHERE book_id = ?", (book_id,))
                 cursor.execute("DELETE FROM reading_logs WHERE book_id = ?", (book_id,))
                 cursor.execute("DELETE FROM book_endings WHERE book_id = ?", (book_id,))
+                cursor.execute("DELETE FROM user_book_ratings WHERE book_id = ?", (book_id,))
+                cursor.execute("DELETE FROM books WHERE book_id = ?", (book_id,))
             else:
                 cursor.execute("UPDATE books SET is_visible = 0 WHERE book_id = ?", (book_id,))
             conn.commit()

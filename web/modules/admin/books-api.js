@@ -12,8 +12,9 @@ export async function updateAdminBook(bookId, payload) {
   });
 }
 
-export async function deleteAdminBook(bookId) {
-  return authFetch(`${API_BASE}/api/admin/books/${encodeURIComponent(bookId)}`, { method: "DELETE" });
+export async function deleteAdminBook(bookId, hard = false) {
+  const suffix = hard ? "?hard=true" : "";
+  return authFetch(`${API_BASE}/api/admin/books/${encodeURIComponent(bookId)}${suffix}`, { method: "DELETE" });
 }
 
 export async function inspectAdminBook(formData) {

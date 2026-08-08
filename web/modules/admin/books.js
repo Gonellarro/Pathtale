@@ -33,19 +33,30 @@ export async function loadAdminBooks() {
         } catch (error) { console.error("Error toggling book visibility:", error); }
       },
       onTier: (bookId, title, tier) => openAdminBookTierModal(bookId, title, tier),
-      onDelete: (bookId) => { if (confirm(`¿Eliminar el libro '${bookId}' del catálogo?`)) deleteBook(bookId); },
+      onDelete: (bookId, isHidden) => {
+        if (isHidden) {
+          const warning = `El libro '${bookId}' ya está oculto.\n\nLa siguiente acción lo eliminará definitivamente de la base de datos y del disco. Esta operación no se puede deshacer.\n\n¿Continuar?`;
+          if (confirm(warning)) deleteBook(bookId, true);
+          return;
+        }
+        if (confirm(`¿Ocultar el libro '${bookId}' del catálogo?`)) deleteBook(bookId, false);
+      },
     });
   } catch (err) {
     console.error("Error loading admin books:", err);
   }
 }
 
-async function deleteBook(bookId) {
+async function deleteBook(bookId, hard = false) {
   try {
-    const res = await deleteAdminBook(bookId);
-    if (res.ok) loadAdminBooks();
+    const res = await deleteAdminBook(bookId, hard);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || "operación no permitida");
+    }
+    loadAdminBooks();
   } catch (err) {
-    alert("Error al eliminar libro.");
+    alert(`Error al eliminar libro: ${err.message || "operación no permitida"}`);
   }
 }
 

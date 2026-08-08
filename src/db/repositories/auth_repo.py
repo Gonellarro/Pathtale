@@ -211,7 +211,7 @@ class AuthRepository(BaseRepository):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT st.* FROM subscription_tiers st
+                SELECT st.*, b.is_visible FROM subscription_tiers st
                 JOIN books b ON b.tier_id = st.tier_id
                 WHERE b.book_id = ?
             """, (book_id,))
