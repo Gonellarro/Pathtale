@@ -3,6 +3,7 @@ import { readBookConfigForm } from "./book-form-data.js";
 import { submitBookEdit } from "./book-config-submit.js";
 import { setPreImportFields, bindPreImportModal } from "./book-modal.js";
 import { waitForAudioJob } from "./audio-job-monitor.js";
+import { renderAudioJobStatus, resetAudioJobStatus, showAudioJobFailure } from "./audio-job-ui.js";
 
 export function openEditExistingBookModal(book, onUpdated = () => {}) {
   const modal = document.getElementById("modal-pre-import");
@@ -19,6 +20,7 @@ export function openEditExistingBookModal(book, onUpdated = () => {}) {
   if (regenContainer) regenContainer.classList.remove("hidden");
   if (regenCheck) regenCheck.checked = false;
   if (generateAudiosContainer) generateAudiosContainer.classList.add("hidden");
+  resetAudioJobStatus();
 
   setPreImportFields({
     editBookId: book.book_id,
@@ -55,16 +57,12 @@ async function submitEditConfig(onUpdated) {
   try {
     const data = await submitBookEdit(config);
     if (data.audio_job) {
-      await waitForAudioJob(data.audio_job, (job) => {
-        if (!progressMsg) return;
-        const total = job.total || "…";
-        const current = job.current_item ? ` · ${job.current_item}` : "";
-        progressMsg.textContent = `Regenerando audios: ${job.completed}/${total}${current}`;
-      });
+      await waitForAudioJob(data.audio_job, (job) => renderAudioJobStatus(job, "Regenerando audios"));
     }
     alert(`✅ ¡Éxito! ${data.message || "Libro actualizado correctamente."}${data.audio_job ? " Audios generados." : ""}`);
     await onUpdated();
   } catch (error) {
+    showAudioJobFailure(error.message);
     if (errorBox) {
       errorBox.classList.remove("hidden");
       errorBox.textContent = error.message;

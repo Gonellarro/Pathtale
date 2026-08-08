@@ -804,3 +804,55 @@
   margin-top: 0.5rem;
   opacity: 0.8;
 }
+/* --------------------------------------------------------------------------
+   Audio job status in the book import/edit modal
+   -------------------------------------------------------------------------- */
+
+.audio-job-status {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(217, 145, 45, 0.5);
+  border-radius: var(--radius-md);
+  background: rgba(217, 145, 45, 0.09);
+}
+
+.audio-job-status-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.audio-job-status-header span {
+  flex: 0 0 auto;
+  color: var(--accent-gold);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.audio-job-progress-track {
+  height: 5px;
+  margin: 0.7rem 0 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(217, 145, 45, 0.18);
+}
+
+.audio-job-progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-gold);
+  transition: width 0.25s ease;
+}
+
+.audio-job-status-detail {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

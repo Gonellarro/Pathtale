@@ -4,6 +4,7 @@ import { readBookConfigForm } from "./book-form-data.js";
 import { submitBookImport } from "./book-config-submit.js";
 import { setPreImportFields, bindPreImportModal } from "./book-modal.js";
 import { waitForAudioJob } from "./audio-job-monitor.js";
+import { renderAudioJobStatus, resetAudioJobStatus, showAudioJobFailure } from "./audio-job-ui.js";
 
 export function initAdminUploadZone(onImported) {
   const zone = document.getElementById("book-upload-zone");
@@ -74,6 +75,7 @@ export function openPreImportModal(tempFileId, filename, inspection, onImported 
     errorBox.classList.add("hidden");
     errorBox.textContent = "";
   }
+  resetAudioJobStatus();
 
   setPreImportFields({
     tempFileId,
@@ -109,18 +111,14 @@ async function submitImportConfig(onImported) {
   try {
     const data = await submitBookImport(config);
     if (data.audio_job) {
-      await waitForAudioJob(data.audio_job, (job) => {
-        if (!progressMsg) return;
-        const total = job.total || "…";
-        const current = job.current_item ? ` · ${job.current_item}` : "";
-        progressMsg.textContent = `Generando audios: ${job.completed}/${total}${current}`;
-      });
+      await waitForAudioJob(data.audio_job, (job) => renderAudioJobStatus(job));
       alert(`✅ ¡Éxito! ${data.message} Audios generados.`);
     } else {
       alert(`✅ ¡Éxito! ${data.message}`);
     }
     await onImported();
   } catch (error) {
+    showAudioJobFailure(error.message);
     if (errorBox) {
       errorBox.classList.remove("hidden");
       errorBox.textContent = error.message;

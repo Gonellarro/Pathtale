@@ -1111,6 +1111,17 @@
               Archivo analizado correctamente. Revisa y ajusta los metadatos y la voz antes de iniciar la sintetización:
             </p>
 
+            <section id="pre-import-audio-job-status" class="audio-job-status hidden" aria-live="polite" aria-atomic="true">
+              <div class="audio-job-status-header">
+                <strong id="pre-import-audio-job-title">Preparando la generación de audio</strong>
+                <span id="pre-import-audio-job-count">En cola</span>
+              </div>
+              <div class="audio-job-progress-track" aria-hidden="true">
+                <div id="pre-import-audio-job-progress" class="audio-job-progress-bar"></div>
+              </div>
+              <p id="pre-import-audio-job-current" class="audio-job-status-detail">El libro se ha importado. La cola de audio comenzará enseguida.</p>
+            </section>
+
             <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.3rem;">
               <label for="pre-import-title" style="font-weight:600;">Título del Librojuego</label>
               <input type="text" id="pre-import-title" class="text-input" style="width:100%;" placeholder="Título">
