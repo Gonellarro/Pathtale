@@ -21,7 +21,7 @@ export function loadNarrativeBookmark(player, gameState) {
   player.addEventListener("loadedmetadata", () => {
     narrationContext = context;
     if (bookmark > 0 && player.duration && bookmark < player.duration) player.currentTime = bookmark;
-    if (state.appSettings.autoplay) player.play().catch(() => {});
+    if (state.appSettings.autoplay && !state.supplementsOpen) player.play().catch(() => {});
   }, { once: true });
 }
 

@@ -38,8 +38,8 @@ export async function startGame(bookId, forceNew = false) {
       : await requestGame(`${API_BASE}/api/games/${uid}/${encodeURIComponent(bookId)}`);
     if (data?.node_id) {
       state.currentGameState = data;
-      renderGameState(data);
       await loadBookSupplements(bookId, forceNew);
+      renderGameState(data);
     }
   } catch (error) {
     if (!forceNew && error.status === 404) return startGame(bookId, true);

@@ -66,6 +66,10 @@ function renderNodeContent(gameState) {
   }
 }
 
+function focusSectionStart() {
+  window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+}
+
 export function renderGameState(gameState) {
   if (!gameState?.node_id) return;
   syncAmbientRuntime(gameState.audio_runtime);
@@ -77,6 +81,7 @@ export function renderGameState(gameState) {
   if (audioPlayer && gameState.audio_url) loadNarrativeAudio(gameState);
   renderChoices(gameState.choices || []);
   renderHistoryDrawer();
+  focusSectionStart();
 }
 
 export function renderChoices(choices) {

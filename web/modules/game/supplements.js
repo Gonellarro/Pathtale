@@ -43,6 +43,7 @@ export function openSupplements(preferredCategory = null) {
   if (!modal || !state.currentSupplements?.length) return;
   const player = document.getElementById("html-audio-player");
   if (player) player.pause();
+  state.supplementsOpen = true;
   modal.classList.add("open");
   const preferred = preferredCategory
     ? state.currentSupplements.find(item => item.category === preferredCategory)
@@ -54,11 +55,16 @@ export function closeSupplements() {
   const modal = document.getElementById("modal-supplements");
   if (modal) modal.classList.remove("open");
   const player = document.getElementById("html-audio-player");
-  if (player) {
-    player.pause();
-    const narrative = state.currentGameState?.audio_url;
-    if (narrative) player.src = `${narrative}?v=${Date.now()}`;
+  const shouldAutoplay = state.supplementsOpen && state.appSettings.autoplay;
+  state.supplementsOpen = false;
+  if (!player) return;
+
+  const narrative = state.currentGameState?.audio_url;
+  if (state.currentAudioType === "supplement" && narrative) {
+    state.currentAudioType = "narrative";
+    player.src = `${narrative}?v=${Date.now()}`;
   }
+  if (shouldAutoplay && narrative) player.play().catch(() => {});
 }
 
 function renderSupplementNavigation() {
