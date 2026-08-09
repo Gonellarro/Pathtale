@@ -16,6 +16,7 @@ export const state = {
   currentAudioType: "narrative",
   currentSupplements: [],
   supplementsOpen: false,
+  narrativeLoadDeferred: false,
 
   mediaRecorder: null,
   audioChunks: [],

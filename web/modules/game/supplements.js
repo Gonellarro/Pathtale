@@ -1,4 +1,5 @@
 import { state, authFetch, escapeHtml, API_BASE } from "../state.js";
+import { loadNarrativeAudio } from "../audio.js";
 
 const CATEGORY_LABELS = {
   front_matter: "Antes de empezar",
@@ -56,10 +57,17 @@ export function closeSupplements() {
   if (modal) modal.classList.remove("open");
   const player = document.getElementById("html-audio-player");
   const shouldAutoplay = state.supplementsOpen && state.appSettings.autoplay;
+  const shouldLoadNarration = state.narrativeLoadDeferred;
   state.supplementsOpen = false;
+  state.narrativeLoadDeferred = false;
   if (!player) return;
 
   const narrative = state.currentGameState?.audio_url;
+  if (shouldLoadNarration && narrative) {
+    state.currentAudioType = "narrative";
+    loadNarrativeAudio(state.currentGameState);
+    return;
+  }
   if (state.currentAudioType !== "narrative" && narrative) {
     state.currentAudioType = "narrative";
     player.src = `${narrative}?v=${Date.now()}`;

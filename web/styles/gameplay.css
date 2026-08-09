@@ -462,6 +462,7 @@ body:has(.global-audio-player:not(.hidden)) { padding-bottom: 96px; }
   width: min(100%, 768px);
   margin: 0 auto;
   padding: 0 1.5rem 7rem;
+  overflow-anchor: none;
 }
 
 #view-game .game-sticky-header {

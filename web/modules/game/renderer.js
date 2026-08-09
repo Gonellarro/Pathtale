@@ -67,7 +67,20 @@ function renderNodeContent(gameState) {
 }
 
 function focusSectionStart() {
-  window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+  const focusedChoice = document.activeElement?.closest?.(".btn-choice");
+  focusedChoice?.blur();
+
+  const scrollToStart = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
+  scrollToStart();
+  window.requestAnimationFrame(() => {
+    scrollToStart();
+    window.requestAnimationFrame(scrollToStart);
+  });
 }
 
 export function renderGameState(gameState) {
@@ -78,7 +91,13 @@ export function renderGameState(gameState) {
   renderNodeContent(gameState);
   const optionsButton = document.getElementById("btn-audio-options");
   optionsButton?.classList.toggle("hidden", !gameState.audio_options_url);
-  if (audioPlayer && gameState.audio_url) loadNarrativeAudio(gameState);
+  if (audioPlayer && gameState.audio_url) {
+    if (state.supplementsOpen) state.narrativeLoadDeferred = true;
+    else {
+      state.narrativeLoadDeferred = false;
+      loadNarrativeAudio(gameState);
+    }
+  }
   renderChoices(gameState.choices || []);
   renderHistoryDrawer();
   focusSectionStart();
