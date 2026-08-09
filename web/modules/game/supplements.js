@@ -60,7 +60,7 @@ export function closeSupplements() {
   if (!player) return;
 
   const narrative = state.currentGameState?.audio_url;
-  if (state.currentAudioType === "supplement" && narrative) {
+  if (state.currentAudioType !== "narrative" && narrative) {
     state.currentAudioType = "narrative";
     player.src = `${narrative}?v=${Date.now()}`;
   }
